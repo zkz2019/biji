@@ -1,0 +1,223 @@
+<!-- 角色管理 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <com-title>角色管理</com-title>
+      <retrieval class="query_head">
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="wid300 qh_inp"
+            v-model="param.search"
+            placeholder="输入角色名称进行检索"
+          ></el-input>
+        </inpbox>
+        <inpbox :inptext="''">
+          <fel-button class="qh_btn" type="primary" @click="seInpust">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh300"
+        height="100%"
+        interface="/system/role/1/getrole"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+      </paging-table>
+    </el-main>
+    <roleAdd
+      :rolename="rolename"
+      @success="success"
+      @beforeClose="dialogVisible=false"
+      :dialogVisible="dialogVisible"
+    ></roleAdd>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import roleAdd from "./roleAdd";
+export default {
+  name: "jsgl107",
+  components: {
+    roleAdd
+  },
+  data() {
+    let $this = this;
+    return {
+      listBut: [],
+      rolename: "",
+      dialogVisible: false,
+      param: { search: "" },
+      topButs: [],
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "角色名称",
+          prop: "rolename"
+        },
+        {
+          name: "角色描述",
+          prop: "roledesc"
+        },
+        {
+          name: "创建时间",
+          prop: "rolecdate"
+        },
+        {
+          name: "创建人账号",
+          prop: "userlogin"
+        },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              }
+            },
+            methods: {
+              onClick(key) {
+                $this.onClick(key, this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      refresh: 0,
+      sonmenu: 0
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.seInpust();
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "107" }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "108") {
+              this.topButs.push(value.entity);
+            } else if (id == "109") {
+              this.listBut.push({
+                type: "2",
+                name: "修改"
+              });
+            } else if (id == "110") {
+              this.listBut.push({
+                type: "3",
+                name: "删除"
+              });
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+
+    success() {
+      this.dialogVisible = false;
+      this.rolename = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    seInpust() {
+      this.onRefresh();
+    },
+    delete(rolename) {
+      this.$confirm("确定要删除当前角色吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax("/system/role/delete/1/deleterole", { rolename }, "1")
+            .then(res => {
+              this.rolename = "";
+              this.xzsj = {};
+              this.onRefresh();
+              this.$message({
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] `+err.resultMsg ,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+    onClick(key, data) {
+      if (key == 108) {
+        this.rolename = "";
+        this.dialogVisible = true;
+      } else if (key == 2) {
+        this.rolename = data.rolename;
+        this.dialogVisible = true;
+      } else if (key == 3) {
+        this.delete(data.rolename);
+      }
+    },
+    onEjectChange() {
+      //将用户隐藏表格的信息存到localStorage
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("jsgl107.eject", arr);
+    },
+    getEject() {
+      //从localStorage获取用户隐藏表格的信息
+      let arr = Storages.getlocalStorage("jsgl107.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        obj.show = arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    }
+  }
+};
+</script>

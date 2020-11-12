@@ -1,0 +1,302 @@
+<!-- 新增指令批量下发弹框   -->
+<template>
+  <el-dialog
+    title="新增指令批量下发"
+    width="70%"
+    top="15vh"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container>
+      <fel-left-tree class="batchDialog">
+        <div slot="left" class="left-tree">
+          <fel-tree1
+            slot="top"
+            :showCheckbox="true"
+            class="tree1 co_tree"
+            :idArr="[0]"
+            :refresh="refresh"
+            interface="/lock/lotorder/save/2/getbuildtree"
+            @checkchange="checkchange"
+          ></fel-tree1>
+        </div>
+        <fel-form
+          class="single-row"
+          ref="felForm"
+          @submitForm="submitForm"
+          @closeForm="beforeClose"
+          :selects="selects"
+          width="140px"
+          dynamic
+          :button="[]"
+          :defaultData="defaultData"
+          :formData="formData"
+        ></fel-form>
+      </fel-left-tree>
+    </el-container>
+    <div slot="footer" class="dialog-button">
+      <el-button @click="beforeClose">取消</el-button>
+      <el-button type="primary" @click="dialogSubmitForm">开始下发</el-button>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    defaultData: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    // param: Object,
+    options: Array 
+  },
+  data() {
+    return {
+      selects: {
+        lotordertype: []
+      },
+      refresh: 0,
+      build: {},
+      types:{},
+      // pgidObj: {},
+      formData: [
+        {
+          noShow: false,
+          value: "lotordertype",
+          name: "请选择指令类型",
+          type: "select",
+          select: "lotordertype",
+          slabel: "text",
+          svalue: "id",
+          onChange: this.onChange,
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择指令类型",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "locktype", //批量强锁显示
+          name: "请选择指令详情",
+          type: "select",
+          select: [
+            { label: "强制锁门", id: "1" },
+            { label: "解除强锁", id: "2" }
+          ],
+          slabel: "label",
+          svalue: "id",
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择指令类型",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "worktype", // 批量工作模式设置
+          name: "请选择指令详情",
+          type: "select",
+          select: [
+            { label: "常闭模式", id: "2" },
+            { label: "常开模式", id: "1" }
+          ],
+          slabel: "label",
+          svalue: "id",
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择指令类型",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "offlinetype", // 批量离线模式设置
+          name: "请选择指令详情",
+          type: "select",
+          select: [
+            { label: "开启离线授权", id: "1" },
+            { label: "关闭离线授权", id: "2" }
+          ],
+          slabel: "label",
+          svalue: "id",
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择指令类型",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "powerlv", // 批量功率调整
+          name: "请选择指令详情",
+          type: "select",
+          select: [
+            { label: "a0级", id: "1" },
+            { label: "a1级", id: "2" },
+            { label: "a2级", id: "3" },
+            { label: "a3级", id: "4" }
+          ],
+          slabel: "label",
+          svalue: "id",
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择指令类型",
+              trigger: "blur"
+            }
+          ]
+        }
+      ],
+      button: [
+        {
+          type: "2",
+          name: "确认"
+        },
+        {
+          type: "1",
+          name: "取消"
+        }
+      ]
+    };
+  },
+  watch: {
+    options(val) {
+      this.selects.lotordertype = val;
+    },
+    dialogVisible(val) {
+        this.refresh = new Date().getTime();
+    }
+  },
+  created() {},
+  methods: {
+    onChange(val, data) {
+      this.formData.slice(1, 5).forEach((item, ind) => {
+        if (val == "3" && ind == 0) {
+          item.noShow = false;
+        } else if (val == "5" && ind == 1) {
+          item.noShow = false;
+        } else if (val == "7" && ind == 2) {
+          item.noShow = false;
+        } else if (val == "8" && ind == 3) {
+          item.noShow = false;
+        } else {
+          item.noShow = true;
+        }
+      });
+    },
+    dialogSubmitForm() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].submitForm();
+      }
+    },
+    // handleNodeClick(data) {
+    // },
+    checkchange(data, obj) {
+      this.build = obj.checkedNodes;
+    },
+    submitForm(data) {
+      let url = "";
+      let msg = ""
+      if (Object.keys(this.build).length > 0) {
+        if (data.lotordertype == "1") {
+          url = "/lock/lotorder/save/3/savelotcardsync"; //批量卡密
+          msg="批量卡密授权同步"
+        } else if (data.lotordertype == "2") {
+          url = "/lock/lotorder/save/4/savelotfingersync"; //批量指纹
+          msg="批量指纹授权同步"
+        } else if (data.lotordertype == "3") {
+          url = "/lock/lotorder/save/5/savelotlock"; //批量强锁
+          this.types={locktype:data.locktype}
+          if(this.types=="1"){
+            msg="批量强锁设置"
+          }else{
+            msg="批量解除强锁"
+          }
+        } else if (data.lotordertype == "5") {
+          url = "/lock/lotorder/save/6/savelotwork"; //批量工作模式变更
+          msg="批量工作模式变更"
+          this.types={worktype:data.worktype}
+        } else if (data.lotordertype == "9") {
+          url = "/lock/lotorder/save/9/savelotstatus"; //批量状态查询
+          msg="批量状态查询"
+        } else if (data.lotordertype == "11") {
+          url = "/lock/lotorder/save/b/savelotremoteopen"; //批量远程开门
+          msg="批量远程开门"
+        }
+         else if (data.lotordertype == "12") {
+          url = "/lock/lotorder/save/e/savelotremoteclose"; //批量远程开门
+          msg="批量远程关门"
+        }
+        this.$ajax(
+          url,
+          this.types,
+          "1",
+          this.build,
+          true,
+          60000
+        )
+          .then(res => {
+            // this.getlotorder();
+            this.$message({
+              message: msg+"操作成功!",
+              type: "success"
+            });
+             this.$emit("onRefresh");
+            this.$emit("beforeClose");
+          })
+          .catch(err => {
+            console.log(err);
+            this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+          });
+          
+          // this.types={};
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选择区域",
+          type: "warning"
+        });
+      }
+      // if (data) {
+      // } else {
+      //   this.$message({
+      //     showClose: true,
+      //     message: "请先选中左侧区域",
+      //     type: "warning"
+      //   });
+      // }
+    },
+    
+    beforeClose() {
+      // this.fatheragid = {};
+      // if (this.$refs["felForm"]) {
+      //   this.$refs["felForm"].resetForm();
+      // }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

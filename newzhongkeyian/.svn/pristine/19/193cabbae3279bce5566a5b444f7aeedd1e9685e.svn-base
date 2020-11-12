@@ -1,0 +1,277 @@
+<template>
+  <el-form
+    :model="ruleForm"
+    :rules="rules"
+    ref="refForm"
+    :label-width="width"
+    label-position="right"
+  >
+    <template v-for="(value, key) of formData">
+      <el-form-item
+        :key="key"
+        :label="value.name"
+        :prop="value.value"
+        :style="value.width?'width: '+value.width+';display: '+(value.display ? value.display :'inline-block') +';':''"
+        :label-width="value.labelWidth"
+      >
+        <template v-if="value.type == 'select'">
+          <el-select
+            size="small"
+            v-model="ruleForm[value.value]"
+            :placeholder="value.placeholder"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+          >
+            <el-option
+              v-for="(v, k) of value.select"
+              :key="k"
+              :label="v.label||v"
+              :value="v.value||v"
+            ></el-option>
+          </el-select>
+        </template>
+        <template v-else-if="value.type == 'selectItem'">
+          <el-select
+            size="small"
+            v-model="ruleForm[value.value]"
+            :placeholder="value.placeholder"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+          >
+            <el-option v-for="(v, k) of value.selectItem" :key="k" :label="v.label" :value="v"></el-option>
+          </el-select>
+        </template>
+        <template v-else-if="value.type == 'userrole'">
+          <el-select
+            size="small"
+            multiple
+            v-model="ruleForm[value.value]"
+            :placeholder="value.placeholder"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+          >
+            <el-option v-for="(v, k) of value.selectItem" :key="k" :label="v" :value="v"></el-option>
+          </el-select>
+        </template>
+        <template v-else-if="value.type == 'selectObj'">
+          <el-select
+            size="small"
+            value-key="value"
+            v-model="ruleForm[value.value]"
+            :placeholder="value.placeholder"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+          >
+            <el-option v-for="(v, k) of value.selectObj" :key="k" :label="v.label" :value="v"></el-option>
+          </el-select>
+        </template>
+        <template v-else-if="value.type == 'time'">
+          <template v-if="value.date == 'select'">
+            <el-time-select
+              size="small"
+              :disabled="value.disabled"
+              style="width: 100% !important;"
+              v-model="ruleForm[value.value]"
+              :picker-options="value.options"
+              :placeholder="value.placeholder"
+            ></el-time-select>
+          </template>
+          <template v-else>
+            <el-time-picker
+              size="small"
+              :disabled="value.disabled"
+              style="width: 100% !important;"
+              v-model="ruleForm[value.value]"
+              :picker-options="value.options"
+              :placeholder="value.placeholder"
+              :format="value.format"
+              :value-format="value.vformat || value.format"
+            ></el-time-picker>
+          </template>
+        </template>
+        <template v-else-if="value.type == 'date'">
+          <el-date-picker
+            size="small"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+            v-model="ruleForm[value.value]"
+            :type="value.date"
+            :placeholder="value.placeholder"
+            :format="value.format"
+            :value-format="value.vformat || value.format"
+          ></el-date-picker>
+        </template>
+        <template v-else-if="value.type == 'datetime'">
+          <el-date-picker
+            size="small"
+            :disabled="value.disabled"
+            style="width: 100% !important;"
+            v-model="ruleForm[value.value]"
+            :type="'datetime'"
+            :placeholder="value.placeholder"
+            :format="value.format"
+            :value-format="value.vformat || value.format"
+          ></el-date-picker>
+        </template>
+        <template v-else-if="value.type == 'uploading'">
+          <puc-upload
+            v-on="$listeners"
+            :urlObtain="value.urlObtain"
+            v-model="ruleForm[value.value]"
+            :url="value.url"
+          ></puc-upload>
+        </template>
+        <template v-else>
+          <template v-if="value.click">
+            <span @click="inputClick(value.click)">
+              <el-input
+                :placeholder="value.placeholder"
+                :type="value.type"
+                size="small"
+                :disabled="value.disabled"
+                v-model="ruleForm[value.value]"
+              ></el-input>
+            </span>
+          </template>
+          <template v-else>
+            <el-input
+              :placeholder="value.placeholder"
+              :type="value.type"
+              size="small"
+              :readonly="value.readonly"
+              :disabled="value.disabled"
+              v-model="ruleForm[value.value]"
+            ></el-input>
+          </template>
+        </template>
+      </el-form-item>
+    </template>
+    <div class="footerButton">
+      <template v-for="(o,i) of button">
+        <template v-if="o.type == '1'">
+          <el-button :key="i" @click="closeForm">{{o.name || "关闭"}}</el-button>
+        </template>
+        <template v-else-if="o.type == '0'">
+          <el-button :key="i" @click="resetForm">{{o.name || "重置"}}</el-button>
+        </template>
+        <template v-else>
+          <el-button :key="i" type="primary" @click="submitForm">{{o.name || "确认"}}</el-button>
+        </template>
+      </template>
+    </div>
+  </el-form>
+</template>
+<script>
+/**
+ * element-ui中form 表单的组件
+  :formData  // 表格列表 Array 
+    {
+        value: 值,
+        name: 名称,
+        type:  input输入框的类型 或者 select,
+        select: select列表数据 Array,
+            { 
+              label: "展示名称",
+              value: 值 
+            }
+        rules: 表格校验 Array 
+        class: "样式名"
+    }
+  :defaultData // 默认表单数据
+  :button // 表单按钮 Array 默认确认按钮
+    {
+        type: "类型", 0 重置 1 关闭 2 确认
+        name: "按钮名称",
+        class: "样式名"
+    },
+  @submitForm  // 确认点击按钮回调 (obj)  默认表单数据 + 表单输入数据
+  @closeForm // 关闭点击按钮回调
+  width // 表单的名称的宽度
+  dynamic // 默认表单数据是否默认动态改变
+ */
+export default {
+  name: "fel-form",
+  props: {
+    width: String,
+    formData: Array,
+    dynamic: Boolean,
+    defaultData: {
+      type: Object,
+      default: function() {
+        return {};
+      }
+    },
+    button: {
+      type: Array,
+      default: function() {
+        return [
+          {
+            type: "2"
+          }
+        ];
+      }
+    }
+  },
+  created: function() {
+    let ruleForm = {};
+    let rules = {};
+    this.formData.forEach(v => {
+      let obj = {};
+      if (v.value) {
+        ruleForm[v.value] = this.defaultData[v.value];
+      }
+      if (v.rules) {
+        rules[v.value] = v.rules;
+      }
+    });
+    this.ruleForm = ruleForm;
+    this.rules = rules;
+  },
+  data() {
+    return {
+      ruleForm: {},
+      rules: {}
+    };
+  },
+  methods: {
+    inputClick(callback) {
+      if (callback) {
+        callback(this.ruleForm);
+      }
+    },
+    submitForm() {
+      this.$refs["refForm"].validate(valid => {
+        if (valid) {
+          let obj = Object.assign({}, this.defaultData, this.ruleForm);
+          this.$emit("submitForm", obj);
+        } else {
+          return false;
+        }
+      });
+    },
+    resetForm() {
+      if (this.$refs["refForm"]) {
+        this.$refs["refForm"].resetFields();
+      }
+    },
+    closeForm() {
+      this.$refs["refForm"].resetFields();
+      this.$emit("closeForm");
+    }
+  },
+  watch: {
+    defaultData: function() {
+      if (this.dynamic) {
+        this.ruleForm = this.defaultData;
+      }
+    }
+  },
+  components: {}
+};
+</script>
+<style lang='scss' scoped>
+.footerButton {
+  text-align: center;
+  padding-bottom: 20px;
+}
+</style>

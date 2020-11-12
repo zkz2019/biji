@@ -1,0 +1,150 @@
+<template>
+  <el-dialog
+    title="自动升级网关"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <el-header class="query_headbox">
+        <retrieval class="query_head">
+          <inpbox inptext="请输入">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp maR24"
+              v-model="param.search"
+              placeholder="输入门锁唯一ID/位置进行检索"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </el-header>
+      <paging-table
+        interface="/system/onlineup/yxgateversionup/4/getautoversionupgates"
+        :list="listInfo"
+        :param="param"
+        :refresh="refresh"
+      ></paging-table>
+    </el-container>
+    <yxProcessDetails
+      :dialogVisible="procsssVisible"
+      :auid="auid"
+      @beforeClose="procsssVisible=false"
+    ></yxProcessDetails>
+  </el-dialog>
+</template>
+
+<script>
+import yxProcessDetails from "./yxProcessDetails.vue"
+export default {
+  props: {
+    dialogVisible: Boolean,
+    duid: String | Number
+  },
+  components:{yxProcessDetails},
+  data() {
+    let $this = this;
+    return {
+      procsssVisible:false,
+      param: { duid: "", search: "" },
+      auid:"",
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "开始时间",
+          width:"160px",
+          prop: "ausdate"
+        },
+        {
+          name: "结束时间",
+          width:"160px",
+          prop: "auedate"
+        },
+        {
+          name: "进度",
+          width:"110px",
+          prop: "austatename",
+          // template: {
+          //   props: ["scope"],
+          //   computed: {
+          //     lists() {
+          //       let list = [];
+          //       list.push(this.scope.row.austatename);
+          //       list.push(this.scope.row.austate);
+          //       return list;
+          //     }
+          //   },
+          //   template: `<ul><li v-for="item in lists">{{item}}</li></ul>`
+          // }
+        },
+        {
+          name: "网关位置",
+          minWidth:"170px",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "版本号",
+          prop: "deviceversion"
+        },
+        {
+          name: "失败原因",
+          prop: "dudremark"
+        },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(key) {
+                $this.onClick(this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick">详情</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.duid = this.duid;
+      } else {
+        this.param.duid = "";
+      }
+      this.onRefresh();
+    }
+  },
+  methods: {
+    onClick(obj){
+      this.auid=obj.auid;
+      this.procsssVisible=true;
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

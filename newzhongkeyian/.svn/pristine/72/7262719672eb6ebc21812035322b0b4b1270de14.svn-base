@@ -1,0 +1,207 @@
+<!-- 公共表格弹框 -->
+<template>
+  <el-dialog
+    :title="title"
+    :visible.sync="dialogVisible"
+    :width="width||'70%'"
+    :top="top"
+    :before-close="handleClose"
+    :close-on-click-modal="false"
+    append-to-body
+    class="el-dialogs"
+  >
+    <el-container class="dialog-table wh100">
+      <fel-left-tree>
+        <div slot="left" class="left-tree">
+          <fel-tree4
+            ref="tree"
+            :interface="treeUrl"
+            :checkStrictly="checkStrictly"
+            @handleNodeClick="handleNodeClick"
+            :refresh="treeRefresh"
+            @checkchange="checkchange"
+            showCheckbox
+            :idArr="[0]"
+            :param="treeParam"
+            :dataFilter="checkStrictly&&next?dataFilter:dataFilter1"
+          ></fel-tree4>
+        </div>
+        <el-container class="organiztion_container">
+          <paging-table
+            ref="pagingTable"
+            noInit
+            height="100%"
+            :interface="tabelurl"
+            @onSelection="onSelection"
+            :list="list"
+            :param="param"
+            :refresh="tableRefresh"
+            @onRefreshTable="onRefreshTable"
+          >
+            <span class="sli leftInp">
+              <el-input
+                clearable
+                class="search wid300"
+                v-model="param.search"
+                :placeholder="'输入组织名称进行组织搜索'"
+              ></el-input>
+              <fel-button type="primary" @click="onRefresh">查询</fel-button>
+            </span>
+            <span
+              v-for="(v,k) of button"
+              :key="k"
+              class="sli but-blue"
+              @click="onClick(v.id||v.type, v)"
+            >{{v.alias||v.name}}</span>
+          </paging-table>
+        </el-container>
+      </fel-left-tree>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+/***
+ * paging-table组件的再次封装
+ * button 数组按钮
+ *  [{
+ *    name: "数组名"
+ *  }]
+ * refresh 刷新
+ ***/
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    top: String,
+    treeUrl: String,
+    dialogVisible: Boolean,
+    width: String,
+    tabelurl: String,
+    title: String,
+    param: Object,
+    refresh: Number,
+    list: {
+      type: Array,
+      default() {
+        return [];
+      }
+    }, //默认展开的数组
+    button: {
+      type: Array,
+      default() {
+        return [];
+      }
+    },
+    next: {
+      type: Boolean,
+      default: true
+    },
+    checkStrictly: {
+      type: Boolean,
+      default() {
+        return false;
+      }
+    },
+    prop: String
+  },
+  data() {
+    return {
+      tableRefresh: 0,
+      treeRefresh: 0
+    };
+  },
+  computed: {
+    treeParam() {
+      return { userlogin: this.param.userlogin };
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.refreshData();
+      }
+    },
+    refresh() {
+      this.refreshData();
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    checkchange(data, Nodes) {
+      if (Nodes.checkedKeys.includes(data.pgid) && !Boolean(this.prop)) {
+        this.param.pgid = data.pgid;
+        this.tableRefresh = new Date().getTime();
+      }
+      if (this.prop) {
+        this.param[this.prop] = data.pgid;
+        this.onRefresh();
+      }
+      this.$emit("checkchange", data, Nodes);
+    },
+    onRefreshTable() {
+      this.onTreeRefresh();
+    },
+    onSelection(data) {
+      this.$emit("onSelection", data);
+    },
+    handleNodeClick(val) {
+      if (this.prop) {
+        this.param[this.prop] = val.pgid;
+        this.onRefresh();
+      } else {
+        this.param.pgid = val.pgid;
+        this.onRefresh();
+      }
+    },
+
+    //按钮点击事件
+    onClick(key) {
+      this.$emit("onClick", key);
+    },
+    handleClose() {
+      //关闭
+      this.$emit("handleClose");
+    },
+    refreshData() {
+      setTimeout(() => {
+        if (this.$refs.tree) {
+          this.$refs.tree.treedatas = [];
+        }
+      }, 0);
+      this.onRefresh();
+      this.onTreeRefresh();
+    },
+    onRefresh() {
+      this.tableRefresh = new Date().getTime();
+    },
+    onTreeRefresh() {
+      this.treeRefresh = new Date().getTime();
+    },
+    dataFilter(data) {
+      return data.map(item => {
+        if (item.isnext == 1) {
+          item.isLeaf = false;
+        } else {
+          item.isLeaf = true;
+        }
+        if (item.isdel == 1) {
+          item.disabled = false;
+        } else {
+          item.disabled = true;
+        }
+        return item;
+      });
+    },
+    dataFilter1(data) {
+      return data.map(item => {
+        if (item.isnext == 1) {
+          item.isLeaf = false;
+        } else {
+          item.isLeaf = true;
+        }
+        return item;
+      });
+    }
+  }
+};
+</script>

@@ -1,0 +1,101 @@
+<template>
+  <el-dialog
+    title="操作历史查询"
+    width="70%"
+    class="instructDialog"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        interface="/system/device/fingerprint/info/1/getfingerprinthistory"
+        :list="list"
+        :param="param"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input
+            clearable
+            class="search wid300"
+            v-model="param.search"
+            placeholder="输入ID/名称进行检索"
+          ></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      param: {
+        search: ""
+      },
+
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "采集器名称",
+          prop: "fpname",
+          width: "250px"
+        },
+        {
+          name: "采集器唯一ID",
+          prop: "fpcode"
+        },
+        {
+          name: "下发日期",
+          prop: "sifcdate"
+        },
+        {
+          name: "返回日期",
+          prop: "sifedate"
+        },
+        {
+          name: "下发类型",
+          prop: "siftype"
+        },
+        {
+          name: "创建人",
+          prop: "userlogin"
+        },
+        {
+          name: "备注",
+          prop: "failtype"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.onRefresh();
+      }
+    }
+  },
+  methods: {
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+
+<style>
+</style>

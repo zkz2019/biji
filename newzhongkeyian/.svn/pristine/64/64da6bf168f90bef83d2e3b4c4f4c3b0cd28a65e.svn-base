@@ -1,0 +1,346 @@
+<!-- 门禁记录查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <!-- <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" v-model="dates"></fel-date>
+        </inpbox>-->
+        <inpbox inptext="请选择时间">
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+        </inpbox>
+        <inpbox :inptext="'选择位置'">
+          <queryPosition
+            ref="queryPosition"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/lockrecord/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox inptext="方向">
+          <el-select class="con-select qh_inp" v-model="param.artype3">
+            <el-option v-for="item in artype3s" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'选择组织'">
+          <queryOrgan
+            ref="queryOrgan"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceZZ"
+            interface="/analysis/lockrecord/2/getpersontree"
+          ></queryOrgan>
+        </inpbox>
+        <!-- <inpbox inptext="门禁类型">
+          <el-select class="con-select qh_inp" v-model="param.amtype">
+            <el-option v-for="item in amtypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>-->
+        <inpbox inptext="动作">
+          <el-select class="con-select qh_inp" v-model="param.artype2">
+            <el-option v-for="item in artype2s" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'记录类型'">
+          <el-select class="con-select qh_inp" v-model="param.artype">
+            <el-option v-for="item in artypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'输入门禁/门名称/' + getNumber() + '/姓名检索'"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          <!-- <fel-button class="qh_btn" type="primary" @click="exportBut">导出</fel-button> -->
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table1
+        class="tobleList wh100"
+        height="100%"
+        interface="/analysis/accessrecord/a/listAccessRecord"
+        :list="list"
+        :refresh="refresh"
+        :isPageMax="false"
+        ajaxType="9"
+        :paramObj="paramObj"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <template v-if="isExport">
+          <span class="sli but-blue" @click="exportBut">
+            <i class="ficon-export"></i>
+            导出
+          </span>
+          <span class="sli but-blue" @click="exportHistory">
+            <i class="ficon-history"></i>
+            导出历史记录
+          </span>
+        </template>
+      </paging-table1>
+    </el-main>
+    <exportHistory
+      historyUrl="/analysis/lockrecord/7/downhistory"
+      :dialogVisible="iHvisible"
+      @beforeClose="
+        () => {
+          iHvisible = false
+        }
+      "
+    ></exportHistory>
+  </el-container>
+</template>
+
+<script>
+import { getDates, getparam } from "./query.js";
+import { mapGetters } from "vuex";
+import { format, download } from "@/utils/utils.js";
+import exportHistory from "../personnel/export-history";
+import { timerDownload } from "../personnel/index.js";
+import queryPosition from "./queryPosition";
+import queryOrgan from "./queryOrgan";
+export default {
+  name: "sklscx92",
+  components: {
+    queryPosition,
+    exportHistory,
+    queryOrgan
+  },
+  data() {
+    return {
+      iHvisible: false,
+      paramObj: {
+        build: [],
+        persontree: []
+      },
+      dates: [],
+      // amtypes: [],
+      artype3s: [
+        {
+          id: "",
+          name: "全部"
+        }
+      ],
+      artype2s: [
+        {
+          id: "",
+          name: "全部"
+        }
+      ],
+      artypes: [
+        {
+          id: "",
+          name: "全部"
+        }
+      ],
+      param: {
+        sdate: "",
+        edate: "",
+        search: "",
+        artype: "",
+        artype2: "",
+        artype3: ""
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "操作时间",
+          prop: "ardate"
+        },
+        {
+          name: "门名称",
+          prop: "adname"
+        },
+        {
+          name: "门禁",
+          prop: "amname"
+        },
+        {
+          name: "位置",
+          prop: "amlocation"
+        },
+        {
+          name: "方向",
+          prop: "artype3name"
+        },
+        {
+          name: "动作",
+          prop: "artype2name"
+        },
+        {
+          name: "记录类型",
+          prop: "artypename"
+        },
+        {
+          name: "记录详情",
+          prop: "cardcode"
+        },
+        // {
+        //   name: "读头名称",
+        //   prop: "ahname"
+        // },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: "归属组织",
+          prop: "personlocation"
+        }
+      ],
+      refresh: 0,
+      isExport: false,
+      sonmenu: 0
+    };
+  },
+  watch: {},
+  created() {
+    this.inGetsonmenu();
+    this.inGetType();
+    getparam(this);
+  },
+  activated() {
+    let obj = this.$route.params;
+    if (obj.type) {
+      this.param.unlockingtype = obj.type;
+      this.search();
+    }
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "600" }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "803") {
+              this.isExport = true;
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      this.$refs.dates.value2 = new Date();
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.$refs.queryPosition.onClear();
+      this.$refs.queryOrgan.onClear();
+      this.search();
+    },
+    exportHistory() {
+      this.iHvisible = true;
+    },
+    exportBut() {
+      let url = "/analysis/lockrecord/6/exportlockrecords";
+      let name = "记录查询";
+      let tValue = getDates(this.dates);
+      this.param.sdate = tValue[0];
+      this.param.edate = tValue[1];
+      this.inExportPackage(url, name, this.param, this.paramObj);
+    },
+    inExportPackage(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "1", obj, true, 60000)
+        .then(res => {
+          this.$message({
+            message: name + "文件导出已下发，文件正在生成中",
+            type: "success"
+          });
+          timerDownload(
+            res.result,
+            "/analysis/lockrecord/7/downhistory",
+            this,
+            name
+          );
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    // inExport(url, name, data = {}, obj = {}) {
+    //   this.$ajax(url, data, "8", obj, "文件导出中...", 60000)
+    //     .then(res => {
+    //       if (res.size) {
+    //         download(res, name);
+    //         this.$notify({
+    //           title: "成功",
+    //           message: name + "文件导出成功！",
+    //           type: "success"
+    //         });
+    //       }
+    //     })
+    //     .catch(err => {
+    //       this.$message.error("文件导出失败！失败原因：" + err.resultMsg);
+    //     });
+    // },
+    ...mapGetters(["getNumber"]),
+    inGetType() {
+      // this.$ajax("/analysis/lockrecord/5/getrecordtype", {}, "1")
+      //   .then(res => {
+      //     this.unlockingtypes.push(...res.result);
+      //   })
+      //   .catch(err => {});
+      this.$ajax("/analysis/accessrecord/b/getSearchType", {}, "9")
+        .then(res => {
+          // this.amtypes = res.result.amtypes;
+          this.artype3s = [...this.artype3s, ...res.result.artype3s];
+          this.artype2s = [...this.artype2s, ...res.result.artype2s];
+          this.artypes = [...this.artypes, ...res.result.artypes];
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    onChoiceWZ(data) {
+      this.paramObj.build = data;
+    },
+    onChoiceZZ(data) {
+      this.paramObj.persontree = data;
+    },
+    search() {
+      let tValue = getDates(this.dates);
+      this.param.sdate = tValue[0];
+      this.param.edate = tValue[1];
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "sklscx92");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "sklscx92");
+    }
+  }
+};
+</script>

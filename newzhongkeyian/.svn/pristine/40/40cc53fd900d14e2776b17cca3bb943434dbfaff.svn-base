@@ -1,0 +1,259 @@
+<!-- 楼层效果弹出框 -->
+<template>
+  <el-dialog
+    v-bind="$attrs"
+    v-on="$listeners"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+    :width="width"
+    title="效果预览"
+  >
+    <div class="roomBox">
+      <div class="">
+        <div class="roomBox_title">
+          <div>
+            <h3>{{fatheragid.buildlocation||'建筑'}}-{{fatheragid.buildname}}(区域编号{{fatheragid.buildcode||'0'}})</h3>
+          </div>
+        </div>
+      </div>
+      <div class="roomBox_scroll">
+        <div class="cHeight">
+          <div>
+            <div class="roomBox_box">
+              <div
+                v-if="effectdata.leftlist && effectdata.leftlist.length<=0?true:false"
+                class="listNull"
+              >暂无房间</div>
+              <template v-for="(item,k) of effectdata.leftlist">
+                <div :key="k" class="roomBox_box_subbox">
+                  <span :class=" 'type-'+item.roomnetquality"></span>
+                  <!-- 房间 'type-'+item.roomnetquality-->
+                  <!-- <el-tooltip :content="item.roomname"  effect="light" placement="top" offset="0"> -->
+                  <div>
+                    <img
+                      :class="getCl(item)"
+                      v-if="true"
+                      :src="getUrl(item)"
+                      :title="item.roomname"
+                    />
+                    <div
+                      :title="item.roomname"
+                      class="roomtext"
+                    >{{item.roomtype2!=2?/[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(item.roomname)?item.roomname.substring(0,3):item.roomname:""}}</div>
+                    <!-- :class="getCl2(item.roomname)"  :class=" reg.test(item.roomname)?'chineseStyle':''" /[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(item.roomname)?'chineseStyle':''+' '+-->
+                  </div>
+                  <!-- </el-tooltip> -->
+                  <div
+                    v-if="item.roomtype2==1"
+                  >{{item.roomtype==1?item.roomrzperson:item.roombdcard}}/{{item.roomtype==1?item.roommaxperson:item.roommaxcard}}</div>
+                  <!-- <span v-if="item.ischeck=='1'?true:false" class="roomchecked"></span> -->
+                </div>
+              </template>
+            </div>
+          </div>
+          <div
+            v-if="effectdata.rightlist && effectdata.rightlist.length>0?true:false"
+            class="roomBox_center"
+          >
+            <div>走廊</div>
+          </div>
+          <div>
+            <div
+              v-if="effectdata.rightlist && effectdata.rightlist.length>0?true:false"
+              class="roomBox_box"
+            >
+              <template v-for="(item,z) of effectdata.rightlist">
+                <div :key="z" class="roomBox_box_subbox">
+                  <span :class="'type-'+item.roomnetquality"></span>
+                  <!-- 房间 -->
+                  <div>
+                    <img
+                      :class="getCl(item)"
+                      v-if="true"
+                      :src="getUrl(item)"
+                      :title="item.roomname"
+                    />
+                    <div
+                      :title="item.roomname"
+                      class="roomtext"
+                    >{{item.roomtype2!=2?/[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(item.roomname)?item.roomname.substring(0,3):item.roomname:""}}</div>
+                    <!--  :class=" reg.test(item.roomname)?'chineseStyle':''" -->
+                  </div>
+                  <div
+                    v-if="item.roomtype2==1"
+                  >{{item.roomtype==1?item.roomrzperson:item.roombdcard}}/{{item.roomtype==1?item.roommaxperson:item.roommaxcard}}</div>
+                  <!-- <span v-if="item.ischeck=='1'?true:false" class="roomchecked"></span> -->
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+/**
+ * element-ui中 el-dialog 弹出框
+ * 弹出框是懒渲染 只会渲染一次
+ * closeData 关闭弹出框 数字，改变值就关闭
+ * openData 显示弹出框 数字，改变值就显示
+ * top 里顶部位置
+ * button 是否带确认关闭两个按钮
+ * 支持插槽插入内容
+ * 有确认关闭两个按钮
+ * @closeForm 点击关闭按钮触发事件
+ * @submitForm 点击确认按钮触发事件
+ */
+export default {
+  name: "dialog-effect",
+  props: ["dialogVisible", "top", "effectdata", "width", "fatheragid"],
+  data() {
+    return {
+      formLabelWidth: "120px",
+      selection: "",
+      activeNames: ["0"],
+      list: [],
+      timing: null,
+      loading: false,
+      bcjssj: [],
+      isLoad: false,
+      // reg: new RegExp("[\\u4E00-\\u9FFF]+", "g")/[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi,
+      reg: new RegExp("[\u4E00-\u9FA5]|[\uFE30-\uFFA0]", "gi"),
+      value3: ""
+    };
+  },
+  mounted() {
+    if (this.top) {
+      const el = this.$el;
+      if (el && el.querySelector("div.el-dialog")) {
+        el.querySelector("div.el-dialog").style.marginTop = this.top;
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    getCl2(data) {
+      if (/[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(data)) {
+        if (data.length == 2) {
+          return "chineseStyle";
+        } else if (data.length == 1) {
+          return "chineseStyle pt27";
+        } else {
+          return "chineseStyle pt12";
+        }
+      } else {
+        return "";
+      }
+      // ?'chineseStyle':''
+    },
+    getUrl(data) {
+      //动态添加src的url
+      // if(data==undefined){
+      //     return;
+      // }
+      // openorclose    开关门
+      // roomnetquality 通讯状态
+      // roomcharge     电量
+      // roomtype       房间类型
+      // roomtype2      建筑类型
+      let img = "";
+      if (data.roomtype2 == 1) {
+        // 判断是否为房间
+        if (data.openorclose == 1) {
+          //判断开关门状态
+          if (data.roomnetquality > 0) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../assets/image/km11.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../assets/image/km21.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../assets/image/km31.png");
+            } else {
+              img = require("../../assets/image/km41.png");
+            }
+          } else if (data.roomnetquality == -1 || data.roomnetquality == -3) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../assets/image/km10.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../assets/image/km20.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../assets/image/km30.png");
+            } else {
+              img = require("../../assets/image/km40.png");
+            }
+          } else {
+            img = require("../../assets/image/weianzhuang.png");
+          }
+        } else {
+          //判断开关门状态
+          if (data.roomnetquality > 0) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../assets/image/gm11.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../assets/image/gm21.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../assets/image/gm31.png");
+            } else {
+              img = require("../../assets/image/gm41.png");
+            }
+          } else if (data.roomnetquality == -1 || data.roomnetquality == -3) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../assets/image/gm10.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../assets/image/gm20.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../assets/image/gm30.png");
+            } else {
+              img = require("../../assets/image/gm40.png");
+            }
+          } else {
+            img = require("../../assets/image/weianzhuang.png");
+          }
+        }
+      } else if (data.roomtype2 == 2) {
+        // 判断是否为楼梯
+        img = require("../../assets/image/stairs.png"); //楼梯
+      } else {
+        if (data.openorclose == 1) {
+          img = require("../../assets/image/shebeijian.png");
+        } else {
+          img = require("../../assets/image/shebeijian.png");
+        }
+      }
+
+      return img;
+    },
+    getCl(data) {
+      //楼梯样式
+      let cl = "";
+      if (data.roomtype2 == 2) {
+        // 判断是否为楼梯
+        cl = "louti"; //楼梯
+      } else {
+        cl = "";
+      }
+      return cl;
+    }
+  },
+  watch: {
+    value3(val) {
+      console.log(/[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(val), val);
+    }
+  }
+};
+</script>
+<style lang='scss' scoped>
+</style>

@@ -1,0 +1,152 @@
+<!-- 批量下发指令详情弹框 -->
+<template>
+  <el-dialog
+    title="列表详情"
+    width="70%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/lock/lotorder/info/getlotorderinfo"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+      >
+        <div class="query_head fjDialogtabel">
+          <inpbox :inpb="true">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp"
+              v-model="param.search"
+              :placeholder="'输入房间号'"
+            ></el-input>
+          </inpbox>
+
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="onRefresh">搜索</fel-button>
+            <!-- <fel-button class="qh_btn" @click="onReset">刷新</fel-button> -->
+          </inpbox>
+        </div>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  components: {},
+  props: {
+    buss: null,
+    param: Object,
+    defaultData: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      list: [
+        {
+          name: "创建日期",
+          prop: "itcdate"
+        },
+        {
+          name: "处理日期",
+          prop: "itsdate"
+        },
+        {
+          name: "指令结束日期",
+          prop: "itedate"
+        },
+        { prop: "roomlocation", name: "房间位置" },
+
+        { prop: "roomname", width: "80px", name: "房间号" },
+        { prop: "gatewayip", width: "80px", name: "网关" },
+        {
+          name: "指令状态",
+          width: "80px",
+          prop: "itstate",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.itstate;
+                if (value == "下发成功") {
+                  return "puc-pg";
+                } else if (value == "下发失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.itstate}}</span>`
+          }
+        },
+        {
+          name: "处理状态",
+          width: "80px",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.itstatus;
+                if (value == "处理成功") {
+                  return "puc-pg";
+                } else if (value == "处理失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.itstatus}}</span>`
+          }
+        },
+        { prop: "failtype", name: "结果备注" }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible() {
+      if (this.dialogVisible) {
+        this.onRefresh();
+      }
+    }
+  },
+  created() {
+    this.inGetfingertype();
+  },
+  methods: {
+    beforeCloseInner() {
+      this.innerVisible = false;
+    },
+    inGetfingertype() {},
+    submitForm() {},
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onClick(key, data) {},
+    onSuccess() {
+      this.dialogAdd = false;
+      // this.onRefresh();
+    }
+  }
+};
+</script>

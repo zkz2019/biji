@@ -1,0 +1,51 @@
+<template>
+  <el-dialog
+    :title="title"
+    :width="width"
+    class="fel-popup"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible="value"
+  >
+    <el-container class="dialog-table6 query_main">
+      <slot></slot>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    title: {
+      type: String
+    },
+    width: {
+      type: String | Number,
+      default: "70%"
+    },
+    value: {
+      type: Boolean,
+      default: false
+    },
+    minWidth: {
+      type: String | Number
+    }
+  },
+  mounted() {
+    if (this.minWidth) {
+      let dom = this.$el.querySelector("div.el-dialog");
+      if (dom && dom.style) {
+        dom.style.minWidth = this.minWidth;
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("close");
+    }
+  }
+};
+</script>
+
+<style>
+</style>

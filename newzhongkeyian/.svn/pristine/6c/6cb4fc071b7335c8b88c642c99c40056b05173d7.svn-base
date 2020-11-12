@@ -1,0 +1,129 @@
+<!-- 查询酒店空闲人员 -->
+<template>
+  <el-dialog
+    title="查询酒店空闲人员"
+    :visible.sync="dialogVisible"
+    width="60%"
+    :before-close="beforeClose"
+    append-to-body
+  >
+    <el-container class="heig500">
+      <el-header class="query_headbox">
+        <retrieval class="query_head">
+          <inpbox :inptext="'请输入'">
+            <el-input
+              clearable
+              class="qh_inp qh_w270"
+              v-model="param.search"
+              :placeholder="'输入姓名/身份证号/手机号查询'"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </el-header>
+      <el-main class="padt0 query_main">
+        <paging-table
+          class="tobleList wh100"
+          height="100%"
+          interface="/lock/operate/hotel/m/getsearchpersonfree"
+          :list="list"
+          :refresh="refresh"
+          :param="param"
+          @cell-click="onSelection"
+        ></paging-table>
+      </el-main>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    checkedroom: Object,
+  },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      param: {
+        search: ""
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: "手机",
+          prop: "personphone"
+        },
+        {
+          name: "主账房",
+          prop: "roomlocation"
+        },
+        {
+          name: "单位",
+          prop: "personcompany"
+        },
+        {
+          name: "团名",
+          prop: "teamname"
+        },
+        {
+          name: "预订开始时间",
+          prop: "tpstime"
+        },
+        {
+          name: "预订结束时间",
+          prop: "tpetime"
+        }
+        // {
+        //   name: "押金",
+        //   prop: "trcash"
+        // }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+    this.param.roomid = this.checkedroom.roomid;
+      }
+    },
+    personcode(val) {
+      if (val) {
+        // this.param.personcode=val;
+        this.search();
+      }
+    }
+  },
+  created() {
+    this.param.roomid = this.checkedroom.roomid;
+  },
+  methods: {
+    onSelection(data) {
+      this.$emit("onSelection", data);
+      this.beforeClose();
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      this.param.search="";
+      this.search();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

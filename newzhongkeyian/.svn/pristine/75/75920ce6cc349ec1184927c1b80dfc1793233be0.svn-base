@@ -1,0 +1,90 @@
+<template>
+  <div>
+    <div>
+      <h3>经济管理学院-经管系</h3>
+      <p>
+        住房区域房间数：1（床位：20 入住：1） | 办公区域房间数：3 |
+        租房区域房间数：1
+      </p>
+    </div>
+    <div>
+      <!-- 房间操作按钮 -->
+      <el-button
+        v-if="
+          btnAll &&
+          btnAll.fjczBtn &&
+          btnAll.fjczBtn.entity &&
+          btnAll.fjczBtn.entity.alias
+        "
+        :disabled="disabled"
+        type="primary"
+        class="btn com-but-small mar0-10"
+        @click="Operatingroom(btnAll.fjczBtn)"
+      >{{ btnAll.fjczBtn.entity.alias }}</el-button>
+      <!-- 指令下发按钮 -->
+      <el-dropdown @command="handleCommand">
+        <el-button
+          v-if="
+            btnAll &&
+            btnAll.zlxfBtn &&
+            btnAll.zlxfBtn.entity &&
+            btnAll.zlxfBtn.entity.alias
+          "
+          :disabled="disabled"
+          class="btn com-but-small mar0-10"
+          type="primary"
+        >
+          {{ btnAll.zlxfBtn.entity.alias }}
+          <i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu v-if="btnAll && btnAll.zlxfBtn && btnAll.zlxfBtn.childs" slot="dropdown">
+          <el-dropdown-item
+            v-for="(item, index) of btnAll.zlxfBtn.childs"
+            :key="index"
+            :command="item.entity.id"
+          >{{ item.entity.alias }}</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <!-- 批量下发按钮 -->
+      <el-button
+        v-if="
+          btnAll &&
+          btnAll.plxfBtn &&
+          btnAll.plxfBtn.entity &&
+          btnAll.plxfBtn.entity.alias
+        "
+        type="primary"
+        class="btn com-but-small mar0-10"
+        @click.stop="link_batch(btnAll.plxfBtn)"
+      >{{ btnAll.plxfBtn.entity.alias }}</el-button>
+
+      <!-- 导入导出 -->
+      <el-button
+        v-if="btnAll.drydcBtn.topBtns.alias"
+        class="com-but-small mar0-10"
+        type="primary"
+        @click.stop="onFile"
+      >{{btnAll.drydcBtn.topBtns.alias}}</el-button>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  props: {
+    btnAll: Object
+  },
+  data: () => {
+    return {
+      disabled: false
+    };
+  },
+  methods: {
+    handleCommand(id, obj, data) {
+      console.log("handleCommand", id, obj, data);
+    }
+  }
+};
+</script>
+
+<style></style>

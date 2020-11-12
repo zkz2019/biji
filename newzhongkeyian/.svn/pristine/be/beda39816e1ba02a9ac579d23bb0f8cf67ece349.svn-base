@@ -1,0 +1,376 @@
+<template>
+  <div>
+    <div>
+      <h3>{{roomInfo.arealocation}}</h3>
+      <p>
+        宿舍房间数: {{roomInfo.roomcount}}
+        （床位: {{roomInfo.bedcount}}
+        入住: {{roomInfo.rzcount}}） |
+        公共房间数: {{roomInfo.publiccount}}
+      </p>
+    </div>
+    <div
+      class="btns-right"
+      v-loading.fullscreen.lock="loading2"
+      :element-loading-text="
+            `等待后台响应,预计${count > 0 ? count : 0}秒...`
+          "
+      element-loading-spinner="el-icon-loading"
+      element-loading-background="rgba(0, 0, 0, 0.8)"
+    >
+      <!-- 房间操作按钮 -->
+      <el-button
+        v-if="
+          btnAll &&
+          btnAll.fjczBtn &&
+          btnAll.fjczBtn.entity &&
+          btnAll.fjczBtn.entity.alias
+        "
+        :disabled="disabled"
+        type="primary"
+        class="btn com-but-small mar0-10"
+        @click="Operatingroom(btnAll.fjczBtn)"
+      >{{ btnAll.fjczBtn.entity.alias }}</el-button>
+      <!-- 指令下发按钮 -->
+      <el-dropdown @command="handleCommand">
+        <el-button
+          v-if="
+            btnAll &&
+            btnAll.zlxfBtn &&
+            btnAll.zlxfBtn.entity &&
+            btnAll.zlxfBtn.entity.alias
+          "
+          :disabled="disabled"
+          class="btn com-but-small mar0-10"
+          type="primary"
+        >
+          {{ btnAll.zlxfBtn.entity.alias }}
+          <i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu v-if="btnAll && btnAll.zlxfBtn && btnAll.zlxfBtn.childs" slot="dropdown">
+          <el-dropdown-item
+            v-for="(item, index) of btnAll.zlxfBtn.childs"
+            :key="index"
+            :command="item.entity.id"
+          >{{ item.entity.alias }}</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <!-- 批量下发按钮 -->
+      <el-button
+        v-if="
+          btnAll &&
+          btnAll.plxfBtn &&
+          btnAll.plxfBtn.entity &&
+          btnAll.plxfBtn.entity.alias
+        "
+        type="primary"
+        class="btn com-but-small mar0-10"
+        @click.stop="link_batch(btnAll.plxfBtn)"
+      >{{ btnAll.plxfBtn.entity.alias }}</el-button>
+
+      <!-- 导入导出 -->
+      <el-button
+        v-if="btnAll.drydcBtn.topBtns.alias"
+        class="com-but-small mar0-10"
+        type="primary"
+        @click.stop="onFile"
+      >{{btnAll.drydcBtn.topBtns.alias}}</el-button>
+    </div>
+    <admin
+      :btnRight="btnAll &&btnAll.fjczBtn && btnAll.fjczBtn.childs"
+      :param="layerParam"
+      :dialogVisible="getAdminShow()"
+      @refresh="adminRefresh"
+      @beforeClose="checkAdminShow(false)"
+    ></admin>
+    <updateLock
+      :type="zltype"
+      :dialogupdateLock="dialogupdateLock"
+      :thisroomobj="layerParam"
+      v-on:lockDialogClose="lockDialogClose"
+      v-on:updateLock="updateLock"
+    />
+    <guideFile
+      :isGroup="isGroup"
+      :dialogVisible="dialogGuideFile"
+      :importButs="btnAll.drydcBtn.importButs"
+      :exportButs="btnAll.drydcBtn.exportButs"
+      :exImportButs="btnAll.drydcBtn.exImportButs"
+      :ggexportButs="btnAll.drydcBtn.ggexportButs"
+      :ggimportButs="btnAll.drydcBtn.ggimportButs"
+      :ggexImportButs="btnAll.drydcBtn.ggexImportButs"
+      detailsUrl="lock/upload/d/downauthpersonhistorydetails"
+      historyUrl="lock/upload/c/downauthpersonhistory"
+      failUrl="lock/upload/y/downauthpersonexcel"
+      :importShow="true"
+      @handleClose="dialogGuideFile=false"
+    ></guideFile>
+  </div>
+</template>
+
+<script>
+import guideFile from "./../dialog/fjguideFile";
+import updateLock from "./../dialog/updateforcelock";
+import admin from "./../admin";
+import {
+  getinstructions,
+  savepswauth,
+  updatelockAdd,
+} from "./../../../utils/fjgl.js";
+import { mapGetters, mapMutations } from "vuex";
+export default {
+  props: {
+    btnAll: Object,
+    roomInfo: Object,
+    isGroup: Boolean,
+  },
+  components: {
+    admin,
+    updateLock,
+    guideFile,
+  },
+  data: () => {
+    return {
+      zlRefresh: 0,
+      count: 60,
+      loading2: false,
+      dialogAddpassword: false,
+      setvals: null,
+      dialogVisible: false,
+      zltype: 0,
+      dialogupdateLock: false,
+      dialogGuideFile: false,
+    };
+  },
+  computed: {
+    layerParam() {
+      return this.getAdminInfo();
+    },
+    menuObj() {
+      return this.$store.state.openTab.menuObj;
+    },
+    disabled() {
+      console.log("this.layerParam", this.layerParam);
+      return Object.keys(this.layerParam).length == 0;
+    },
+  },
+  watch: {
+    dialogVisible(val) {
+      if (!val) {
+        this.adminRefresh();
+      }
+      this.checkAdminShow(val);
+    },
+  },
+  methods: {
+    ...mapMutations([
+      "checkAdminShow",
+      "add_tabs",
+      "set_active_index",
+      "addMenuObj",
+    ]),
+    ...mapGetters(["getAdminInfo", "getAdminShow"]),
+    adminRefresh() {
+      this.zlRefresh = new Date().getTime();
+    },
+    onFile() {
+      //导入导出弹框
+      this.dialogGuideFile = true;
+    },
+    //批量下发
+    link_batch(val) {
+      if (Object.keys(val).length == 0) return;
+      this.addMenuObj({
+        alias: "批量下发",
+        icon: "image254",
+        id: 7343,
+        isnext: "0",
+        parent: "",
+        value: "plxf",
+      });
+      this.toPath("plxf");
+    },
+    toPath(tab) {
+      let obj = this.menuObj[tab];
+      if (obj) {
+        this.add_tabs({
+          index: tab,
+          name: obj.alias,
+          id: obj.id,
+        });
+        this.set_active_index(tab);
+        this.$router.push({ path: tab });
+      }
+    },
+    //确认添加密码
+    Addpassword(val) {
+      savepswauth(val, this);
+    },
+    lockDialogClose(val) {
+      this.dialogupdateLock = val;
+    },
+    updateLock(val) {
+      updatelockAdd(val, this, this.zltype);
+    },
+    handleCommand(id, obj, data) {
+      console.log("handleCommand", id, obj, data);
+      // let room = this.$store.getters.getcheckedroom;
+      if (Object.keys(this.layerParam).length == 0) {
+        this.$message({
+          showClose: true,
+          message: "请先选中要操作的房间",
+          type: "error",
+        });
+        return;
+      }
+      if (id == "125") {
+        //门锁状态
+        this.$confirm("确认查询门锁状态?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("125", this);
+          })
+          .catch(() => {});
+      } else if (id == "126") {
+        //门锁复位
+        this.$confirm("确认复位门锁?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("126", this);
+          })
+          .catch(() => {});
+      } else if (id == "129") {
+        //远程开门
+        this.$confirm("确认远程开门?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("129", this);
+          })
+          .catch(() => {});
+      } else if (id == "130") {
+        //记录读取
+        this.$confirm("确认读取门锁记录?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("130", this);
+          })
+          .catch(() => {});
+      } else if (id == "608") {
+        //远程关门
+        this.$confirm("确认远程关门?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("608", this);
+          })
+          .catch(() => {});
+      } else if (id == "43") {
+        //添加密码授权需要先弹框填写信息然后再调用公共方法
+        //添加密码授权
+        this.dialogAddpassword = true;
+      } else if (id == "198") {
+        //初始化门锁ID
+        this.$confirm("确认初始化门锁编号?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("198", this);
+          })
+          .catch(() => {});
+      } else if (id == "139") {
+        //授权同步
+        this.$confirm("确认同步该门锁所有授权?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("139", this);
+          })
+          .catch(() => {});
+      } else if (id == "249") {
+        //指纹同步
+        this.$confirm("确认对选中房间指纹同步?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("249", this);
+          })
+          .catch(() => {});
+      } else if (id == "291") {
+        //清空唯一ID
+        this.$confirm("删除房间的唯一ID，门锁将变成未初始化状态!", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("291", this);
+          })
+          .catch(() => {});
+      } else if (id == "344") {
+        //卡密清除
+        this.$confirm("确认对选中房间卡密清除?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("344", this);
+          })
+          .catch(() => {});
+      } else if (id == "345") {
+        //指纹同步
+        this.$confirm("确认对选中房间指纹清除?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            getinstructions("345", this);
+          })
+          .catch(() => {});
+      } else if (id == "558") {
+        //工作模式变更
+        this.zltype = 0;
+        this.dialogupdateLock = true;
+      } else if (id == "559") {
+        //设置强锁
+        this.zltype = 1;
+        this.dialogupdateLock = true;
+      }
+    },
+    Operatingroom(obj) {
+      if (Object.keys(this.layerParam).length == 0) {
+        this.$message({
+          showClose: true,
+          message: "请先选中要操作的房间",
+          type: "error",
+        });
+        return;
+      }
+      this.checkAdminShow(true);
+    },
+  },
+};
+</script>
+
+<style></style>

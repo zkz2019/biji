@@ -1,0 +1,204 @@
+<template>
+  <el-dialog
+    title="指令结果查询"
+    width="70%"
+    class="instructDialog"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        interface="/system/device/gateway/order/2/getgatewayorder"
+        :list="list"
+        :param="paramObj"
+        :refresh="refresh"
+      />
+    </el-container>
+    <el-dialog
+      title="网关指令明细查询"
+      width="70%"
+      class="instructDialog"
+      append-to-body
+      :close-on-click-modal="false"
+      :before-close="beforeDetailed"
+      :visible.sync="dialogDetailed"
+    >
+      <el-container class="dialog-table6 wh100">
+        <paging-table
+          interface="/system/device/gateway/order/3/getgatewayorderinfo"
+          :list="detailedList"
+          :param="detailedParam"
+          :refresh="detailedRefresh"
+        >
+          <span class="sli but-blue" @click="inReloadgatewayorder">重载未生效指令</span>
+        </paging-table>
+      </el-container>
+    </el-dialog>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    param: Object
+  },
+  data() {
+    let $this = this;
+    return {
+      detailedList: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "网关通讯ID",
+          prop: "gatewaycode"
+        },
+        {
+          name: "网关唯一ID",
+          prop: "gatewaycode2"
+        },
+        {
+          name: "网关位置",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "状态",
+          prop: "issend"
+        },
+        {
+          name: "下发日期",
+          prop: "sigcdate"
+        },
+        {
+          name: "返回日期",
+          prop: "sigedate"
+        },
+        {
+          name: "备注",
+          prop: "failtype"
+        }
+      ],
+      detailedParam: {
+        goid: ""
+      },
+      detailedRefresh: 0,
+      dialogDetailed: false,
+
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "范围",
+          prop: "gocontent"
+        },
+        {
+          name: "数量",
+          prop: "gocount",
+          template: {
+            props: ["scope"],
+            methods: {
+              isNumber(num) {
+                if (num) {
+                  return /^[0-9]*$/.test(num) && num != 0;
+                }
+                return false;
+              },
+              onClick() {
+                if (this.scope.row.goid) {
+                  $this.detailedParam.goid = this.scope.row.goid;
+                  $this.onDetailedRefresh();
+                  $this.dialogDetailed = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="isNumber(scope.row.gocount)"><a class="a-click" @click.stop="onClick">{{scope.row.gocount}}</a></span>
+              <span v-else>{{scope.row.gocount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "范围类型",
+          prop: "gotype"
+        },
+        {
+          name: "指令类型",
+          prop: "gotype2"
+        },
+        {
+          name: "操作人",
+          prop: "userlogin"
+        },
+        {
+          name: "操作日期",
+          prop: "godate"
+        }
+      ]
+    };
+  },
+  computed: {
+    paramObj() {
+      return {
+        search: ""//this.param.gotype2
+      };
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.onRefresh();
+      }
+    }
+  },
+  methods: {
+    inReloadgatewayorder() {
+      if (this.detailedParam.goid) {
+        this.$ajax(
+          "/system/device/gateway/order/4/reloadgatewayorder",
+          { goid: this.detailedParam.goid },
+          "1",
+          {},
+          true
+        )
+          .then(res => {
+            this.onDetailedRefresh();
+            this.$message({
+              message: "重载未生效指令成功",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] `+err.resultMsg ,
+              type: "error"
+            });
+          });
+      }
+    },
+    onDetailedRefresh() {
+      this.detailedRefresh = new Date().getTime();
+    },
+    beforeDetailed() {
+      this.dialogDetailed = false;
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+
+<style>
+</style>

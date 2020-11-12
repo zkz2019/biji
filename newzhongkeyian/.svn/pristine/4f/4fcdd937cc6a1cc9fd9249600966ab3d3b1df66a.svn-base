@@ -1,0 +1,199 @@
+<!--  -->
+<template>
+  <el-dialog
+    :title="title"
+    width="70%"
+    class="importHistory"
+    :close-on-click-modal="false"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        :interface="urls"
+        ref="paging-table"
+        :list="list"
+        :param="paramObj"
+        :refresh="refresh"
+      >
+        <!-- <span class="sli">
+          <el-input
+            clearable
+            class="search wid300"
+            v-model="paramObj.search"
+            placeholder="输入授权账户进行检索"
+          ></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>-->
+      </paging-table>
+    </el-container>
+    <rightDetails
+      :dialogVisible="DetailsVisible"
+      :idObj="idObj"
+      @beforeClose="DetailsVisible=false"
+    ></rightDetails>
+  </el-dialog>
+</template>
+
+<script>
+import rightDetails from "./rightDetails";
+export default {
+  props: {
+    dialogVisible: Boolean,
+    param: Object
+  },
+  components: {
+    rightDetails
+  },
+  data() {
+    let $this = this;
+    return {
+      DetailsVisible: false,
+      paramObj: { search: "" },
+      idObj: {},
+      list: [],
+      title: "",
+      urls: "",
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "日期",
+          prop: "padate",
+          minWidth: "110px"
+        },
+        {
+          name: "操作者姓名",
+          prop: "username",
+          minWidth: "95px"
+        },
+        {
+          name: "操作账户",
+          prop: "userlogin",
+          minWidth: "90px"
+        },
+
+        // {
+        //   name: "授权类型",
+        //   prop: "uatype",
+        //   width: "80px",
+        //   formatter(row, b, c, d) {
+        //     if (row) {
+        //       if (row.uatype == "1") {
+        //         return "位置权限";
+        //       } else if (row.uatype == "2") {
+        //         return "组织权限";
+        //       } else if (row.uatype == "3") {
+        //         return "人员权限";
+        //       }
+        //     } else {
+        //       return "";
+        //     }
+        //   }
+        // },
+        {
+          name: "操作类型",
+          prop: "patype2",
+          minWidth: "80px",
+          formatter(row, b, c, d) {
+            if (c == "1") {
+              return "添加";
+            } else if (c == "2") {
+              return "删除";
+            } else {
+              return "";
+            }
+          }
+        },
+        {
+          name: "进度",
+          prop: "padallcount",
+          width: "60px",
+          formatter(row, b, c, d) {
+            if (row) {
+              let newtotal = Number(row.panocount) + Number(row.paokcount);
+              let total = Number(row.paallcount);
+              return Math.floor((newtotal / total) * 100) + "%";
+            } else {
+              return "";
+            }
+          }
+        },
+        {
+          name: "操作数量",
+          prop: "paallcount",
+          minWidth: "80px"
+        },
+        {
+          name: "正在处理数",
+          prop: "pacount",
+          minWidth: "95px"
+        },
+        {
+          name: "处理成功数",
+          prop: "paokcount",
+          minWidth: "95px"
+        },
+        {
+          name: "处理失败数",
+          prop: "panocount",
+          minWidth: "95px"
+        },
+
+        {
+          name: "操作",
+          width: "60px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(key) {
+                $this.onClick(this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick">详情</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.urls = "/push/limit/a/getpushauth";
+        this.title = "人员操作历史";
+        this.onRefresh();
+      }
+    }
+  },
+  methods: {
+    onClick(data) {
+      this.idObj = {
+        name: "paid",
+        value: data.paid,
+        url: "/push/limit/b/getpushauthdetails",
+        title: "人员详情"
+      };
+      this.DetailsVisible = true;
+    },
+    onReset() {
+      this.paramObj.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.paramObj.pushid = this.param.pushid;
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

@@ -1,0 +1,970 @@
+<template>
+  <div class="rowb_left">
+    <el-tabs class="lsubbox" v-model="activeName2" @tab-click="handleClick1">
+      <el-tab-pane v-if="Statistics1" class="heig100" name="first">
+        <span
+          class="lsubbox_label"
+          slot="label"
+          :style="{color:activeName2=='first'?'#24A6F9':'#666666'}"
+        >
+          <!-- label="开关门统计"  label="人员区域分布" label="楼栋入住统计" -->
+          <img
+            :src="activeName2=='first'?require('@/assets/image/syKGMTJ.png'):require('@/assets/image/syKGMTJ1.png')"
+          />
+          <!-- <img src="@/assets/image/syKGMTJ1.png"> -->
+          开关门统计
+        </span>
+      </el-tab-pane>
+      <el-tab-pane v-if="Statistics2" name="second">
+        <span
+          class="lsubbox_label"
+          slot="label"
+          :style="{color:activeName2=='second'?'#24A6F9':'#666666'}"
+        >
+          <img
+            :src="activeName2=='second'?require('@/assets/image/syRYQYFB.png'):require('@/assets/image/syRYQYFB1.png')"
+          />
+          <!-- <img src="@/assets/image/syRYQYFB1.png"> -->
+          人员区域分布
+        </span>
+      </el-tab-pane>
+      <el-tab-pane v-if="Statistics3" name="third">
+        <span
+          class="lsubbox_label"
+          slot="label"
+          :style="{color:activeName2=='third'?'#24A6F9':'#666666'}"
+        >
+          <img
+            :src="activeName2=='third'?require('@/assets/image/syLDRZTJ.png'):require('@/assets/image/syLDRZTJ1.png')"
+          />
+          <!-- <img src="@/assets/image/syLDRZTJ1.png"> -->
+          楼栋入住统计
+        </span>
+      </el-tab-pane>
+    </el-tabs>
+    <div class="lb">
+      <div v-if="dateShow&&Statistics1" class="dateQuery">
+        <el-date-picker
+          v-model="value2"
+          :clearable="false"
+          align="right"
+          type="date"
+          placeholder="选择日期"
+          value-format="yyyy-MM-dd"
+          popper-class="dateQueryList"
+          @change="search()"
+          :picker-options="pickerOptions"
+        ></el-date-picker>
+      </div>
+      <div v-if="pgShow&&Statistics2" class="dateQuery">
+        <el-select v-model="value3" placeholder="请选择" @change="ryChange()">
+          <el-option
+            v-for="item in options"
+            :key="item.buildid"
+            :label="item.buildname"
+            :value="item.buildid"
+          ></el-option>
+        </el-select>
+      </div>
+      <div v-if="pgShow1&&Statistics3" class="dateQuery">
+        <el-select v-model="value4" filterable placeholder="请选择" @change="ldChange">
+          <el-option
+            v-for="item in options1"
+            :key="item.buildid"
+            :label="item.buildname"
+            :value="item.buildid"
+          ></el-option>
+        </el-select>
+      </div>
+      <div
+        v-loading="loading1"
+        v-if="Statistics1"
+        id="ddid1"
+        class="duidie z1000"
+        :style="{width: '100%'}"
+      ></div>
+      <div
+        v-loading="loading2"
+        v-if="Statistics2"
+        id="ddid2"
+        class="duidie"
+        :style="{width: '100%'}"
+      ></div>
+      <div
+        v-loading="loading3"
+        v-if="Statistics3"
+        id="ddid3"
+        class="duidie"
+        :style="{width: '100%'}"
+      ></div>
+    </div>
+  </div>
+</template>
+
+<script>
+import echarts from "echarts";
+import { async } from "q";
+export default {
+  components: {},
+  name: "sytongji",
+  props: ["Statistics1", "Statistics2", "Statistics3"], //1.开关门统计权限,2.人员区域权限,3.楼栋入住权限
+  data() {
+    return {
+      tjtimes: null,
+      // screenHeight: window.innerHeight, //用于监听窗口尺寸变化
+      myDuidie1: "",
+      myDuidie2: "",
+      myDuidie3: "",
+      next: true, //判断是否可以继续刷新图表
+      tj1: true, //图表没渲染前为true,渲染完后为false,浏览器窗口大小改变是重新设为true.更新数据重设为true
+      tj2: true,
+      tj3: true,
+      num: 0, //初始化循环限制,大于1000停止循环
+      load1: false, //图表加载遮罩辅助
+      load2: false,
+      load3: false,
+      loading1: false, //图表加载遮罩
+      loading2: false,
+      loading3: false,
+      options: [], //人员区域分布统计建筑树
+      options1: [], //楼栋入住统计建筑树
+      value3: "",
+      value4: "",
+      pgShow: false,
+      pgShow1: false,
+      dateShow: true,
+      pickerOptions: {
+        disabledDate(time) {
+          return time.getTime() > Date.now();
+        }
+      },
+      value2: new Date(),
+      date: this.getTimes(),
+      param: {
+        agid: "",
+        pgid: ""
+      },
+      param1: [],
+      cate: [
+        "00时",
+        "01时",
+        "02时",
+        "03时",
+        "04时",
+        "05时",
+        "06时",
+        "07时",
+        "08时",
+        "09时",
+        "10时",
+        "11时",
+        "12时",
+        "13时",
+        "14时",
+        "15时",
+        "16时",
+        "17时",
+        "18时",
+        "19时",
+        "20时",
+        "21时",
+        "22时",
+        "23时"
+      ],
+      activeName2: "first",
+      lockdata: [], //开关门统计监控
+      // legtotal: [],
+      duidata2: {}, //人员分布
+      duidata3: {} //楼栋统计
+    };
+  },
+  watch: {
+    Statistics1(arr) {
+      this.initAll();
+    },
+    Statistics2(arr) {
+      this.initAll();
+    },
+    Statistics3(arr) {
+      this.getag();
+    }
+  },
+  activated() {
+    this.num = 0;
+    this.tj1 = true;
+    this.tj2 = true;
+    this.tj3 = true;
+    this.initAll(); //开关门及人员初始化
+    this.getag();
+    this.listener();
+  },
+  beforeDestroy() {
+    // clearInterval(this.tjtimes);
+  },
+  mounted() {
+    this.setval(); //初始值设定
+    this.initAll(); //开关门及人员初始化
+    this.getag(); //楼栋初始化
+  },
+
+  methods: {
+    resizeListener(bool) {
+      if (bool) {
+        window.removeEventListener("resize", this.listener);
+      } else {
+        window.addEventListener("resize", this.listener);
+      }
+    },
+    listener() {
+      console.log("窗口大小改变");
+      //窗口大小改变重置图表
+      if (this.next) {
+        this.next = false;
+        setTimeout(() => {
+          this.next = true;
+          if (this.myDuidie1 && this.myDuidie2 && this.myDuidie3) {
+            this.myDuidie1.resize();
+            this.myDuidie2.resize();
+            this.myDuidie3.resize();
+          }
+        }, 500);
+      }
+    },
+    setval() {
+      //设置初始值
+      let times = setInterval(() => {
+        let aa = document.querySelector(".lsubbox .el-tabs__content");
+        if (aa) {
+          if (aa.children[0]) {
+            let fid = aa.children[0].id.substring(5);
+            if (fid === "second") {
+              this.activeName2 = fid;
+              this.pgShow = true;
+              this.dateShow = false;
+              this.pgShow1 = false;
+            } else if (fid === "third") {
+              this.activeName2 = fid;
+              this.pgShow1 = true;
+              this.pgShow = false;
+              this.dateShow = false;
+            }
+            clearInterval(times);
+          }
+        }
+      }, 100);
+    },
+    ryChange() {
+      //人员select事件
+      this.param.agid = this.value3;
+      this.getPinfo();
+    },
+    ldChange(arr) {
+      //楼栋入住select事件
+      let obj = this.options1.find(item => {
+        return item.buildid * 1 === arr * 1;
+      });
+      if (arr === "") {
+        this.param1 = [];
+      } else {
+        this.param1 = [obj];
+      }
+      this.getloudong();
+    },
+    ldrz(arr) {
+      //楼栋入住初始化
+      if (this.Statistics3) {
+        //判断权限
+        if (document.getElementById("ddid3") == null) {
+          //判断父级盒子是否已渲染
+          setTimeout(() => {
+            this.ldrz(arr);
+          }, 200);
+        } else if (this.tj3) {
+          this.tj3 = false;
+          let obj = this.options1.find(item => {
+            return item.buildid * 1 === arr * 1;
+          });
+          if (arr === "") {
+            this.param1 = [];
+          } else {
+            this.param1 = [obj];
+          }
+          this.getloudong(false); //楼栋入住统计
+          return;
+        }
+      }
+    },
+
+    getag() {
+      //获取建筑id   设置select   初始化楼栋信息获取
+      this.$ajax("/analysis/personanalysis/1/getbuildtree", {}, "")
+        .then(res => {
+          this.options = res.result;
+          this.options.unshift({ buildid: "", buildname: "全部" });
+        })
+        .catch(err => {});
+      this.$ajax("/analysis/buildanalysis/1/getbuildtree", {}, "")
+        .then(res => {
+          this.options1 = res.result;
+          this.value4 = res.result[0].buildid;
+          this.ldrz(this.value4);
+          this.options1.unshift({ buildid: "", buildname: "全部" });
+        })
+        .catch(err => {});
+    },
+    getTimes() {
+      //获取当前时间
+      var date1 = new Date();
+      var y = date1.getFullYear();
+      var m = date1.getMonth() + 1;
+      m = m < 10 ? "0" + m : m;
+      var d = date1.getDate();
+      d = d < 10 ? "0" + d : d;
+      var ss = y + "-" + m + "-" + d;
+      return ss;
+    },
+    //选项卡切换
+    handleClick1(tab, event) {
+      var dom = document.querySelectorAll(".duidie");
+      if (this.activeName2 == "first") {
+        this.dateShow = true;
+        this.pgShow = false;
+        this.pgShow1 = false;
+        this.loading2 = false;
+        this.loading3 = false;
+        this.loading1 = this.load1 ? true : false;
+        dom.forEach(item => {
+          if (item.id == "ddid1") {
+            item.classList.add("z1000");
+          } else {
+            item.classList.add("-z1000");
+            item.classList.remove("z1000");
+          }
+        });
+      } else if (this.activeName2 == "second") {
+        this.dateShow = false;
+        this.pgShow = true;
+        this.pgShow1 = false;
+        this.loading1 = false;
+        this.loading3 = false;
+        this.loading2 = this.load2 ? true : false;
+        dom.forEach(item => {
+          if (item.id == "ddid2") {
+            item.classList.add("z1000");
+          } else {
+            item.classList.remove("z1000");
+          }
+        });
+      } else if (this.activeName2 == "third") {
+        this.pgShow1 = true;
+        this.pgShow = false;
+        this.dateShow = false;
+        this.loading1 = false;
+        this.loading2 = false;
+        this.loading3 = this.load3 ? true : false;
+        dom.forEach(item => {
+          if (item.id == "ddid3") {
+            item.classList.add("z1000");
+          } else {
+            item.classList.remove("z1000");
+          }
+        });
+      }
+    },
+    search() {
+      //开关门统计 查询事件
+      this.date = this.value2;
+      this.getlockanalysis();
+    },
+    initAll() {
+      //初始化开关门及人员区域分布
+      this.num++;
+      if (this.num > 1000) {
+        return;
+      }
+      //判断父级盒子是否已完成渲染,是则开始渲染图标
+      if (this.Statistics1) {
+        if (document.getElementById("ddid1") == null) {
+          setTimeout(() => {
+            this.initAll();
+          }, 200);
+        } else if (this.tj1) {
+          this.tj1 = false;
+          this.getlockanalysis(); //开关门统计
+        }
+      }
+      if (this.Statistics2) {
+        if (document.getElementById("ddid2") == null) {
+          setTimeout(() => {
+            this.initAll();
+          }, 200);
+        } else if (this.tj2) {
+          this.tj2 = false;
+          this.getPinfo(false); //人员分布统计
+        }
+      }
+    },
+    lockdataSort(data) {
+      data.forEach((item, ind) => {
+        if (item.locktype == "刷卡解锁") {
+          item.num = 1;
+        } else if (item.locktype == "指纹解锁") {
+          item.num = 2;
+        } else if (item.locktype == "密码解锁") {
+          item.num = 3;
+        } else if (item.locktype == "扫码解锁（蓝牙）") {
+          item.num = 4;
+        } else if (item.locktype == "远程解锁") {
+          item.num = 5;
+        } else if (item.locktype == "钥匙解锁") {
+          item.num = 6;
+        } else if (item.locktype == "异常解锁") {
+          item.num = 7;
+        } else if (item.locktype == "关门") {
+          item.num = 8;
+        } else if (item.locktype == "开门") {
+          item.num = 9;
+        }
+      });
+      for (let i = 0; i < data.length; i++) {
+        for (let j = 0; j < data.length - i - 1; j++) {
+          if (data[j].num > data[j + 1].num) {
+            let value = data[j];
+            data[j] = data[j + 1];
+            data[j + 1] = value;
+          }
+        }
+      }
+      return data;
+    },
+    fresh() {
+      this.$ajax("/login/home/5/getlockanalysis", { date: this.date }, "").then(
+        res => {
+          // res.result.map(item => {
+          //   if (item.locktype) {
+          //     this.legtotal.push(item.locktype);
+          //   }
+          // });
+          this.lockdata = this.lockdataSort(res.result); //开门数据
+          if (document.getElementById("ddid1")) {
+            this.setDuidie1(document.getElementById("ddid1"));
+          }
+        }
+      );
+      if (this.Statistics3) {
+        this.$ajax(
+          "/analysis/buildanalysis/2/getbuildanalysis",
+          {},
+          "",
+          this.param1
+        ).then(res => {
+          let wid = "36";
+          if (res.result.length >= 16) {
+            wid = "80%";
+          } else {
+            wid = "36";
+          }
+          this.duidata3.buildname = [];
+          this.duidata3.buildrzcount = [];
+          this.duidata3.buildwzcount = [];
+          res.result.map(item => {
+            this.duidata3.buildname.push(item.buildname);
+            this.duidata3.buildrzcount.push(item.buildrzcount);
+            this.duidata3.buildwzcount.push(item.buildwzcount);
+          });
+          if (document.getElementById("ddid3")) {
+            this.setDuidie3(document.getElementById("ddid3"), wid);
+          }
+        });
+      }
+      this.$ajax(
+        "/analysis/personanalysis/3/getpersonanalysis",
+        this.param,
+        "1"
+      ).then(res => {
+        let wid = "36";
+        if (res.result.area.length >= 16) {
+          wid = "80%";
+        } else {
+          wid = "36";
+        }
+        this.duidata2.areaname = [];
+        this.duidata2.areacount = [];
+        res.result.area.map(item => {
+          this.duidata2.areaname.push(item.areaname);
+          this.duidata2.areacount.push(item.areacount);
+        });
+        if (document.getElementById("ddid2")) {
+          this.setDuidie2(document.getElementById("ddid2"), wid);
+        }
+      });
+    },
+    //根据登录用户获取开关门统计信息
+    getlockanalysis() {
+      this.load1 = true;
+      this.loading1 = true;
+      this.$ajax("/login/home/5/getlockanalysis", { date: this.date }, "")
+        .then(res => {
+          // res.result.map(item => {
+          //   if (item.locktype) {
+          //     this.legtotal.push(item.locktype);
+          //   }
+          // });
+          this.lockdata = this.lockdataSort(res.result); //开门数据
+          if (document.getElementById("ddid1")) {
+            this.setDuidie1(document.getElementById("ddid1"));
+          }
+          this.loading1 = false;
+          this.load1 = false;
+        })
+        .catch(err => {
+          this.loading1 = false;
+          this.load1 = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg || "错误",
+            type: "error"
+          });
+          console.log(err);
+        });
+    },
+    //获取楼栋入住统计信息
+    getloudong(a = true) {
+      if (this.Statistics3) {
+        if (a) {
+          this.loading3 = true;
+        }
+        this.load3 = true;
+        this.$ajax(
+          "/analysis/buildanalysis/2/getbuildanalysis",
+          {},
+          "",
+          this.param1
+        )
+          .then(res => {
+            let wid = "36";
+            if (res.result.length >= 16) {
+              wid = "80%";
+            } else {
+              wid = "36";
+            }
+            this.duidata3.buildname = [];
+            this.duidata3.buildrzcount = [];
+            this.duidata3.buildwzcount = [];
+            res.result.map(item => {
+              this.duidata3.buildname.push(item.buildname);
+              this.duidata3.buildrzcount.push(item.buildrzcount);
+              this.duidata3.buildwzcount.push(item.buildwzcount);
+            });
+            if (document.getElementById("ddid3")) {
+              this.setDuidie3(document.getElementById("ddid3"), wid);
+            }
+            this.load3 = false;
+            this.loading3 = false;
+          })
+          .catch(err => {
+            this.load3 = false;
+            this.loading3 = false;
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg || "错误",
+              type: "error"
+            });
+          });
+      }
+    },
+    //获取人员分布统计信息
+    getPinfo(a = true) {
+      if (a) {
+        this.loading2 = true;
+      }
+      this.load2 = true;
+      this.$ajax(
+        "/analysis/personanalysis/3/getpersonanalysis",
+        this.param,
+        "1"
+      )
+        .then(res => {
+          let wid = "36";
+          if (res.result.area.length >= 16) {
+            wid = "80%";
+          } else {
+            wid = "36";
+          }
+          this.duidata2.areaname = [];
+          this.duidata2.areacount = [];
+          res.result.area.map(item => {
+            this.duidata2.areaname.push(item.areaname);
+            this.duidata2.areacount.push(item.areacount);
+          });
+          if (document.getElementById("ddid2")) {
+            this.setDuidie2(document.getElementById("ddid2"), wid);
+          }
+          this.loading2 = false;
+          this.load2 = false;
+        })
+        .catch(err => {
+          console.log("错误", err);
+          this.load2 = false;
+          this.loading2 = false;
+        });
+    },
+    setDuidie3(dom, wid) {
+      //入住统计
+      // 基于准备好的dom，初始化echarts实例
+      this.myDuidie3 = echarts.init(dom, "light");
+      // 绘制图表
+      var colorList = [
+        "#24A6F9",
+        "#52C896",
+        "#FFE71D",
+        "#B4975D",
+        "#EC6C6C",
+        "#616E77",
+        "#9068F7",
+        "#A8D180",
+        "#9068F7",
+        "#429C9F"
+      ];
+      this.myDuidie3.setOption({
+        color: colorList,
+        tooltip: {
+          show: true,
+          trigger: "axis"
+          // formatter: "{c}"
+        },
+        title: {
+          text: "楼栋入住统计图形表",
+          x: "center",
+          y: 10,
+          textStyle: {
+            fontSize: 14
+          }
+        },
+        legend: {
+          icon: "rect",
+          itemWidth: 15,
+          right: 25,
+          top: "center",
+          orient: "vertical",
+          data: ["未住", "入住"]
+        },
+        grid: {
+          width: "80%",
+          height: "82%",
+          left: "8%",
+          top: "12%",
+          right: "2%",
+          bottom: "10%",
+          // top: "5%",
+          // left: "3%",
+          // right: "10%",
+          // bottom: "2%",
+          // height: "94%",
+          // width: "90%",
+          containLabel: true
+        },
+        xAxis: [
+          {
+            type: "category",
+            axisLine: {
+              lineStyle: {
+                type: "solid",
+                color: "#24A6F9", //左边线的颜色
+                width: 2 //坐标线的宽度
+              }
+            },
+            splitLine: {
+              show: false,
+              lineStyle: {
+                // 使用深浅的间隔色
+                color: ["#ccc"],
+                width: 5
+              }
+            },
+            axisLabel: {
+              interval: 0,
+              rotate: 40,
+              show: true,
+              splitNumber: 15,
+              color: "#1B2437",
+              textStyle: {
+                //fontFamily: "微软雅黑",
+                fontSize: 10
+              }
+            },
+
+            data: this.duidata3.buildname,
+            splitLine: { show: false },
+
+            axisTick: {
+              alignWithLabel: true,
+              inside: true
+            }
+          }
+        ],
+        yAxis: [
+          {
+            type: "value",
+            name: "",
+            axisLine: {
+              lineStyle: {
+                type: "solid",
+                color: "#24A6F9", //左边线的颜色
+                width: 2 //坐标线的宽度
+              }
+            },
+            axisLabel: {
+              interval: 0,
+              rotate: 0,
+              show: true,
+              splitNumber: 30,
+              color: "#1B2437",
+              textStyle: {
+                fontSize: 12
+              }
+            },
+            splitLine: { show: false },
+            axisTick: { inside: true }
+          }
+        ],
+        series: [
+          {
+            name: "入住",
+            type: "bar",
+            barWidth: wid, //柱图宽度
+            data: this.duidata3.buildrzcount,
+            stack: "堆叠"
+          },
+          {
+            name: "未住",
+            type: "bar",
+            barWidth: wid, //柱图宽度
+            data: this.duidata3.buildwzcount,
+            stack: "堆叠"
+          }
+        ]
+      });
+    },
+    setDuidie2(dom, wid) {
+      // 基于准备好的dom，初始化echarts实例
+      this.myDuidie2 = echarts.init(dom, "light");
+      // 绘制图表
+      var colorList = [
+        "#24A6F9",
+        "#52C896",
+        "#FFE71D",
+        "#B4975D",
+        "#EC6C6C",
+        "#616E77",
+        "#9068F7",
+        "#A8D180",
+        "#9068F7",
+        "#429C9F"
+      ];
+
+      this.myDuidie2.setOption({
+        //人员分布统计
+        color: colorList,
+        tooltip: {
+          show: true,
+          trigger: "axis",
+          formatter: "{c}人" // 改 bug 151
+        },
+        title: {
+          text: "人员分布统计图形表",
+          x: "center",
+          y: 10,
+          textStyle: {
+            fontSize: 14
+          }
+        },
+        grid: {
+          width: "84%",
+          height: "80%",
+          left: "8%",
+          top: "12%",
+          right: "2%",
+          bottom: "8%",
+          // left: "3%",
+          // right: "10%",
+          // bottom: "2%",
+          // height: "90%",
+          // width: "94%",
+          containLabel: true
+        },
+        xAxis: [
+          {
+            type: "category",
+            axisLine: {
+              lineStyle: {
+                type: "solid",
+                color: "#24A6F9", //左边线的颜色
+                width: 2 //坐标线的宽度
+              }
+            },
+            axisLabel: {
+              interval: 0,
+              rotate: 40,
+              show: true,
+              splitNumber: 15,
+              color: "#1B2437"
+            },
+            data: this.duidata2.areaname,
+            splitLine: {
+              show: false
+            },
+            axisTick: {
+              inside: true
+            }
+          }
+        ],
+        yAxis: [
+          {
+            type: "value",
+            name: "",
+            splitLine: {
+              //分割线
+              show: false,
+              lineStyle: {
+                color: "#ccc"
+              }
+            },
+            axisTick: { inside: true },
+            axisLine: { lineStyle: { color: "#24A6F9", width: 2 } },
+            axisLabel: {
+              color: "#1B2437",
+              interval: 0,
+              rotate: 0,
+              show: true,
+              splitNumber: 30,
+              textStyle: {
+                fontSize: 12
+              }
+            }
+          }
+        ],
+        series: [
+          {
+            name: "",
+            type: "bar",
+            barWidth: wid, //柱图宽度
+            data: this.duidata2.areacount,
+            itemStyle: {
+              normal: {
+                color: function(params) {
+                  var colorList = [
+                    "#24A6F9",
+                    "#52C896",
+                    "#FFE71D",
+                    "#B4975D",
+                    "#EC6C6C",
+                    "#616E77",
+                    "#9068F7",
+                    "#A8D180",
+                    "#9068F7",
+                    "#429C9F"
+                  ];
+                  return colorList[params.dataIndex];
+                },
+                label: {
+                  show: false,
+                  position: "top",
+                  formatter: "{c}%"
+                }
+              }
+            }
+          }
+        ]
+      });
+    },
+    setDuidie1(dom) {
+      //开关门统计
+      // 基于准备好的dom，初始化echarts实例
+      this.myDuidie1 = echarts.init(dom, "light");
+      let colorList = [
+        "#24A6F9",
+        "#52C896",
+        "#FFE71D",
+        "#B4975D",
+        "#EC6C6C",
+        "#616E77",
+        "#9068F7",
+        "#A8D180",
+        "#9068F7",
+        "#429C9F"
+      ];
+      // 绘制图表
+      this.myDuidie1.setOption({
+        calculable: true,
+        color: colorList,
+        title: {
+          text: "开关门统计监控图形表",
+          x: "center",
+          y: 10,
+          textStyle: {
+            fontSize: 14
+          }
+        },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            // 坐标轴指示器，坐标轴触发有效
+            type: "line" // 默认为直线，可选为：'line' | 'shadow'
+          },
+          extraCssText: "height:auto;width:auto;"
+        },
+        legend: {
+          type: "scroll",
+          icon: "rect",
+          itemWidth: 15,
+          bottom: "4%",
+          left: "center",
+          // right: "5%",
+          data: this.leglotal
+        },
+        grid: {
+          width: "84%",
+          height: "66%",
+          left: "8%",
+          top: "12%",
+          right: "2%",
+          bottom: "10%"
+          // containLabel: true
+        },
+        yAxis: {
+          type: "value",
+          axisTick: { inside: true },
+          axisLabel: { color: "#1B2437" },
+          minInterval: 1,
+          splitLine: {
+            show: false
+          },
+          axisLine: { lineStyle: { color: "#24A6F9", width: 2 } }
+        },
+        xAxis: {
+          type: "category",
+          data: this.cate,
+          nameTextStyle: 10,
+          axisLine: { lineStyle: { color: "#24A6F9", width: 2 } },
+          axisTick: { inside: true },
+          axisLabel: { color: "#1B2437" },
+          splitLine: {
+            show: false
+          }
+        },
+        series: this.lockdata.map(item => {
+          return {
+            type: "bar",
+            name: item.locktype,
+            data: item.lockdata,
+            barWidth: "80%",
+            stack: "堆叠"
+          };
+        })
+      });
+    }
+  }
+};
+</script>
+

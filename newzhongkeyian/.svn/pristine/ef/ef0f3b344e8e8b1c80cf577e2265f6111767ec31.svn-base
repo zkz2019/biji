@@ -1,0 +1,25 @@
+@media screen and (max-height: 760px) {
+
+    .com-title {
+        padding: 11px 0 0 32px;
+        height: 50px;
+    }
+
+    .query_head {
+        margin: 6px 14px;
+        padding: 7px 22px;
+    }
+
+    .query_main {
+        margin: 6px 14px 14px;
+        padding: 0 22px;
+
+        .paging-fy {
+            padding: 16px 3px 12px;
+        }
+    }
+
+    .fel-tables .el-table td {
+        padding: 5px 0;
+    }
+}

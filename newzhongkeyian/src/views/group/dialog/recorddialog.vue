@@ -1,0 +1,174 @@
+<!-- 缴费记录 -->
+<template>
+  <el-dialog
+    :title="buts.alias"
+    width="60%"
+    top="10vh"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <fel-table
+        class="tobleList wh100"
+        height="100%"
+        :list="list"
+        :queryData="queryData"
+        @onRefresh="onRefresh"
+      >
+        <!-- <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v,'0')">
+        <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+        {{v.alias}}
+        </span>-->
+      </fel-table>
+    </el-container>
+    <Pay
+      type="2"
+      :param="param"
+      :defaultData="defaultData"
+      :dialogVisible="payVisible"
+      @beforeClose="payVisible=false"
+    ></Pay>
+  </el-dialog>
+</template>
+
+<script>
+import Pay from "./appointmentPay";
+export default {
+  props: {
+    param: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    buts: Object,
+    dialogVisible: Boolean
+  },
+  components: { Pay },
+  data() {
+    let $this = this;
+    return {
+      defaultData: {},
+      payVisible: false,
+      refresh: 0,
+      queryData: [],
+      list: [
+        {
+          name: "缴费时间",
+          prop: "tmcdate"
+        },
+        {
+          name: "缴费金额",
+          prop: "tmmoney"
+        },
+        {
+          name: "备注",
+          prop: "tmremark"
+        },
+        {
+          name: "最后修改时间",
+          prop: "tmudate"
+        },
+        {
+          name: "操作人",
+          prop: "userlogin"
+        }
+        // {
+        //   show: true,
+        //   name: "操作",
+        //   width: "120px",
+        //   prop: "",
+        //   template: {
+        //     props: ["scope"],
+        //     computed: {
+        //       listBut() {
+        //         return $this.listBut;
+        //       }
+        //     },
+        //     methods: {
+        //       onClick(key, obj) {
+        //         $this.onClick(key, this.scope.row);
+        //       }
+        //     },
+        //     template: `<div class="operat-buts">
+        //      <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.id, v)">{{v.alias}}</el-button>
+        //     </div>`
+        //   }
+        // }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.getInfo();
+      }
+    }
+  },
+  // computed: {
+  //   listBut() {
+  //     let arr = [];
+  //     if (this.buts.childs) {
+  //       arr = this.buts.childs.map(o => o.entity);
+  //     }
+  //     return arr;
+  //   }
+  // },
+  created() {},
+  methods: {
+    getInfo() {
+      // if (
+      //   this.param.teamstate == "0" ||
+      //   this.param.teamstate == "2"
+      // ) {
+      //   this.list[5].show = true;
+      // } else {
+      //   this.list[5].show = false;
+      // }
+      this.$ajax("/team/update/3/getteammoney", this.param, "1")
+        .then(res => {
+          this.queryData = res.result;
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onRefresh() {
+      this.getInfo();
+    },
+    onClick(key, obj) {
+      if (key == "633") {
+        this.defaultData = obj;
+        this.payVisible = true;
+      } else if (key == "634") {
+        this.$confirm("确定要删除缴费吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax("/team/update/6/delteammoney", { tmid: obj.tmid }, "1")
+            .then(res => {
+              this.$message({
+                showClose: true,
+                message: "删除缴费已下发!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      }
+    }
+  }
+};
+</script>

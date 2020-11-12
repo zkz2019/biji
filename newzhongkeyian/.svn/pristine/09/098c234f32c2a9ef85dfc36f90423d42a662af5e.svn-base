@@ -1,0 +1,735 @@
+<!-- 无线联网锁配置 -->
+<template>
+  <el-dialog
+    title="无线联网锁配置"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      v-loading="loading"
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    param: Object,
+    paramObj: Object | Array,
+    dialogVisible: Boolean,
+  },
+  data() {
+    let $this = this
+    return {
+      loading: false,
+      selects: {},
+      defaultData: { timeSlot: ['', ''], roomopenweekArr: [] },
+      formData: [
+        {
+          width: '50%',
+          value: 'workmode',
+          name: '工作模式',
+          type: 'select',
+          select: 'workmodetype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isworkmode == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomforcelock',
+          name: '强锁模式',
+          type: 'select',
+          select: 'roomforcelocktype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomforcelock == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomopenmode',
+          name: '开门模式',
+          type: 'select',
+          select: 'roomopenmodetype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomopenmode == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomwarnstatus',
+          name: '拆机报警',
+          type: 'select',
+          select: 'roomwarnstatustype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomwarnstatus == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roommcardtype',
+          name: '管理卡开门模式',
+          type: 'select',
+          select: 'roommcardtypetype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroommcardtype == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomnetworkmode',
+          name: '服务器离线授权',
+          type: 'select',
+          select: 'roomnetworkmodetype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomnetworkmode == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomofflineauth',
+          name: '脱机离线授权',
+          type: 'select',
+          select: 'roomofflineauthtype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomofflineauth == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roomsupportmodetype',
+          name: '协议开门卡',
+          type: 'select',
+          select: 'roomsupportmodetypes',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomsupportmodetype == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        // {
+        //   width: "50%",
+        //   value: "roomissyso",
+        //   name: "调试信息",
+        //   type: "select",
+        //   select: "roomissysotype",
+        //   svalue: "id",
+        //   slabel: "name",
+        //   buts: [
+        //     {
+        //       class: "not-effective",
+        //       title: "未生效",
+        //       show: true,
+        //       icon: "el-icon-warning-outline"
+        //     }
+        //   ],
+        //   formatter(v, data) {
+        //     if (data.isroomissyso == 1) {
+        //       v.buts[0].show = false;
+        //     } else {
+        //       v.buts[0].show = true;
+        //     }
+        //   }
+        // },
+        // {
+        //   width: "50%",
+        //   value: "roomacode",
+        //   name: "协议卡扇区密钥A",
+        //   type: "text",
+        //   buts: [
+        //     {
+        //       class: "not-effective",
+        //       title: "未生效",
+        //       show: true,
+        //       icon: "el-icon-warning-outline"
+        //     }
+        //   ],
+        //   formatter(v, data) {
+        //     if (data.isroomacode == 1) {
+        //       v.buts[0].show = false;
+        //     } else {
+        //       v.buts[0].show = true;
+        //     }
+        //   }
+        // },
+        // {
+        //   width: "50%",
+        //   value: "roombcode",
+        //   name: "协议卡扇区密钥B",
+        //   type: "text",
+        //   buts: [
+        //     {
+        //       class: "not-effective",
+        //       title: "未生效",
+        //       show: true,
+        //       icon: "el-icon-warning-outline"
+        //     }
+        //   ],
+        //   formatter(v, data) {
+        //     if (data.isroombcode == 1) {
+        //       v.buts[0].show = false;
+        //     } else {
+        //       v.buts[0].show = true;
+        //     }
+        //   }
+        // },
+        // {
+        //   width: "50%",
+        //   value: "roomcodearea",
+        //   name: "协议卡加密扇区",
+        //   type: "select",
+        //   select: "roomcodeareatype",
+        //   svalue: "",
+        //   slabel: "",
+        //   buts: [
+        //     {
+        //       class: "not-effective",
+        //       title: "未生效",
+        //       show: true,
+        //       icon: "el-icon-warning-outline"
+        //     }
+        //   ],
+        //   formatter(v, data) {
+        //     if (data.isroomcodearea == 1) {
+        //       v.buts[0].show = false;
+        //     } else {
+        //       v.buts[0].show = true;
+        //     }
+        //   }
+        // },
+        {
+          width: '50%',
+          value: 'roombatchout',
+          name: '当前批次号',
+          readonly: true,
+          type: 'text',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroombatch == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        {
+          width: '50%',
+          value: 'roombatch',
+          name: '更新批次号',
+          readonly: true,
+          type: 'clearInput',
+          buts: [
+            {
+              class: 'but-connect',
+              title: '重新获取协议卡批次号',
+              // icon: "el-icon-refresh",
+              name: '获取',
+              onClick: this.personClick,
+            },
+          ],
+        },
+        // {
+        //   width: "50%",
+        //   value: "roomtxcode",
+        //   name: "通讯密钥",
+        //   type: "text",
+        //   buts: [
+        //     {
+        //       class: "not-effective",
+        //       title: "未生效",
+        //       show: true,
+        //       icon: "el-icon-warning-outline"
+        //     }
+        //   ],
+        //   formatter(v, data) {
+        //     if (data.isroomtxcode == 1) {
+        //       v.buts[0].show = false;
+        //     } else {
+        //       v.buts[0].show = true;
+        //     }
+        //   }
+        // },
+        {
+          width: '50%',
+          value: 'roompowerlev',
+          name: '功率等级',
+          type: 'select',
+          select: 'roompowerlevtype',
+          svalue: '',
+          slabel: '',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroompowerlev == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        // {
+        //   width: '50%',
+        //   value: 'roomisencryption',
+        //   name: '加密类型',
+        //   type: 'select',
+        //   select: 'roomisencryptiontype',
+        //   svalue: 'id',
+        //   slabel: 'name',
+        // },
+        {
+          width: '50%',
+          name: '自动开放时间',
+          value: 'timeSlot',
+          type: 'time',
+          format: 'HH:mm',
+          date: 'ftime',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomopentime == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+          // arrow:true,
+        },
+        {
+          width: '50%',
+          value: 'roomopencontrol',
+          name: '控制模式',
+          type: 'select',
+          select: 'roomopencontroltype',
+          svalue: 'id',
+          slabel: 'name',
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomopencontrole == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+        // {
+        //   value: "roomopenweekArr",
+        //   name: "每周可开门的天",
+        //   type: "select",
+        //   multiple: true,
+        //   select: "roomopendaytype",
+        //   svalue: "id",
+        //   slabel: "name"
+        // },
+        {
+          value: 'roomopenweekArr',
+          name: '周工作日配置',
+          type: 'template',
+          template: {
+            props: ['value'],
+            model: {
+              prop: 'value',
+              event: 'input',
+            },
+            methods: {
+              change(data) {
+                if (this.type == 2) {
+                  let k = data[data.length - 1]
+                  let daarr = this.options[0].options.map(o => o.value)
+                  if (daarr.includes(k)) {
+                    data = [k]
+                  } else {
+                    data = data.filter(obj => {
+                      return !daarr.includes(obj)
+                    })
+                  }
+                  this.$emit('input', data)
+                } else {
+                  this.$emit('input', data)
+                }
+              },
+            },
+            computed: {
+              options() {
+                return $this.selects['roomopendaytypeOption']
+              },
+              type() {
+                return $this.selects['roomopendaytypeType']
+              },
+            },
+            template: `<el-select :value="value" @change="change" :multiple="type != 0" placeholder="请选择">
+              <template v-if="type == 2">
+              <el-option-group
+                v-for="group in options"
+                :key="group.label"
+                :label="group.label">
+                <el-option
+                  v-for="item in group.options"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value">
+                </el-option>
+              </el-option-group>
+              </template>
+              <template v-else>
+              <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value">
+              </el-option>
+              </template>
+            </el-select>`,
+          },
+          buts: [
+            {
+              class: 'not-effective',
+              title: '未生效',
+              show: true,
+              icon: 'el-icon-warning-outline',
+            },
+          ],
+          formatter(v, data) {
+            if (data.isroomopenweek == 1) {
+              v.buts[0].show = false
+            } else {
+              v.buts[0].show = true
+            }
+          },
+        },
+      ],
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.inGetupdategatewayinfo()
+      }
+    },
+  },
+  methods: {
+    onChange(arr, data) {
+      if (arr[0]) {
+        data.gatewaycode = arr[0]
+      }
+    },
+    personClick(arr, data) {
+      if (this.param) {
+        this.$ajax(
+          '/system/device/devicelock/order/8/getbatchno',
+          this.param,
+          '1',
+          this.paramObj,
+        )
+          .then(res => {
+            data.roombatch = res.result
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: 'error',
+            })
+          })
+      }
+    },
+    inGetupdategatewayinfo() {
+      if (this.param) {
+        this.loading = true
+        this.$ajax(
+          '/system/device/devicelock/order/6/getdeploydevicelockinfo',
+          this.param,
+          '1',
+          this.paramObj,
+        )
+          .then(res => {
+            let result = res.result
+            this.selects = result
+            result.timeSlot = (result.roomopentime || '').split('~')
+            if (result.timeSlot.length != 2) {
+              result.timeSlot = ['', '']
+            }
+            let type = 0
+            let roomopendaytypeOption = []
+            if (result.roomopendaytype) {
+              let daarr = []
+              let doarr = []
+              result.roomopendaytype.forEach(obj => {
+                if (obj.isdx == 1) {
+                  daarr.push({
+                    label: obj.name,
+                    type: true,
+                    value: obj.id,
+                  })
+                } else {
+                  doarr.push({
+                    type: false,
+                    label: obj.name,
+                    value: obj.id,
+                  })
+                }
+              })
+              if (daarr.length > 0 && doarr.length > 0) {
+                type = 2
+                roomopendaytypeOption = [
+                  {
+                    label: '单选',
+                    options: daarr,
+                  },
+                  {
+                    label: '多选',
+                    options: doarr,
+                  },
+                ]
+              } else if (daarr.length == 0 && doarr.length > 0) {
+                type = 1
+                roomopendaytypeOption = doarr
+              } else {
+                roomopendaytypeOption = daarr
+              }
+            }
+            this.selects['roomopendaytypeOption'] = roomopendaytypeOption
+            this.selects['roomopendaytypeType'] = type
+            if (type == 0) {
+              result.roomopenweekArr = result.roomopenweek
+            } else {
+              // result.roomopenweekArr = result.roomopenweek.split(",");
+              if (result.roomopenweek) {
+                result.roomopenweekArr = result.roomopenweek.split(',')
+              } else {
+                result.roomopenweekArr = []
+              }
+            }
+            // if (result.roomissyso == "1") {
+            //   result.roomissyso = "";
+            // }
+            let roombatchout = { roombatchout: result.roombatch }
+            delete result.roombatch
+            this.defaultData = Object.assign(result, roombatchout)
+            this.loading = false
+          })
+          .catch(err => {
+            this.loading = false
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: 'error',
+            })
+          })
+      }
+    },
+    submitForm(data) {
+      let roomopentime = ''
+      if (data.timeSlot[0] && data.timeSlot[1]) {
+        roomopentime = data.timeSlot.join('~')
+      }
+      let roomopenweek = ''
+      if (typeof data.roomopenweekArr != 'string') {
+        roomopenweek = data.roomopenweekArr.join(',')
+      } else {
+        roomopenweek = data.roomopenweekArr
+      }
+      let obj = Object.assign(
+        {
+          roomopenweek: roomopenweek,
+          // roomacode: data.roomacode,
+          roombatch: data.roombatch,
+          // roombcode: data.roombcode,
+          // roomcodearea: data.roomcodearea,
+          roomforcelock: data.roomforcelock,
+          // roomissyso: data.roomissyso,
+          roommcardtype: data.roommcardtype,
+          roomnetworkmode: data.roomnetworkmode,
+          roomofflineauth: data.roomofflineauth,
+          roomopencontrol: data.roomopencontrol,
+          roomopentime: roomopentime,
+          roompowerlev: data.roompowerlev,
+          // roomisencryption: data.roomisencryption,
+          roomsupportmodetype: data.roomsupportmodetype,
+          // roomtxcode: data.roomtxcode,
+          roomwarnstatus: data.roomwarnstatus,
+          workmode: data.workmode,
+          roomopenmode: data.roomopenmode,
+        },
+        this.param,
+      )
+      this.$ajax(
+        '/system/device/devicelock/order/7/savedeploydevicelockinfo',
+        obj,
+        '1',
+        this.paramObj,
+        true,
+      )
+        .then(() => {
+          this.beforeClose()
+          this.$message({
+            message: '配置成功',
+            type: 'success',
+          })
+          this.$emit('onRefresh')
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: 'error',
+          })
+        })
+    },
+    beforeClose() {
+      if (this.$refs['felForm']) {
+        this.$refs['felForm'].resetForm()
+      }
+      this.defaultData = { timeSlot: ['', ''], roomopenweekArr: [] }
+      this.$emit('beforeClose')
+    },
+  },
+}
+</script>
+
+<style></style>

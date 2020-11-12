@@ -1,0 +1,245 @@
+<!-- 添加指纹 修改指纹授权 -->
+<template>
+  <el-dialog
+    title="修改指纹授权"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      @submitForm="onClick"
+      width="140px"
+      dynamic
+      :defaultData="ismj?mjdefaultData:defaultData"
+      :formData="ismj?mjformData:formData"
+      @closeForm="beforeClose"
+    />
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    type: String,
+    param: Object,
+    paramObj: Object | Array,
+    list: Array,
+    dialogVisible: Boolean,
+    ismj: Boolean
+  },
+  data() {
+    return {
+      button: [
+        {
+          type: "0",
+          name: "清空"
+        },
+        {
+          type: "2",
+          name: "确认"
+        }
+      ],
+      mjformData: [
+        {
+          width: "50%",
+          value: "personname",
+          name: "使用人",
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "personcode",
+          name: this.getNumber(),
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "aufempsdate",
+          name: "授权开始时间",
+          popperClass: "dateQueryListMax",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "aufempedate",
+          name: "授权结束时间",
+          popperClass: "dateQueryListMax",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "aufopenstime",
+          name: "每日授权开始时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日授权开始时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "aufopenetime",
+          name: "每日授权结束时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日授权结束时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "aufusecount",
+          name: "开门使用次数",
+          type: "text"
+        }
+      ],
+      formData: [
+        {
+          width: "50%",
+          value: "personname",
+          name: "使用人",
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "personcode",
+          name: this.getNumber(),
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "empsdate",
+          name: "授权开始时间",
+          popperClass: "dateQueryListMax",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss",
+          rules: [
+            {
+              required: true,
+              message: "请选择授权开始时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "empedate",
+          name: "授权结束时间",
+          popperClass: "dateQueryListMax",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss",
+          rules: [
+            {
+              required: true,
+              message: "请选择授权结束时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "openstime",
+          name: "每日授权开始时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日授权开始时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "openetime",
+          name: "每日授权结束时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            { required: true, message: "请选择每日授权结束时间", trigger: "blur" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "usecount",
+          name: "开门使用次数",
+          type: "text",
+          rules: [
+            {
+              required: true,
+              message: "请填写可开门次数",
+              trigger: "blur"
+            }
+          ]
+        }
+      ],
+      defaultData: {
+        personcode: this.param.personcode,
+        personname: this.param.personname,
+        empsdate: "",
+        empedate: "",
+        openstime: "00:00",
+        openetime: "23:59",
+        usecount: ""
+      },
+      mjdefaultData: {
+        personcode: this.param.personcode,
+        personname: this.param.personname,
+        aufempedate: "",
+        aufempsdate: "",
+        aufopenstime: "00:00",
+        aufopenetime: "23:59",
+        aufusecount: ""
+      }
+    };
+  },
+  watch: {
+    dialogVisible() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.defaultData = {
+        personcode: this.param.personcode,
+        personname: this.param.personname,
+        empsdate: "",
+        empedate: "",
+        openstime: "00:00",
+        openetime: "23:59",
+        usecount: ""
+      };
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onClick(data) {
+      this.$emit("confirm", data, this.paramObj);
+    }
+  }
+};
+</script>

@@ -1,0 +1,65 @@
+<template>
+  <div>
+    <div v-if="grouplist&&grouplist.length>0" class="groupMain_top">
+      <div class="groupMain_top_top">下级分组</div>
+      <div
+        class="groupMain_top_bottom"
+        :style="{borderBottom: roomlist&&roomlist.length>0?'1px solid #ccc':'none'}"
+      >
+        <group v-for="(item,ind) of grouplist" v-on="$listeners" :data="item" :key="ind"></group>
+      </div>
+    </div>
+    <div v-if="roomlist&&roomlist.length>0" class="groupMain_bottom">
+      <div class="groupMain_bottom_top">
+        <p>本组房间</p>
+        <div class="groupMain_bottom_top_iconBox">
+          <div class="icon1"></div>
+          <div>通讯正常</div>
+          <div class="icon2"></div>
+          <div>通讯异常</div>
+          <div class="icon3"></div>
+          <div>未安装</div>
+        </div>
+      </div>
+      <div class="groupMain_bottom_bottom">
+        <door v-for="(item,ind) of roomlist" :data="item" :btnAll="btnAll" :key="ind"></door>
+      </div>
+    </div>
+    <div
+      v-if="!(grouplist&&grouplist.length>0)&&!(roomlist&&roomlist.length>0)"
+      class="config_null"
+    >暂无数据</div>
+  </div>
+</template>
+
+<script>
+import group from "./group";
+import door from "./door";
+export default {
+  props: {
+    btnAll: Object,
+    roomInfo: Object,
+    refresh: Number || String,
+  },
+  components: {
+    group,
+    door,
+  },
+  computed: {
+    roomlist() {
+      return this.roomInfo.rooms;
+    },
+    grouplist() {
+      return this.roomInfo.nextareas;
+    },
+  },
+  watch: {
+    refresh() {
+      this.getList();
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+</style>

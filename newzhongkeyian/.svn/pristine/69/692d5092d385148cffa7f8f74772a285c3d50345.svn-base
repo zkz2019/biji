@@ -1,0 +1,410 @@
+<!--  授权详情  -->
+<template>
+  <adjust class="batch-authori rightD_box">
+    <adjust-div class="b-centre left">
+      <div class="tsTop">
+        <div class="tsTop_left">已生效授权</div>
+        <div
+          class="tsTop_right"
+        >卡片 {{AuthInfo.okcardcount}} 张 密码{{AuthInfo.okpasscount}} 个 指纹 {{AuthInfo.okfingercount}} 枚</div>
+      </div>
+      <paging-table
+        ref="pagingStay"
+        class="tobleList wid100"
+        interface="/lock/operate/info/1/getauthok"
+        layout=" total, prev, pager, next, sizes"
+        @onSelection="onSelection"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+      >
+        <template>
+          <div class="rightD_tabel_top_left">
+            <el-select
+              class="rightD_tabel_sel"
+              v-model="param.authtype"
+              @change="onChange"
+              placeholder="请选择"
+              size="mini"
+            >
+              <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+            <el-input
+              @input="onBlur"
+              class="rightD_tabel_inp"
+              v-model="input"
+              size="mini"
+              placeholder="请输入姓名|卡号"
+            ></el-input>
+          </div>
+        </template>
+        <span class="sli but-blue" @click="onClick(1,1)">
+          <i class="ficon-"></i>
+          全部重载
+        </span>
+        <span class="sli but-blue" @click="onClick(0,1)">
+          <i class="ficon-"></i>
+          选中重载
+        </span>
+      </paging-table>
+    </adjust-div>
+    <adjust-div class="b-centre" noadjust>
+      <div class="tsTop">
+        <div class="tsTop_left">未生效授权</div>
+        <div
+          class="tsTop_right"
+        >卡片 {{AuthInfo.errcardcount}} 张 密码{{AuthInfo.errpasscount}} 个 指纹 {{AuthInfo.errfingercount}} 枚</div>
+      </div>
+      <paging-table
+        ref="pagingStay"
+        class="tobleList wid100"
+        interface="/lock/operate/info/2/getautherr"
+        layout=" total, prev, pager, next, sizes"
+        @onSelection="onSelection1"
+        :list="list1"
+        :refresh="refresh1"
+        :param="param1"
+      >
+        <template>
+          <div class="rightD_tabel_top_left">
+            <el-select
+              class="rightD_tabel_sel"
+              v-model="param.authtype1"
+              @change="onChange1"
+              placeholder="请选择"
+              size="mini"
+            >
+              <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+            <el-input
+              @blur="onBlur1"
+              class="rightD_tabel_inp"
+              v-model="input1"
+              size="mini"
+              placeholder="请输入姓名|卡号"
+            ></el-input>
+          </div>
+        </template>
+        <span class="sli but-blue" @click="onClick(1)">
+          <i class="ficon-"></i>
+          全部重载
+        </span>
+        <span class="sli but-blue" @click="onClick()">
+          <i class="ficon-"></i>
+          选中重载
+        </span>
+      </paging-table>
+    </adjust-div>
+  </adjust>
+</template>
+
+<script>
+export default {
+  props: {
+    checkedroom: Object
+  },
+  name: "right-details",
+  data() {
+    var $this = this;
+    return {
+      input: "",
+      input1: "",
+      param: { authtype: "", roomid: $this.checkedroom.roomid, search: "" },
+      param1: { authtype: "", roomid: $this.checkedroom.roomid, search: "" },
+      show: false,
+      refresh: 0,
+      refresh1: 0,
+      options: [
+        {
+          value: "全部",
+          label: "全部"
+        },
+        {
+          value: "卡片",
+          label: "卡片"
+        },
+        {
+          value: "指纹",
+          label: "指纹"
+        },
+        {
+          value: "密码",
+          label: "密码"
+        }
+      ],
+      AuthInfo: [],
+      list: [
+        {
+          type: "selection",
+          width: "35px"
+        },
+        {
+          name: "序号",
+          type: "index",
+          width: "60px"
+        },
+        {
+          name: "归属人",
+          prop: "personname",
+          width: "70px"
+        },
+        {
+          name: "授权类型",
+          prop: "authtype",
+          width: "80px"
+        },
+        {
+          name: "详情",
+          prop: "authcode",
+        },
+        {
+          name: "有效期",
+          prop: "empedate",
+          template: {
+            props: ["scope"],
+            methods: {},
+            template: `<el-tooltip class="item" effect="dark" :offset="0" :content="scope.row.empedate?scope.row.empedate:'长期'" placement="top">
+      <div style="text-overflow:ellipsis;overflow:hidden;">{{scope.row.empedate?scope.row.empedate.substring(0,10):"长期"}}</div>
+    </el-tooltip>`
+          },
+        },
+        {
+          name: "下发时间",
+          prop: "rcdate",
+        },
+        {
+          name: "操作",
+          prop: "fingercount",
+          width: "60px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                $this.authdata = [this.scope.row];
+                $this.onClick(0, 1);
+              }
+            },
+            template: `<div class="operat-buts"> <el-button type='text' class='' @click.stop='onClick'>重载</el-button></div>`
+          }
+        }
+      ],
+      list1: [
+        {
+          type: "selection",
+          width: "35px"
+        },
+        {
+          name: "序号",
+          type: "index",
+          width: "60px"
+        },
+        {
+          name: "归属人",
+          prop: "personname",
+          width: "70px"
+        },
+        {
+          name: "授权类型",
+          prop: "authtype2",
+          width: "80px"
+        },
+        {
+          name: "详情",
+          prop: "cardcode",
+        },
+        {
+          name: "有效期",
+          prop: "empedate",
+          template: {
+            props: ["scope"],
+            methods: {},
+            template: `<div>{{scope.row.empedate?scope.row.empedate.substring(0,10):"长期"}}</div>`
+          },
+        },
+        {
+          name: "下发时间",
+          prop: "rcsdate",
+        },
+        {
+          name: "操作",
+          prop: "fingercount",
+          width: "60px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                $this.authdata1 = [this.scope.row];
+                $this.onClick();
+              }
+            },
+            template: `<div class="operat-buts"> <el-button type='text' class='' @click.stop='onClick'>重载</el-button></div>`
+          }
+        }
+      ],
+      authdata: [],
+      authdata1: [],
+    };
+  },
+  watch: {
+    checkedroom(val) {
+      this.param.roomid = val.roomid;
+      this.param1.roomid = val.roomid;
+    }
+  },
+  created() {
+    this.$ajax(
+      "/lock/operate/info/f/getroomauthsgroupbytype",
+      { roomid: this.checkedroom.roomid },
+      "1"
+    )
+      .then(res => {
+        this.AuthInfo = res.result;
+      })
+      .catch(err => {
+        this.$message({
+          showClose: true,
+          message: `[${err.resultCode}] `+err.resultMsg ,
+          type: "error"
+        });
+      });
+  },
+  methods: {
+    onChange(val) {
+      if (val == "全部") {
+        this.param.authtype = "";
+      } else if (val == "卡片") {
+        this.param.authtype = "卡片";
+      } else if (val == "密码") {
+        this.param.authtype = "密码";
+      } else if (val == "指纹") {
+        this.param.authtype = "指纹";
+      }
+      this.onRefresh(1);
+    },
+    onChange1(val) {
+      if (val == "全部") {
+        this.param1.authtype = "";
+      } else if (val == "卡片") {
+        this.param1.authtype = "卡片";
+      } else if (val == "密码") {
+        this.param1.authtype = "密码";
+      } else if (val == "指纹") {
+        this.param1.authtype = "指纹";
+      }
+      this.onRefresh();
+    },
+    onBlur() {
+      this.param.search = this.input;
+      this.onRefresh(1);
+    },
+    onBlur1() {
+      this.param1.search = this.input1;
+      this.onRefresh();
+    },
+    onClick(num, type) {
+      let authdata = "";
+      let url = "";
+      let url1 = "";
+
+      if (type == 1) {
+        let authtype = this.param.authtype;
+        authdata = this.authdata;
+        url = "/lock/operate/info/4/reloadok";
+        url1 = "/lock/operate/info/3/reloadselectok";
+      } else {
+        let authtype = this.param1.authtype;
+        authdata = this.authdata1;
+        url = "/lock/operate/info/5/reloaderr";
+        url1 = "/lock/operate/info/c/reloadselecterr";
+      }
+      if (num == 1) {
+        this.$confirm("确定要重载全部授权吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(
+            url,
+            { authtype: this.param.authtype, roomid: this.checkedroom.roomid },
+            "1",{},true
+          )
+            .then(res => {
+              this.$message({
+                showClose: true,
+                message: "全部重载已下发!",
+                type: "success"
+              });
+              this.onRefresh();
+              if (type == 1) {
+                this.authdata = [];
+              } else {
+                this.authdata1 = [];
+              }
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] `+err.resultMsg ,
+                type: "error"
+              });
+            });
+        });
+      } else {
+        this.$confirm("确定要重载选中授权吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(url1, { roomid: this.checkedroom.roomid }, "1", authdata,true)
+            .then(res => {
+              this.$message({
+                showClose: true,
+                message: "选中授权已下发!",
+                type: "success"
+              });
+              this.onRefresh();
+              if (type == 1) {
+                this.authdata = [];
+              } else {
+                this.authdata1 = [];
+              }
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] `+err.resultMsg ,
+                type: "error"
+              });
+            });
+        });
+      }
+    },
+    onClick1(num) {},
+    cardInput() {},
+    search() {},
+    onSelection(val) {
+      this.authdata = val;
+    },
+    onSelection1(val) {
+      this.authdata1 = val;
+    },
+    onRefresh(num) {
+      if (num == 1) {
+        this.refresh = new Date().getTime();
+      } else {
+        this.refresh1 = new Date().getTime();
+      }
+    }
+  }
+};
+</script>

@@ -1,0 +1,727 @@
+<!--智能网关  -->
+<template>
+  <el-container>
+    <fel-left-tree leftTitle="建筑列表" class="wggl307">
+      <div slot="left" class="left-tree">
+        <fel-tree1
+          :showCheckbox="false"
+          class="tree1"
+          :idArr="[0]"
+          :refresh="refreshTree"
+          interface="/system/device/gateway/1/getbuildtree"
+          @handleNodeClick="handleNodeClick"
+        ></fel-tree1>
+      </div>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{toParam.alias}}</com-title>
+          <retrieval class="query_head">
+            <inpbox :inpb="true">
+              <el-select v-model="param.gatewaystate" class="con-select qh_inp">
+                <el-option
+                  v-for="item in gatewaystates"
+                  :key="item.gatewaystate"
+                  :label="item.statename"
+                  :value="item.gatewaystate"
+                ></el-option>
+              </el-select>
+            </inpbox>
+
+            <!-- <inpbox :inpb="true">
+              <el-select v-model="param.gatewaystate" class="con-select qh_inp">
+                <el-option
+                  v-for="item in macTypes"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.gatewaystate"
+                ></el-option>
+              </el-select>
+            </inpbox>-->
+            <inpbox :inpb="true">
+              <el-select v-model="param.gatetype" class="con-select qh_inp">
+                <el-option
+                  v-for="item in gatetypes"
+                  :key="item.gatetype"
+                  :label="item.gatename"
+                  :value="item.gatetype"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.search"
+                placeholder="输入网关通讯ID/位置/唯一ID进行查询"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            :isAll="range == 2? true:false"
+            :class="{'cover-up':range == 2}"
+            interface="/system/device/gateway/2/getgateway"
+            :list="list"
+            @onSelection="onSelection"
+            :refresh="refresh"
+            :refreshTable="refreshTable"
+            :param="param"
+            :paramObj="paramObj"
+            @onEjectChange="onEjectChange"
+          >
+            <template v-for="(v,k) of topButs">
+              <template v-if="v.id == '35'">
+                <!-- v-if="paramObj.buildtype ==3" -->
+                <span :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+                  <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+                  {{v.alias}}
+                </span>
+              </template>
+              <span :key="k" v-else class="sli but-blue" @click="onClick(v.id, v)">
+                <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+                {{v.alias}}
+              </span>
+            </template>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <!-- <el-select class="wid150" v-model="queryParam.gotype">
+                <el-option
+                  v-for="item in ranges"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                ></el-option>
+              </el-select>-->
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <!-- <div class="cover-up" v-show="range == 2">
+                <el-checkbox disabled v-model="range" true-label="2" false-label="1"></el-checkbox>
+              </div>-->
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+            </template>
+          </paging-table>
+        </el-main>
+        <el-dialog
+          title="绑定门锁详情"
+          width="70%"
+          class="grantDialog"
+          :close-on-click-modal="false"
+          :before-close="beforeClose"
+          :visible.sync="dialogVisible"
+        >
+          <el-container class="dialog-table6 query_main">
+            <pfel-table
+              :list="grantList"
+              interface="/system/device/gateway/info/1/getlock"
+              @onSelection="onSelection"
+              :refresh="tableRefresh"
+              :param="grantParam"
+            />
+          </el-container>
+        </el-dialog>
+        <el-dialog
+          title="选择功率"
+          width="25%"
+          class="wggldialog"
+          :close-on-click-modal="false"
+          @beforeClose="beforeClose1=false"
+          :visible.sync="dialogVisible1"
+        >
+          <div class="wgselect">
+            <el-select v-model="value1" placeholder="请选择" @change="onPower">
+              <el-option
+                v-for="item in options1"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+          </div>
+          <!-- <div class="wgbtn">
+            <el-button type="primary">确定</el-button>
+          </div>-->
+        </el-dialog>
+        <queryGateway
+          :param="queryParam"
+          @beforeClose="dialogQuery=false"
+          :dialogVisible="dialogQuery"
+        ></queryGateway>
+        <modifyGateway
+          @onRefresh="onRefreshTable"
+          :param="modifyParam"
+          @beforeClose="dialogModify=false"
+          :dialogVisible="dialogModify"
+        ></modifyGateway>
+        <addGateway
+          @onRefresh="onRefreshTable"
+          :param="addParam"
+          @beforeClose="dialogAdd=false"
+          :dialogVisible="dialogAdd"
+        ></addGateway>
+      </el-container>
+    </fel-left-tree>
+    <cfjc @beforeClose="dialogCfjc=false" :dialogVisible="dialogCfjc"></cfjc>
+  </el-container>
+</template>
+
+<script>
+import cfjc from "./cfjc";
+import Storages from "../../../utils/Storage.js"; //缓存工具
+import queryGateway from "./queryGateway";
+import modifyGateway from "./modifyGateway";
+import addGateway from "./addGateway";
+import { setTimeout } from "timers";
+export default {
+  components: {
+    queryGateway,
+    modifyGateway,
+    addGateway,
+    cfjc,
+  },
+  props: {
+    toParam: Object,
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogCfjc: false,
+      beforeClose1: false,
+      dialogVisible1: false,
+      value1: "",
+      options1: [
+        {
+          value: "A0",
+          // label: "A0"
+        },
+        {
+          value: "A1",
+          // label: "A1"
+        },
+        {
+          value: "A2",
+          // label: "A2"
+        },
+        {
+          value: "A3",
+          // label: "A3"
+        },
+      ],
+      outnum: 0,
+      gatewaystates: [
+        {
+          gatewaystate: "",
+          statename: "全部状态网关",
+        },
+      ],
+      gatetypes: [
+        {
+          gatetype: "",
+          gatename: "全部类型网关",
+        },
+      ],
+      topButs: [],
+      addParam: {},
+      dialogAdd: false,
+      modifyParam: {},
+      dialogQuery: false,
+      dialogModify: false,
+      range: "1",
+      ranges: [
+        {
+          value: "勾选范围",
+          label: "勾选范围",
+        },
+        {
+          value: "区域范围",
+          label: "全部列表",
+        },
+      ],
+      queryParam: {
+        gotype: "勾选范围",
+        gotype2: "",
+      },
+      quantitytypes: [],
+
+      grantList: [
+        {
+          name: "序号",
+          type: "index",
+          width: "60px",
+        },
+        {
+          name: "门锁通讯ID",
+          prop: "roomcode",
+        },
+        {
+          name: "门锁唯一ID",
+          prop: "roomcode2",
+        },
+        {
+          name: "门锁位置",
+          prop: "roomlocation",
+        },
+        {
+          name: "门锁型号",
+          prop: "roommodel",
+        },
+        {
+          name: "门锁状态",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.roomstate;
+                if (value == "正常") {
+                  return "puc-pg";
+                } else if (value == "异常") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.roomstate}}</span>`,
+          },
+        },
+      ],
+      grantParam: {
+        gatewaycode: "",
+      },
+      tableRefresh: 0,
+      dialogVisible: false,
+      refreshTree: 0,
+      refresh: 0,
+      refreshTable: 0,
+      param: {
+        gatewaystate: "",
+        gatetype: "",
+        search: "",
+      },
+      paramObj: {},
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "网关型号",
+          prop: "gatewaytype",
+        },
+        {
+          name: "IP地址",
+          minWidth: "120px",
+          prop: "gatewayip",
+          template: {
+            props: ["scope"],
+            methods: {},
+            template: `<a :href="'http://'+this.scope.row.gatewayip" target='_blank' style='color:#0094ff'>{{this.scope.row.gatewayip}}</a>`,
+          },
+        },
+
+        {
+          name: "mac地址",
+          show: true,
+          prop: "gatewaymac",
+        },
+        {
+          name: "网关类型",
+          prop: "gatetype",
+        },
+        {
+          name: "网关唯一ID",
+          minWidth: "110px",
+          prop: "gatewaycode2",
+        },
+        {
+          name: "网关通讯ID",
+          minWidth: "110px",
+          prop: "gatewaycode",
+        },
+        {
+          name: "网关位置",
+          prop: "gatewaylocation",
+        },
+        {
+          name: "绑定门锁",
+          prop: "lockcount",
+          template: {
+            props: ["scope"],
+            methods: {
+              isNumber(num) {
+                if (num) {
+                  return /^[0-9]*$/.test(num) && num != 0;
+                }
+                return false;
+              },
+              onClick() {
+                if (this.scope.row.gatewaycode) {
+                  $this.grantParam.gatewaycode = this.scope.row.gatewaycode;
+                  $this.onTableRefresh();
+                  $this.dialogVisible = true;
+                }
+              },
+            },
+            template: `<div>
+              <span v-if="isNumber(scope.row.lockcount)"><a class="a-click" @click.stop="onClick">{{scope.row.lockcount}}</a></span>
+              <span v-else>{{scope.row.lockcount}}</span>
+            </div>`,
+          },
+        },
+        {
+          name: "通讯状态",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.gatewaystate;
+                if (value == "在线") {
+                  return "puc-pg";
+                } else if (value == "离线") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.gatewaystate}}</span>`,
+          },
+        },
+        // {
+        //   name: "最后通讯",
+        //   prop: "gatewaystate"
+        // },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            methods: {
+              onClick(key) {
+                if (key == 2) {
+                  $this.modify(this.scope.row);
+                } else if (key == 4) {
+                  $this.delete([this.scope.row.gatewaycode]);
+                }
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+      listBut: [],
+      listArr: [],
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+    this.inGetgatewaystate();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.onRefresh();
+      this.isSelectable = true;
+      this.range = "1";
+    },
+    inGetgatewaystate() {
+      this.$ajax("/system/device/gateway/4/getgatewaystatetype", {}, "1")
+        .then((res) => {
+          this.gatewaystates.push(...res.result.states);
+          this.gatetypes.push(...res.result.types);
+        })
+        .catch((err) => {});
+    },
+    onSelection(data) {
+      this.listArr = data;
+    },
+    onClick(key, data) {
+      console.log("key,data", key, data);
+      if (key == 35) {
+        this.add();
+      } else if (key == 178) {
+        this.dialogQuery = true;
+      } else if (key == 975) {
+        this.dialogCfjc = true;
+      }
+    },
+    // onPshow(str) {
+    //   if (str == "更新射频功率") {
+    //     this.dialogVisible1 = true;
+    //   }
+    // },
+    onPower(str) {
+      let obj = Object.assign({}, this.queryParam, { power: this.value1 });
+      this.goteway(obj);
+      this.dialogVisible1 = false;
+    },
+    inSavegatewayorder(id, obj) {
+      this.queryParam.gotype = this.range == 2 ? "区域范围" : "勾选范围";
+      this.queryParam.gotype2 = obj.alias;
+      if (!this.queryParam.gotype2) {
+        this.$message({
+          message: "请先选择指令类型",
+          type: "warning",
+        });
+      }
+      // else if (this.queryParam.gotype2 == "更新射频功率") {
+      //   this.dialogVisible1 = true;
+      // }
+      else if (
+        this.queryParam.gotype == "勾选范围" &&
+        (!this.listArr || this.listArr.length == 0)
+      ) {
+        this.$message({
+          message: "请先选择要发指令的网关",
+          type: "warning",
+        });
+      } else {
+        this.queryParam.buildid = this.paramObj.buildid;
+        let obj = this.queryParam;
+        if (this.queryParam.gotype != "勾选范围") {
+          obj = Object.assign({}, this.param, this.queryParam);
+        }
+        if (this.queryParam.gotype2 == "更新射频功率") {
+          this.dialogVisible1 = true;
+          // obj = Object.assign({}, this.queryParam, { power: this.value1 });
+          // if (this.value1 == "") {
+          //   this.$message({
+          //     showClose: true,
+          //     message: "未成功选中功率,请重新选择!",
+          //     type: "error"
+          //   });
+          //   this.goteway(obj);
+          return;
+          // }
+        }
+        if (this.queryParam.gotype2 == "状态查询") {
+          this.$confirm("是否清空异常数据？", "提示", {
+            confirmButtonText: "是",
+            cancelButtonText: "否",
+            showClose: false,
+            type: "warning",
+          })
+            .then(() => {
+              obj.isclear = 1;
+              this.goteway(obj);
+            })
+            .catch(() => {
+              obj.isclear = 0;
+              this.goteway(obj);
+            });
+        } else {
+          this.goteway(obj);
+        }
+      }
+    },
+    goteway(obj) {
+      this.$ajax(
+        "/system/device/gateway/order/1/savegatewayorder",
+        obj,
+        "1",
+        this.listArr.map((o) => o.gatewaycode),
+        true
+      )
+        .then((res) => {
+          this.$message({
+            message: this.queryParam.gotype2 + "指令下发成功",
+            type: "success",
+          });
+          this.queryParam.gotype2 = "";
+          this.onRefreshTable();
+        })
+        .catch((err) => {
+          this.queryParam.gotype2 = "";
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "35") {
+              this.topButs.push(value.entity);
+            } else if (id == "37") {
+              this.listBut.push({
+                type: "4",
+                name: "删除",
+              });
+            } else if (id == "36") {
+              this.listBut.push({
+                type: "2",
+                name: "修改",
+              });
+            } else if (id == "178") {
+              this.topButs.push(value.entity);
+            } else if (id == "544") {
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  if (
+                    item.entity.id == "172" ||
+                    item.entity.id == "177" ||
+                    item.entity.id == "188" ||
+                    item.entity.id == "200"
+                  ) {
+                    this.quantitytypes.push(item.entity);
+                  }
+                });
+              }
+            } else if (id == "975") {
+              this.topButs.push(value.entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    add() {
+      if (Object.keys(this.paramObj).length == 0) {
+        this.$message({
+          showClose: true,
+          message: "请先选中左侧区域",
+          type: "warning",
+        });
+      } else if (this.paramObj.buildtype != 3) {
+        this.$message({
+          showClose: true,
+          message: "网关位置必须为楼层!",
+          type: "warning",
+        });
+      } else {
+        this.addParam = this.paramObj;
+        this.dialogAdd = true;
+      }
+    },
+    delete(arr) {
+      this.$confirm("此操作将删除当前网关, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          this.$ajax(
+            "/system/device/gateway/delete/1/deletegateway",
+            {},
+            "1",
+            arr,
+            true
+          )
+            .then((res) => {
+              this.$message({
+                message: "删除成功",
+                type: "success",
+              });
+              this.onRefreshTable();
+            })
+            .catch((err) => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error",
+              });
+            });
+        })
+        .catch((err) => {});
+    },
+    modify(data) {
+      this.modifyParam = data;
+      this.dialogModify = true;
+    },
+    onTableRefresh() {
+      this.tableRefresh = new Date().getTime();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+    handleNodeClick(data) {
+      this.outnum++;
+      if (this.outnum >= 5) {
+        this.outnum = 5;
+      }
+      this.paramObj = data;
+      if (this.outnum > 1) {
+        setTimeout(() => {
+          this.onRefresh();
+        }, this.outnum * 100);
+      } else {
+        this.onRefresh();
+      }
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "wggl307");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "wggl307");
+    },
+  },
+};
+</script>

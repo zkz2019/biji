@@ -1,0 +1,279 @@
+<template>
+  <el-dialog
+    :title="historyObj.name"
+    width="70%"
+    class="importHistory"
+    :close-on-click-modal="false"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table :interface="historyObj.url" :list="lists" :param="param" :refresh="refresh">
+        <retrieval class="query_head">
+          <inpbox inptext="请输入">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp maR24"
+              v-model="param.search"
+              :placeholder="'输入账号/姓名进行检索'"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </paging-table>
+    </el-container>
+    <importDetails
+      :dialogDetailed="dialogDetailed"
+      :uploadid="param1.uploadid"
+      :historyObj="historyObj"
+      @beforeDetailed="beforeDetailed"
+    ></importDetails>
+  </el-dialog>
+</template>
+
+<script>
+import importDetails from "./import-details";
+import { download } from "@/utils/utils.js";
+import { mapGetters } from "vuex";
+let that = this;
+export default {
+  TT: this,
+  props: {
+    dialogVisible: Boolean,
+    uploadid: String | Number,
+    historyObj: { type: Object, required: true },
+    // url: { type: String, required: true },
+    // title: { type: String, required: true },
+    list: Function
+  },
+  components: { importDetails },
+  data() {
+    let $this = this;
+    return {
+      // interface: "",
+      failUrl: "",
+      refresh: 0,
+      detailedRefresh: 0,
+      dialogDetailed: false,
+      param: { type: "", search: "" },
+      param1: { uploadid: "" },
+      lists: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "操作时间",
+          width: "150px",
+          prop: "uploaddate"
+        },
+        {
+          name: "类别",
+          prop: "uploadtype",
+          width: "80px",
+          template: {
+            props: ["scope"],
+            computed: {
+              type() {
+                if (this.scope.row.uploadtype) {
+                  if (this.scope.row.uploadtype == "1") {
+                    return "入住导入";
+                  } else if (this.scope.row.uploadtype == "2") {
+                    return "退房导入";
+                  } else if (this.scope.row.uploadtype == "3") {
+                    return "比对导入";
+                  } else if (this.scope.row.uploadtype == "4") {
+                    return "公共授权导入";
+                  } else if (this.scope.row.uploadtype == "5") {
+                    return "权限导入";
+                  } else if (this.scope.row.uploadtype == "6") {
+                    return "属性导入";
+                  } else if (this.scope.row.uploadtype == "7") {
+                    return "公共退房导入";
+                  } else if (this.scope.row.uploadtype == "8") {
+                    return "公共比对导入";
+                  } else if (this.scope.row.uploadtype == "9") {
+                    return "快捷导入";
+                  } else if (this.scope.row.uploadtype == "10") {
+                    return "人员导入";
+                  }
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<div>
+              <span>{{type}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "导入数量",
+          prop: "uploadallcount",
+          width: "100px"
+        },
+        {
+          name: "进度",
+          prop: "uploadallcount",
+          width: "100px",
+          formatter(row, b, c, d) {
+            if (row) {
+              let newtotal =
+                Number(row.uploadnocount) + Number(row.uploadokcount);
+              let total = Number(row.uploadallcount);
+              return Math.floor((newtotal / total) * 100) + "%";
+            } else {
+              return "";
+            }
+          }
+        },
+        {
+          name: "正在导入数",
+          prop: "uploadcount",
+          width: "100px"
+        },
+        {
+          name: "导入失败数",
+          prop: "uploadnocount",
+          width: "100px"
+        },
+        {
+          name: "导入成功数",
+          prop: "uploadokcount",
+          width: "100px"
+        },
+
+        {
+          name: "导入账户",
+          prop: "userlogin"
+        },
+        {
+          name: "导入姓名",
+          prop: "username"
+        },
+
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                let obj = this.scope.row;
+                return [
+                  { name: "查看", id: "1", type: obj.uploadtype, data: obj },
+                  {
+                    name: "导出",
+                    id: "2",
+                    type: obj.uploadtype,
+                    data: obj
+                  }
+                ];
+              }
+            },
+            methods: {
+              onClick(id, obj) {
+                $this.onClick(id, obj);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.id, v)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.type = this.historyObj.type;
+        if (this.list) {
+          this.lists = this.list();
+        }
+        this.onRefresh();
+      }
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    beforeDetailed() {
+      this.dialogDetailed = false;
+    },
+    onClick(id, obj) {
+      console.log("click", id, obj);
+      this.param1.uploadid = obj.data.uploadid;
+      if (id == "1") {
+        this.dialogDetailed = true;
+      } else {
+        let name = "";
+        if (obj.type == "5") {
+          this.failUrl = "/system/user/uploadauth/5/downuploaduserauthfail";
+          name = "失败账号授权记录";
+        } else if (obj.type == "6") {
+          this.failUrl = "/system/user/uploadtype/5/downuploadusertypefail";
+          name = "失败账号属性记录";
+        } else if (obj.type == "10") {
+          this.failUrl = "/person/upload/d/downuploadpersonfail";
+          name = "失败人员记录";
+        } else if (obj.type == "9") {
+          this.failUrl = "/quick/upload/7/downuploadquickfail";
+          name = "失败快捷记录";
+        }
+        this.exportBut(name);
+      }
+    },
+    search() {
+      this.onRefresh();
+    },
+    onReset() {
+      // Object.keys(this.param).forEach(item => {
+      this.param.search = "";
+      // });
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    //导出
+    exportBut(name) {
+      let url = this.failUrl;
+      let data = { uploadid: this.param1.uploadid };
+      this.inExport(url, name, data);
+    },
+    inExport(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "8", obj, "文件导出中...", 60000)
+        .then(res => {
+          if (res.size) {
+            download(res, name);
+            this.$notify({
+              title: "成功",
+              message: name + "文件导出成功！",
+              type: "success"
+            });
+          }
+        })
+        .catch(err => {
+          this.$message.error("文件导出失败！失败原因：" + err.resultMsg);
+        });
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+.importHistory {
+  .query_head {
+    margin: 0;
+  }
+}
+</style>

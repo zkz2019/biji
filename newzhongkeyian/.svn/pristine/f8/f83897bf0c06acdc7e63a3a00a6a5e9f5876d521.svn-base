@@ -1,0 +1,33 @@
+@media screen and (max-height: 700px) {
+
+    //com-title
+    .com-title {
+        margin: 0 0 8px 0;
+        padding: 12px 0 0 32px;
+        height: 50px;
+
+        span.navig {
+            font-size: 17px;
+        }
+
+        .ti_text {
+            height: 25px;
+            font-size: 18px;
+        }
+    }
+
+    .query_head {
+        margin: 6px 12px;
+        padding: 7px 24px;
+    }
+
+    .query_main {
+        margin: 6px 12px 12px;
+        padding: 0 24px;
+
+        .paging-fy {
+            padding: 16px 3px 12px;
+            // padding-right: 150px;
+        }
+    }
+}

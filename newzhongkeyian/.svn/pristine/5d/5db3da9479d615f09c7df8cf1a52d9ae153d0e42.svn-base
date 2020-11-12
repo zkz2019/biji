@@ -1,0 +1,156 @@
+<template>
+  <div></div>
+</template>
+
+<script>
+import { mapState, mapActions, mapMutations } from "vuex";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import Logout from "../../utils/logout";
+export default {
+  data() {
+    return {};
+  },
+  created() {
+    let search = window.location.search;
+    if (search) {
+      let value = search.substr(1);
+      let userlogin = this.getUrlParam(value, "userlogin");
+      let timestamp = this.getUrlParam(value, "timestamp");
+      let sign = this.getUrlParam(value, "sign");
+      //参数分割线---------------------------------
+      let Name = this.getUrlParam(value, "Name");
+      let Datetime = this.getUrlParam(value, "Datetime");
+      let jsName = this.getUrlParam(value, "jsName");
+      let verify = this.getUrlParam(value, "verify");
+      let recordId = this.getUrlParam(value, "recordId");
+      let gndm = this.getUrlParam(value, "gndm");
+
+      if (userlogin && timestamp && sign) {
+        this.ssologin({
+          userlogin: userlogin,
+          timestamp: timestamp,
+          sign: sign
+        });
+      } else if (Name && Datetime && jsName && verify) {
+        this.ssologin(
+          {
+            Name: Name,
+            Datetime: Datetime,
+            jsName: jsName,
+            recordId: recordId,
+            verify: verify,
+            gndm: gndm
+          },
+          "/login/login/cmssologin"
+        );
+      } else {
+        this.$router.replace({ path: "/index" });
+      }
+    } else {
+      this.$router.replace({ path: "/index" });
+    }
+  },
+  methods: {
+    ...mapMutations(["setCheckVisible"]),
+    ...mapActions(["getDiction", "getmenu", "againGetInfo"]),
+    getUrlParam(value, name) {
+      var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+      var r = value.match(reg);
+      if (r != null) {
+        return unescape(r[2]);
+      }
+      return null;
+    },
+    ssologin(data, url = "/login/login/ssologin") {
+      this.$ajax(url, data, "1")
+        .then(response => {
+          let { iscard, isfinger, ispassword } = response.result;
+          let obj = { iscard, isfinger, ispassword };
+          Storages.setStorage("isRight", obj);
+          if (
+            response.resultCode == 0 &&
+            response.result &&
+            response.result.token
+          ) {
+            this.setCheckVisible(false);
+            Storages.setStorage("_codewarn", response.result.codewarn);
+            Storages.setStorage("token", response.result.token);
+            Storages.setStorage(
+              "refreshentoken",
+              response.result.refreshentoken
+            );
+            Storages.setStorage("tokenNum", 0);
+            this.againGetInfo();
+            this.getDiction();
+            this.getmenu()
+              .then(data => {
+                this.$router.replace({ path: "/index" });
+                this.logining = false;
+                this.loginIn = true;
+                if (response.result.codewarn == 1) {
+                  let codedate = response.result.codedate;
+                  this.$confirm(
+                    codedate + "系统即将到期，请输入序列号",
+                    "提示",
+                    {
+                      confirmButtonText: "前往设置",
+                      cancelButtonText: "取消",
+                      type: "warning"
+                    }
+                  )
+                    .then(() => {
+                      this.$router.push({
+                        name: "系统参数",
+                        params: { name: "基础参数" }
+                      });
+                    })
+                    .catch(() => {});
+                }
+              })
+              .catch(err => {
+                this.$router.replace({ path: "/index" });
+                this.logining = false;
+                this.loginIn = true;
+                if (response.result.codewarn == 1) {
+                  let codedate = response.result.codedate;
+                  this.$confirm(
+                    codedate + "系统即将到期，请输入序列号",
+                    "提示",
+                    {
+                      confirmButtonText: "前往设置",
+                      cancelButtonText: "取消",
+                      type: "warning"
+                    }
+                  )
+                    .then(() => {
+                      this.$router.push({
+                        name: "系统参数",
+                        params: { name: "基础参数" }
+                      });
+                    })
+                    .catch(() => {});
+                }
+              });
+            Logout.times(0, this); //清除登录信息
+          } else {
+            this.$router.replace({ path: "/login" });
+            this.$message({
+              message: `[${response.resultCode}] ` + response.resultMsg,
+              type: "error"
+            });
+          }
+        })
+        .catch(err => {
+          this.$router.replace({ path: "/login" });
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    }
+  }
+};
+</script>
+
+<style>
+</style>

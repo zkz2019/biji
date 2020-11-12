@@ -1,0 +1,154 @@
+<template>
+  <div v-loading="loading" class="statistics">
+    <div class="query_head marpadbor0">
+      <inpbox inptext="时间">
+        <fel-date class="maR10 qh_date" type="daterange" v-model="dates"></fel-date>
+      </inpbox>
+      <inpbox>
+        <fel-button class="qh_btn" type="primary" @click="onSearch">查询</fel-button>
+      </inpbox>
+    </div>
+    <div ref="chart" v-loading="loading" class="chart"></div>
+  </div>
+</template>
+
+<script>
+import { format } from "@/utils/utils.js";
+import echarts from "echarts";
+export default {
+  props: {
+    param: Object,
+    refresh: Number
+  },
+  data() {
+    return {
+      dates: [],
+      loading: false,
+      myChart: null
+    };
+  },
+  created() {
+    this.loading = true;
+    this.inQuery();
+  },
+  mounted() {
+    this.$nextTick(() => {
+      let dom = this.$refs["chart"];
+      this.setEcharts(dom);
+    });
+  },
+  watch: {
+    refresh(val) {
+      this.dates = [];
+      this.onSearch();
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onSearch() {
+      this.loading = true;
+      this.inQuery();
+    },
+    inQuery() {
+      let sdate = this.dates ? format(this.dates[0], "yyyy-MM-dd") : "";
+      let edate = this.dates ? format(this.dates[1], "yyyy-MM-dd") : "";
+      let data = {
+        roomid: this.param.roomid,
+        sdate: sdate,
+        edate: edate
+      };
+      this.$ajax("/system/control/nbheart/3/getnbheartanalysis", data, "1")
+        .then(res => {
+          let xAxis = [],
+            series = [];
+          res.result.forEach(obj => {
+            xAxis.push(obj.date);
+            series.push(obj.count);
+          });
+          if (this.myChart) {
+            this.myChart.setOption({
+              xAxis: {
+                data: xAxis
+              },
+              series: [
+                {
+                  data: series
+                }
+              ]
+            });
+          }
+          this.loading = false;
+        })
+        .catch(err => {
+          this.loading = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+        });
+    },
+    setEcharts(dom) {
+      // 基于准备好的dom，初始化echarts实例
+      this.myChart = echarts.init(dom);
+      // 绘制图表
+      this.myChart.setOption({
+        title: {
+          text: "每日通讯次数曲线图",
+          left: "center",
+          bottom: "0",
+          textStyle: {
+            color: "#ccc",
+            fontWeight: "normal"
+          }
+        },
+        color: ["#8ec0fd"],
+        tooltip: {
+          trigger: "item",
+          borderWidth: 1,
+          padding: [5, 10],
+          formatter: "日期：{b}<br />次数：{c}",
+          position: function(point, params, dom, rect, size) {
+            return [rect.x - 18, rect.y - 44];
+          },
+          textStyle: {
+            ccolor: "#ffffff",
+            fontSize: "14"
+          }
+        },
+        xAxis: {
+          name: "日期",
+          nameTextStyle: {
+            fontSize: "16"
+          },
+          type: "category",
+          boundaryGap: false
+          // axisLabel: {
+          //   formatter: function(value, idx) {
+          //     return value.substr(5);
+          //   }
+          // }
+        },
+        yAxis: [
+          {
+            name: "次数",
+            nameTextStyle: {
+              fontSize: "16"
+            },
+            type: "value"
+          }
+        ],
+        series: [
+          {
+            symbolSize: 10,
+            symbol: "circle",
+            type: "line"
+          }
+        ]
+      });
+    }
+  }
+};
+</script>

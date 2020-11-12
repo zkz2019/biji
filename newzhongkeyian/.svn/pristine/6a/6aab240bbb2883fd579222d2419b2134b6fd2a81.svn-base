@@ -1,0 +1,249 @@
+<!--  -->
+<template>
+  <div>
+    <position
+      :title="'已授权位置列表 - '+param.userlogin"
+      top="10vh"
+      treeUrl="/system/user/area/1/getbuildtree"
+      tabelurl="/system/user/area/2/getuserroom"
+      :dialogVisible="dialogVisible"
+      @handleClose="handleClose"
+      :param="param"
+      :list="listPosition"
+      :button="buttons"
+      :refresh="refresh"
+      @onSelection="onSelection"
+      @checkchange="checkchange"
+      @onClick="onClick"
+    ></position>
+    <position
+      :title="'添加位置权限 - '+param.userlogin"
+      top="10vh"
+      treeUrl="/system/user/area/save/1/getbuildtree"
+      tabelurl="/system/user/area/save/2/getsaveuserroom"
+      :dialogVisible="dialogPositionAdd"
+      @handleClose="dialogPositionAdd=false"
+      :param="addParam"
+      :list="listPositionAdd"
+      :button="buttonAdds"
+      @onSelection="onSelectionAdd"
+      @checkchange="checkchangeAdd"
+      @onClick="onClick"
+    ></position>
+    <rightList :dialogVisible="rightVisible" @beforeClose="rightVisible=false" types="1"></rightList>
+  </div>
+</template>
+
+<script>
+import position from "./position";
+import rightList from "./dialog/rightList";
+export default {
+  components: {
+    position,
+    rightList
+  },
+  props: {
+    dialogVisible: Boolean,
+    param: Object,
+    buttons:Array,
+  },
+  data() {
+    return {
+      rightVisible:false,
+      refresh: 0,
+      // buttons: [
+      //   { type: "z1", name: "删除权限" },
+      //   { type: "z2", name: "添加权限" }
+      // ],
+      buttonAdds: [{ type: "a1", name: "新增授权" }],
+      dialogPositionAdd: false,
+      listPositionAdd: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "详情",
+          prop: "roomlocation",
+          tooltip: true
+        },
+        {
+          name: "建筑编号",
+          prop: "roomcode",
+          formatter(a, b, c) {
+            return c === "" ? "--" : c;
+          }
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        }
+      ],
+      listPosition: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "已授权位置",
+          prop: "roomlocation",
+          tooltip: true
+        },
+        {
+          name: "授权人",
+          prop: "userlogin"
+        },
+        {
+          name: "授权时间",
+          prop: "date",
+          tooltip: true
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        }
+      ],
+      leftArrs: [],
+      arrs: [],
+      leftArrsAdd: [],
+      arrsAdd: []
+    };
+  },
+  computed: {
+    addParam() {
+      return { userlogin: this.param.userlogin };
+    }
+  },
+  methods: {
+    onRefresh() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.refresh = new Date().getTime();
+    },
+    handleClose() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.$emit("handleClose");
+    },
+    onSelection(data) {
+      this.arrs = data;
+    },
+    onSelectionAdd(data) {
+      this.arrsAdd = data;
+    },
+    checkchange(data, Nodes) {
+      this.leftArrs = Nodes.checkedNodes;
+    },
+    checkchangeAdd(data, Nodes) {
+      this.leftArrsAdd = Nodes.checkedNodes;
+    },
+    inDeleteuserroom() {
+      this.$confirm("此操作将删除勾选的权限, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          let obj = {
+            buildlist: this.leftArrs
+              ? this.leftArrs.map(o => o.buildid + "")
+              : [],
+            roomlist: this.arrs ? this.arrs.map(o => o.roomid) : []
+          };
+          this.$ajax(
+            "/system/user/area/delete/2/deleteuserroom2",
+            { userlogin: this.param.userlogin },
+            "1",
+            obj,
+            true,
+            30000
+          )
+            .then(res => {
+              this.onRefresh();
+              this.$message({
+                showClose: true,
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] `+err.resultMsg ,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+
+    inSaveuserroom() {
+      let obj = {
+        buildlist: this.leftArrsAdd
+          ? this.leftArrsAdd.map(o => o.buildid + "")
+          : [],
+        roomlist: this.arrsAdd ? this.arrsAdd.map(o => o.roomid) : []
+      };
+      this.$ajax(
+        "/system/user/area/save/6/saveuserroom2",
+        { userlogin: this.param.userlogin },
+        "1",
+        obj,
+        true,
+        120000
+      )
+        .then(res => {
+          this.onRefresh();
+          this.$message({
+            showClose: true,
+            message: "添加成功",
+            type: "success"
+          });
+          this.dialogPositionAdd = false;
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+        });
+    },
+    onClick(key) {
+      if (key == "545") {
+        this.arrsAdd = [];
+        this.leftArrsAdd = [];
+        this.dialogPositionAdd = true;
+      } else if (key == "546") {
+        if (this.arrs.length > 0 || this.leftArrs.length > 0) {
+          this.inDeleteuserroom();
+        } else {
+          this.$message({
+            message: "请选择要删除的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "a1") {
+        if (this.arrsAdd.length > 0 || this.leftArrsAdd.length > 0) {
+          this.inSaveuserroom();
+        } else {
+          this.$message({
+            message: "请选择要添加的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "669") {
+        this.rightVisible=true;
+      }
+    }
+  }
+};
+</script>

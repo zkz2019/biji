@@ -1,0 +1,481 @@
+<!-- 有线锁通讯质量 -->
+<template>
+  <el-container class="yxstxzl580">
+    <el-header class="query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox inptext="失败次数>=">
+          <el-input-number
+            :min="0"
+            clearable
+            class="numlineH con-num qh_inp"
+            v-model="paramObj.failnum"
+          ></el-input-number>
+
+          <!-- <el-input clearable class="con-popover qh_inp" v-model="paramObj.failnum" placeholder="失败次数大于"></el-input> -->
+        </inpbox>
+        <!-- <inpbox :inpb="true">
+          <el-button class="buta qh_btn" type="primary" @click="screen">筛选</el-button>
+        </inpbox>-->
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="paramObj.issend" placeholder="请选择">
+            <el-option
+              v-for="item in selectarr"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <!-- <inpbox :inpb="true">
+          <el-button class="buta qh_btn" type="primary" @click="screen1">筛选</el-button>
+        </inpbox>-->
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="paramObj.search"
+            placeholder="输入门锁/网关唯一ID查询"
+          ></el-input>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-button class="buta qh_btn" type="primary" @click="search">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="elmin query_main">
+      <paging-table
+        ref="pagetable"
+        height="100%"
+        @onSelection="(d)=>{this.rcids = d}"
+        interface="/system/control/yxcommunication/1/getyxcommunication"
+        class="heig100"
+        :param="paramObj"
+        :refresh="refresh"
+        :list="list"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+      </paging-table>
+    </el-main>
+
+    <el-dialog
+      :title="title"
+      width="30%"
+      top="15vh"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="dialogVisible"
+    >
+      <el-container class="dialog-table6 wh100">
+        <div class="fel-left-tree single-tree">
+          <div class="left">
+            <div class="left-tree">
+              <fel-tree1
+                slot="top"
+                :showCheckbox="true"
+                class="tree1 co_tree"
+                :refresh="refreshTree"
+                :idArr="[0]"
+                interface="/system/control/yxcommunication/2/getbuildtree"
+                @checkchange="checkchange"
+              ></fel-tree1>
+            </div>
+          </div>
+        </div>
+      </el-container>
+      <div slot="footer" class="dialog-button">
+        <el-button class="com-but-small" @click="beforeClose">取消</el-button>
+        <el-button class="com-but-small" type="primary" @click="submitForm">{{butText}}</el-button>
+      </div>
+    </el-dialog>
+
+    <el-dialog
+      title="同网关下的失败次数"
+      width="70%"
+      top="15vh"
+      :close-on-click-modal="false"
+      :before-close="beforeClose1"
+      :visible.sync="dialogVisible1"
+    >
+      <el-container class="dialog-table6 query_main">
+        <paging-table
+          height="100%"
+          @onSelection="(d)=>{this.rcids = d}"
+          interface="/system/control/yxcommunication/5/getyxcommunicationsamgate"
+          class="tobleList wh100"
+          :param="param"
+          :refresh="refreshList"
+          :list="list1"
+        ></paging-table>
+      </el-container>
+    </el-dialog>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { format, download } from "@/utils/utils.js";
+export default {
+  props: ["toParam"],
+  data() {
+    let $this = this;
+    return {
+      title: "",
+      url: "",
+      selecArr: [],
+      // roomData: "",
+      selectarr: [
+        { label: "全部状态", value: "" },
+        { label: "正在下发", value: "0" },
+        { label: "下发成功", value: "1" },
+        { label: "下发失败", value: "-1" },
+      ],
+      dialogVisible: false,
+      dialogVisible1: false,
+      topButs: [],
+      batchButs: [],
+      roomids: [],
+      builds: [],
+      // roomList: [
+      //   {
+      //     type: "selection",
+      //     selectable: this.onSelectable
+      //   },
+      //   {
+      //     name: "序号",
+      //     type: "$index",
+      //     width: "60px"
+      //   },
+      //   {
+      //     name: "门锁唯一ID",
+      //     prop: "roomcode2"
+      //   },
+      //   {
+      //     name: "房间ID",
+      //     prop: "roomid"
+      //   },
+      //   {
+      //     name: "位置",
+      //     prop: "roomlocation"
+      //   }
+      // ],
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "操作时间",
+          prop: "yccdate",
+        },
+        {
+          name: "指令类型",
+          prop: "ycordertype",
+        },
+        {
+          name: "门锁位置",
+          prop: "roomlocation",
+          // width: "100px"
+        },
+        {
+          name: "门锁唯一ID",
+          prop: "roomcode2",
+        },
+        {
+          name: "网关唯一ID",
+          prop: "gatewaycode2",
+        },
+
+        {
+          name: "通讯失败次数",
+          prop: "ycfailnum",
+          // width: "80px"
+        },
+
+        {
+          name: "下发状态",
+          prop: "issend",
+          template: {
+            props: ["scope"],
+            data() {
+              return { value: 0, text: "" };
+            },
+            methods: {
+              getClass() {
+                this.value = this.scope.row.issend;
+                if (this.value == "1") {
+                  this.text = "下发成功";
+                  return "puc-pg";
+                } else if (this.value == "-1") {
+                  this.text = "下发失败";
+                  return "puc-px";
+                } else if (this.value == "") {
+                  this.text = "";
+                  return;
+                } else {
+                  this.text = "正在下发";
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{this.text}}</span>`,
+          },
+          // width: "80px"
+        },
+        {
+          name: "操作",
+          prop: "oldtype",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                $this.param.roomid = this.scope.row.roomid;
+                $this.refreshList = new Date().getTime();
+                $this.dialogVisible1 = true;
+              },
+            },
+            template: `<div class="operat-buts"> <el-button type="text" size="small" @click="onClick">查询</el-button></div>`,
+          },
+          width: "120px",
+        },
+      ],
+      list1: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "操作时间",
+          prop: "yccdate",
+        },
+        {
+          name: "指令类型",
+          prop: "ycordertype",
+        },
+        {
+          name: "门锁位置",
+          prop: "roomlocation",
+          // width: "100px"
+        },
+        {
+          name: "门锁唯一ID",
+          prop: "roomcode2",
+        },
+        {
+          name: "网关唯一ID",
+          prop: "gatewaycode2",
+        },
+
+        {
+          name: "通讯失败次数",
+          prop: "ycfailnum",
+          // width: "80px"
+        },
+
+        {
+          name: "下发状态",
+          prop: "issend",
+          template: {
+            props: ["scope"],
+            data() {
+              return { value: 0, text: "" };
+            },
+            methods: {
+              getClass() {
+                this.value = this.scope.row.issend;
+                if (this.value == "1") {
+                  this.text = "下发成功";
+                  return "puc-pg";
+                } else if (this.value == "-1") {
+                  this.text = "下发失败";
+                  return "puc-px";
+                } else if (this.value == "") {
+                  this.text = "";
+                  return;
+                } else {
+                  this.text = "正在下发";
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{this.text}}</span>`,
+          },
+          // width: "80px"
+        },
+      ],
+      rcids: [],
+      paramObj: {
+        failnum: "",
+        search: "",
+        issend: "",
+      },
+      param: { roomid: "" },
+      listBut: [],
+      refresh: 0,
+      refreshTree: 0,
+      // refreshTreeList: 0,
+      refreshList: 0,
+      butText: "",
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "581") {
+              this.topButs.push(value.entity);
+            } else if (id == "582") {
+              this.topButs.push(value.entity);
+            } else if (id == "583") {
+              this.topButs.push(value.entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    // roomSearch() {
+    // this.refreshTreeList = new Date().getTime();
+    // },
+    // screen() {
+    //   this.paramObj["search"] = "";
+    //   this.paramObj["issend"] = "";
+    //   this.refresh = new Date().getTime();
+    // },
+    // screen1() {
+    //   this.paramObj["search"] = "";
+    //   this.paramObj["failnum"] = "";
+    //   this.refresh = new Date().getTime();
+    // },
+    //查询
+    search() {
+      // this.paramObj["issend"] = "";
+      // this.paramObj["failnum"] = "";
+      this.refresh = new Date().getTime();
+    },
+    checkchange(obj, data) {
+      this.builds = data.checkedNodes;
+    },
+    submitForm() {
+      this.$ajax(
+        this.url,
+        {},
+        "1",
+        {
+          builds: this.builds,
+          roomids: this.selecArr,
+        },
+        true
+      )
+        .then((res) => {
+          this.dialogVisible = false;
+          this.refresh = new Date().getTime();
+          this.refreshTree = new Date().getTime();
+          // this.refreshTreeList = new Date().getTime();
+          this.$message({ type: "success", message: "指令下发成功!" });
+        })
+        .catch((err) => {
+          console.log("err", err);
+          // this.dialogVisible = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    //重置事件
+    onReset() {
+      Object.keys(this.paramObj).forEach((key) => {
+        this.paramObj[key] = "";
+      });
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.refreshTree = new Date().getTime();
+      // this.refreshTreeList = new Date().getTime();
+      this.dialogVisible = false;
+    },
+    beforeClose1() {
+      this.dialogVisible1 = false;
+    },
+    onClick(key, data, obj) {
+      if (key == "581") {
+        this.title = "新增查询";
+        this.butText = "开始下发";
+        this.url = "/system/control/yxcommunication/3/getlockfailnum";
+
+        this.dialogVisible = true;
+      } else if (key == "582") {
+        this.title = "清除记录";
+        this.butText = "清除";
+        this.url = "/system/control/yxcommunication/4/clearlockfailnum";
+        this.dialogVisible = true;
+      } else if (key == "583") {
+        this.$confirm("确定要导出列表吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.inExport(
+              "/system/control/uploadyxcommunication/1/downyxcommunication",
+              "有线锁通讯质量",
+              this.paramObj
+            );
+          })
+          .catch((err) => {
+            console.log("err", err);
+          });
+      }
+    },
+    inExport(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "8", obj, "文件导出中...", 60000)
+        .then((res) => {
+          if (res.size) {
+            download(res, name);
+            this.$notify({
+              title: "成功",
+              message: name + "文件导出成功！",
+              type: "success",
+            });
+          }
+        })
+        .catch((err) => {
+          console.log("err", err);
+          this.$message.error("文件导出失败！失败原因：" + err.resultMsg);
+        });
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "yxstxzl580");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "yxstxzl580");
+    },
+  },
+};
+</script>

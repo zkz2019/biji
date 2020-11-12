@@ -1,0 +1,156 @@
+<template>
+  <el-dialog
+    :title="idObj&&idObj.title"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <el-header class="query_headbox">
+        <retrieval class="query_head">
+          <inpbox :inpb="true">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp maR24"
+              v-model="param.search"
+              placeholder="输入账号进行查询"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </el-header>
+      <paging-table
+        :interface="idObj&&idObj.url"
+        :ajaxType="idObj&&idObj.ismj?'9':'1'"
+        :list="listInfo"
+        :param="param"
+        :refresh="refresh"
+      ></paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    idObj: String | Number,
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { search: "" },
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "时间",
+          prop: "uaddate",
+        },
+
+        {
+          name: "类型名称",
+          prop: "authname",
+        },
+        {
+          name: "授权类型",
+          prop: "authtype",
+          minWidth: "80px",
+          formatter(row, b, c, d) {
+            if (row) {
+              if (row.authtype == "1") {
+                return "人员";
+              } else if (row.authtype == "2") {
+                return "组织";
+              } else if (row.authtype == "3") {
+                return "房间";
+              } else if (row.authtype == "4") {
+                return "建筑";
+              } else if (row.authtype == "5") {
+                return "建筑";
+              } else if (row.authtype == "6") {
+                return "门禁";
+              } else if (row.authtype == "7") {
+                return "门";
+              } else if (row.authtype == "8") {
+                return "分组";
+              }
+            } else {
+              return "";
+            }
+          },
+        },
+        {
+          name: "状态",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.uadstatus == "0") {
+                  return $this.idObj.type == 1 ? "正在添加" : "正在删除";
+                } else if (this.scope.row.uadstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              },
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.uadstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`,
+          },
+        },
+        {
+          name: "失败原因",
+          prop: "uadremark",
+        },
+      ],
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        // this.param.padid = this.padid;
+        this.onRefresh();
+        console.log("kkzz", this.idObj);
+        this.$set(this.param, this.idObj.name, this.idObj.value);
+      } else {
+        this.param = { search: "" };
+      }
+    },
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param = { search: "" };
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+  },
+};
+</script>

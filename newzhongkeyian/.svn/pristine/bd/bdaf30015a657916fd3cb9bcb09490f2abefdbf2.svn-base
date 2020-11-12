@@ -1,0 +1,147 @@
+<template>
+  <fel-dialog
+    title="配置"
+    width="30%"
+    minWidth="450px"
+    top="30vh"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <div class="msdlxspzConfig">
+      <div>
+        <span>
+          <!-- <em class="clRed">*&nbsp;&nbsp;</em> -->
+          电量范围:
+        </span>
+        <z-sel-num
+          ref="zSelNum"
+          :loadAll="loadAll"
+          @onClear="onClear"
+          :range="form.range"
+          @onChange="onChange"
+        ></z-sel-num>
+      </div>
+      <div>
+        <span>
+          <!-- <em class="clRed">*&nbsp;&nbsp;</em> -->
+          自定义电量:
+        </span>
+        <el-select class="configInp" size="small" v-model="form.custom" placeholder="请选择">
+          <template v-for="item in loadAll">
+            <el-option :key="item.id" :label="item.label" :value="item.id"></el-option>
+          </template>
+        </el-select>
+      </div>
+      <div class="configBtn">
+        <el-button size="small" @click="beforeClose">取消</el-button>
+        <el-button size="small" @click="onSubmit" type="primary">确定</el-button>
+      </div>
+    </div>
+  </fel-dialog>
+</template>
+
+<script>
+import zSelNum from "./z-sel-num";
+export default {
+  props: {
+    dialogVisible: Boolean,
+    param: Object,
+  },
+  components: {
+    zSelNum,
+  },
+  data() {
+    return {
+      loadAll: [
+        { label: "0%", id: "0" },
+        { label: "10%", id: "10" },
+        { label: "20%", id: "20" },
+        { label: "30%", id: "30" },
+        { label: "40%", id: "40" },
+        { label: "50%", id: "50" },
+        { label: "60%", id: "60" },
+        { label: "70%", id: "70" },
+        { label: "80%", id: "80" },
+        { label: "90%", id: "90" },
+        { label: "100%", id: "100" },
+      ],
+      form: {
+        range: ["", ""],
+        custom: "",
+      },
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        let obj = this.param;
+        let arr = obj.rqlimits && obj.rqlimits.split("-");
+        let custom = obj.rqcharge && obj.rqcharge.split("%")[0];
+        let range =
+          arr &&
+          arr.length > 0 &&
+          arr.map((item) => {
+            return item.split("%")[0];
+          });
+        this.form = {
+          range: range && range.length == 2 ? range : ["", ""],
+          custom: custom && custom != "/" ? custom : "",
+        };
+      }
+    },
+    param(obj) {},
+  },
+  methods: {
+    onChange(id, val) {
+      if (id == "1") {
+        this.form.range = [val, this.form.range[1]];
+      } else {
+        this.form.range = [this.form.range[0], val];
+      }
+    },
+    onSubmit() {
+      if (
+        this.form.range.length < 2 ||
+        !Boolean(this.form.range[0]) ||
+        !Boolean(this.form.range[1])
+      ) {
+        this.$message.error("请选择电量范围");
+      } else if (this.form.custom == "") {
+        this.$message.error("请选择自定义电量");
+      } else {
+        this.$emit("submit", this.form);
+      }
+    },
+    onClear() {
+      this.form.custom = "";
+      this.form.range = ["", ""];
+    },
+    beforeClose() {
+      this.onClear();
+      this.$emit("beforeClose");
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.msdlxspzConfig {
+  > div {
+    margin: 30px;
+    > span {
+      display: inline-block;
+      width: 90px;
+    }
+  }
+  .configInp {
+    width: 240px;
+  }
+  .configBtn {
+    text-align: right;
+    padding: 10px 42px 0;
+    margin: 35px -24px 0;
+    border-top: 1px solid #ccc;
+  }
+}
+</style>

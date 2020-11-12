@@ -1,0 +1,143 @@
+<!-- 公共表格弹框 -->
+<template>
+  <el-dialog
+    :title="title"
+    :visible.sync="dialogVisible"
+    :width="width||'70%'"
+    :top="top"
+    :before-close="handleClose"
+    :close-on-click-modal="false"
+    append-to-body
+    class="el-dialogs"
+  >
+    <el-container class="dialog-table wh100">
+      <fel-left-tree>
+        <div slot="left" class="left-tree">
+          <fel-tree1
+            ref="tree"
+            :interface="treeUrl"
+            @handleNodeClick="handleNodeClick"
+            @checkchange="checkchange"
+            :refresh="treeRefresh"
+            :param="treeParam"
+            :idArr="[0]"
+          ></fel-tree1>
+        </div>
+        <el-container  class= "organiztion_container">
+          <paging-table
+            ref="pagingTable"
+            noInit
+            height="100%"
+            :interface="tabelurl"
+            @onSelection="onSelection"
+            :list="list"
+            :param="param"
+            :refresh="tableRefresh"
+          >
+            <span
+              v-for="(v,k) of button"
+              :key="k"
+              class="sli but-blue"
+              @click="onClick(v.id||v.type, v)"
+            >{{v.alias||v.name}}</span>
+          </paging-table>
+        </el-container>
+      </fel-left-tree>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+/***
+ * paging-table组件的再次封装
+ * button 数组按钮
+ *  [{
+ *    name: "数组名"
+ *  }]
+ *.tableRefresh 刷新
+ ***/
+export default {
+  props: {
+    top: String,
+    treeUrl: String,
+    dialogVisible: Boolean,
+    width: String,
+    tabelurl: String,
+    title: String,
+    param: Object,
+    refresh: Number,
+    list: {
+      type: Array,
+      default() {
+        return [];
+      }
+    }, //默认展开的数组
+    button: {
+      type: Array,
+      default() {
+        return [];
+      }
+    }
+  },
+  data() {
+    return {
+      tableRefresh: 0,
+      treeRefresh: 0
+    };
+  },
+  computed: {
+    treeParam() {
+      return { userlogin: this.param.userlogin };
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.refreshData();
+      }
+    },
+    refresh() {
+      this.refreshData();
+    }
+  },
+  methods: {
+    checkchange(data, Nodes) {
+      if (Nodes.checkedKeys.includes(data.buildid)) {
+        this.param.buildid = data.buildid;
+        this.tableRefresh = new Date().getTime();
+      }
+      this.$emit("checkchange", data, Nodes);
+    },
+    onSelection(data) {
+      this.$emit("onSelection", data);
+    },
+    handleNodeClick(val) {
+      this.param.buildid = val.buildid;
+      this.onRefresh();
+    },
+    //按钮点击事件
+    onClick(key) {
+      this.$emit("onClick", key);
+    },
+    handleClose() {
+      //关闭
+      this.$emit("handleClose");
+    },
+    refreshData() {
+      setTimeout(() => {
+        if (this.$refs.tree) {
+          this.$refs.tree.treedatas = [];
+        }
+      }, 0);
+      this.onRefresh();
+      this.onTreeRefresh();
+    },
+    onRefresh() {
+      this.tableRefresh = new Date().getTime();
+    },
+    onTreeRefresh() {
+      this.treeRefresh = new Date().getTime();
+    }
+  }
+};
+</script>

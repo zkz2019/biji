@@ -1,0 +1,442 @@
+<!-- 人员树形控件-->
+<template>
+  <div class="grouping">
+    <div class="top-buts" v-if="clickData && clickData.data && clickData.data.ammanager == 1">
+      <el-button
+        v-if="buts.includes(1)"
+        type="text"
+        size="small"
+        icon="ficon-add"
+        @click.stop="onClick(1)"
+      >新增</el-button>
+      <el-button
+        v-if="buts.includes(2) && clickData &&  clickData.data && clickData.data[nodeKey] != '0'"
+        type="text"
+        size="small"
+        @click.stop="onClick(2)"
+        icon="ficon-delete"
+      >删除</el-button>
+      <!-- <el-button type="text" size="small" @click.stop="onClick(3)">上移</el-button>
+      <el-button type="text" size="small" @click.stop="onClick(4)">下移</el-button>-->
+      <el-button
+        v-if="buts.includes(5) && clickData &&  clickData.data && clickData.data[nodeKey] != '0'"
+        type="text"
+        size="small"
+        icon="ficon-image30"
+        @click.stop="onClick(5)"
+      >重命名</el-button>
+      <el-button
+        icon="ficon-image804"
+        v-if="buts.includes(9)"
+        type="text"
+        size="small"
+        @click.stop="onClick(9)"
+      >管理员</el-button>
+    </div>
+    <div class="left-tree">
+      <div class="fel-tree">
+        <div v-if="treedatas.length == 0" v-loading="loading" class="tree-empty">
+          <span v-if="serverText">
+            {{serverText}}
+            <el-button type="text" size="small" @click.stop="onRefresh(1)">刷新数据</el-button>
+          </span>
+          <span v-else class="el-table__empty-text">暂无数据</span>
+        </div>
+        <el-tree
+          ref="tree"
+          :data="treedatas"
+          :props="defaultProps"
+          render-after-expand
+          empty-text
+          :expand-on-click-node="false"
+          :auto-expand-parent="false"
+          @node-click="handleNodeClick"
+          @node-expand="nodeExpand"
+          @node-collapse="nodeCollapse"
+          :load="loadin"
+          lazy
+          :node-key="nodeKey"
+          highlight-current
+          :default-expanded-keys="idSets"
+        >
+          <span class="custom-tree-node" slot-scope="scope">
+            <span class="tree-icon">
+              <i v-if="scope.data.isnext == 1" class="ficon-zuzhi"></i>
+              <i v-else class="ficon-onzuzhi"></i>
+              {{ scope.node.label}}
+            </span>
+          </span>
+        </el-tree>
+      </div>
+    </div>
+    <fel-popup form width="50%" title="新增" @close="addClose" :value="add.box">
+      <fel-form
+        ref="addForm"
+        @submitForm="addSubmit"
+        @closeForm="addClose"
+        width="140px"
+        :defaultData="add.data"
+        :formData="add.list"
+      ></fel-form>
+    </fel-popup>
+    <fel-popup form width="50%" title="重命名" @close="renameClose" :value="rename.box">
+      <fel-form
+        ref="renameForm"
+        @submitForm="renameSubmit"
+        @closeForm="renameClose"
+        width="140px"
+        :defaultData="rename.data"
+        :formData="rename.list"
+      ></fel-form>
+    </fel-popup>
+    <admin
+      :title="admin.title"
+      :dialogVisible="admin.box"
+      @beforeClose="admin.box=false"
+      :botButs="butAdmin"
+      :param="admin.param"
+    ></admin>
+  </div>
+</template>
+
+<script>
+import admin from "./admin-classify";
+export default {
+  components: {
+    admin: admin
+  },
+  props: {
+    buts: Array,
+    butAdmin: Array
+  },
+  data() {
+    return {
+      admin: {
+        box: false,
+        title: "",
+        param: {}
+      },
+      rename: {
+        box: false,
+        data: {},
+        list: [
+          {
+            value: "name",
+            name: "旧名称",
+            type: "text",
+            disabled: true
+          },
+          {
+            value: "areaname",
+            name: "新名称",
+            type: "text",
+            rules: [
+              {
+                required: true,
+                message: "请输入新名称",
+                trigger: "blur"
+              }
+            ]
+          }
+        ]
+      },
+      add: {
+        box: false,
+        data: {},
+        list: [
+          {
+            value: "areaname",
+            name: "组名称",
+            type: "text",
+            rules: [
+              {
+                required: true,
+                message: "请输入组名称",
+                trigger: "blur"
+              }
+            ]
+          }
+        ]
+      },
+      param: {},
+      nodeKey: "areaid",
+      loading: true,
+      pagesids: this.pagesid,
+      thistab: "",
+      treedatas: [],
+      serverText: "",
+      idSets: [0],
+      defaultProps: {
+        children: "children",
+        label: "areaname",
+        isLeaf: "isLeaf"
+      },
+      clickData: {
+        data: {},
+        nodes: {}
+      }
+    };
+  },
+  methods: {
+    renameSubmit(data) {
+      this.$ajax("/arearoom/3/updateArea", data, "9", {}, true)
+        .then(res => {
+          this.$message({
+            message: "重命名成功",
+            type: "success"
+          });
+          this.renameClose();
+          let node = this.clickData.nodes;
+          let data = this.clickData.data;
+          node.parent.loaded = false;
+          node.parent.expand(() => {
+            this.setCurrentKey(data[this.nodeKey]);
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    renameClose() {
+      if (this.$refs["renameForm"]) {
+        this.$refs["renameForm"].resetForm();
+      }
+      this.rename.box = false;
+    },
+    addSubmit(data) {
+      let node = this.clickData.nodes;
+      data.areafatherid = this.clickData.data[this.nodeKey];
+      this.$ajax("/arearoom/2/saveArea", data, "9", {}, true)
+        .then(res => {
+          this.$message({
+            message: "新增分组成功",
+            type: "success"
+          });
+          this.addClose();
+          node.loaded = false;
+          node.expand();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    addClose() {
+      if (this.$refs["addForm"]) {
+        this.$refs["addForm"].resetForm();
+      }
+      this.add.box = false;
+    },
+    dataFilter(arrs) {
+      return arrs.map(item => {
+        if (item.isnext >= 1) {
+          item.isLeaf = false;
+        } else {
+          item.isLeaf = true;
+        }
+        return item;
+      });
+    },
+    onClick(key) {
+      let node = this.clickData.nodes;
+      let data = this.clickData.data;
+      if (key == 5) {
+        this.rename.data = {
+          areaid: data[this.nodeKey],
+          name: data.areaname
+        };
+        this.rename.box = true;
+      } else if (key == 4) {
+        node.parent.loaded = false;
+        node.parent.expand(() => {
+          this.setCurrentKey(data[this.nodeKey]);
+        });
+      } else if (key == 3) {
+        node.parent.loaded = false;
+        node.parent.expand(() => {
+          this.setCurrentKey(data[this.nodeKey]);
+        });
+      } else if (key == 2) {
+        this.$confirm("确认删除该分组吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$ajax(
+              "/arearoom/4/delArea",
+              {
+                areaid: this.clickData.data[this.nodeKey]
+              },
+              "9",
+              {},
+              true
+            )
+              .then(res => {
+                this.$message({
+                  message: "删除成功",
+                  type: "success"
+                });
+                let obj = node.parent;
+                obj.loaded = false;
+                obj.expand();
+                this.setCurrentKey(obj.data[this.nodeKey]);
+                this.clickData.nodes = obj;
+                this.clickData.data = obj.data;
+                this.$emit("handleNodeClick", obj.data, obj);
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error"
+                });
+              });
+          })
+          .catch(err => {});
+      } else if (key == 1) {
+        this.add.data = {};
+        this.add.box = true;
+      } else if (key == 9) {
+        this.setTitle();
+        this.admin.param = this.clickData.data;
+        this.admin.param.search = "";
+        this.admin.box = true;
+      }
+    },
+    setTitle() {
+      if (this.clickData.data.arealocation) {
+        this.admin.title =
+          this.clickData.data.arealocation + "-" + this.clickData.data.areaname;
+      } else {
+        this.admin.title = this.clickData.data.areaname;
+      }
+    },
+    addIdSets(id) {
+      if (id) {
+        if (id instanceof Array) {
+          this.idSets.push(...id);
+        } else {
+          this.idSets.push(id);
+        }
+        this.idSets = [...new Set(this.idSets)];
+      } else {
+        this.idSets = [];
+      }
+    },
+    resetChecked() {
+      this.$refs.tree.setCheckedKeys([]);
+    },
+    nodeExpand(data) {
+      this.idSets.push(data[this.nodeKey]);
+      this.idSets = [...new Set(this.idSets)];
+    },
+    nodeCollapse(data, ...arr) {
+      const index = this.idSets.indexOf(data[this.nodeKey]);
+      if (index > -1) {
+        this.idSets.splice(index, 1);
+      }
+    },
+    //点击切换表格
+    handleNodeClick(data, Nodes) {
+      console.log("data", data);
+      if (!data[this.defaultProps["isLeaf"]]) {
+        this.addIdSets(data[this.nodeKey]);
+      }
+      this.clickData.data = data;
+      this.clickData.nodes = Nodes;
+      this.$emit("handleNodeClick", data, Nodes);
+    },
+    getCheckedNodes() {
+      return this.$refs.tree.getCheckedNodes();
+    },
+    getCheckedKeys() {
+      return this.$refs.tree.getCheckedKeys();
+    },
+    clearData() {
+      this.treedatas = [];
+    },
+    //获取树形菜单数据
+    getTreeData(node, resolve) {
+      this.serverText = "";
+      let id = "";
+      if (node && node.data && node.data[this.nodeKey]) {
+        id = node.data[this.nodeKey];
+      }
+      this.param.areafatherid = id;
+      this.$ajax("/arearoom/public/1/listAreaTree", this.param, "9")
+        .then(res => {
+          this.loading = false;
+          let aa = this.dataFilter(res.result); //过滤
+          if (id == "") {
+            const index = 0;
+            const key = aa[index][this.nodeKey];
+            this.idSets[index] = key;
+            if (typeof node != "undefined") {
+              setTimeout(() => {
+                this.setCurrentKey(key);
+                this.clickData.data = aa[index];
+                this.clickData.nodes = node;
+                this.$emit("handleNodeClick", aa[index], node);
+              }, 100);
+            }
+            this.treedatas = aa;
+          } else {
+            return resolve(aa);
+          }
+        })
+        .catch(err => {
+          if (node) {
+            node.loaded = false;
+            node.loading = false;
+          }
+          this.loading = false;
+          if (id == "") {
+            this.serverText = `[${err.resultCode}] ` + err.resultMsg;
+          }
+        });
+    },
+    //生成子菜单
+    loadin(node, resolve) {
+      this.getTreeData(node, resolve);
+    },
+    setCurrentKey(key) {
+      if (this.$refs.tree) {
+        this.$refs.tree.setCurrentKey(key);
+      }
+    },
+    onRefresh(key) {
+      this.loading = true;
+      if (key == 1) {
+        let obj = {};
+        obj[this.nodeKey] = 0;
+        this.getTreeData(obj);
+      } else {
+        this.getTreeData();
+      }
+    }
+  }
+};
+</script>
+<style lang="scss">
+.grouping {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  .top-buts {
+    background: #fff;
+    display: flex;
+    padding: 0 10px;
+    .el-button {
+      flex: 1;
+    }
+  }
+}
+</style>

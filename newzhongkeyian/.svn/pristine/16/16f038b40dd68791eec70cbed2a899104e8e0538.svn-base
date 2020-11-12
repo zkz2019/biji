@@ -1,0 +1,605 @@
+<!-- 组织管理 -->
+<template>
+  <el-container>
+    <fel-left-tree>
+      <div slot="left" class="left-tree">
+        <fel-tree
+          interface="/system/group/1/getgrouptree"
+          @handleNodeClick="handleNodeClick"
+          :refresh="treeRefresh"
+          :param="{fatherpgid: 0}"
+          :idArr="[0]"
+        ></fel-tree>
+      </div>
+      <el-container>
+        <el-header class="heig60 query_headbox">
+          <comTitle>
+            <span class="titlebox">{{getTitle}}</span>
+          </comTitle>
+          <retrieval class="query_head">
+            <inpbox :inptext="'请输入'">
+              <el-input
+                v-model="param.search"
+                clearable
+                class="wid300 qh_inp"
+                :placeholder="'请输入组织编号/名称进行搜索'"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="inSearch">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            noInit
+            height="100%"
+            class="heig100"
+            interface="/system/group/2/getgroup"
+            :list="list"
+            :param="param"
+            @onEjectChange="onEjectChange"
+            @onSelection="onSelection"
+            @onClick="onClick"
+            :refresh="ptRefresh"
+            :buttoms="buttoms"
+          >
+            <span
+              v-for="(v,k) of foortbuts"
+              :key="k"
+              class="sli but-blue"
+              @click="buttonclick(v.id,$event)"
+            >
+              <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+              {{v.alias}}
+            </span>
+            <template v-if="piliangbuts && piliangbuts.length > 0">
+              <batch-but
+                class="sli but-blue"
+                :list="tableindex"
+                :param="piliangbuts"
+                @onClick="buttonclick"
+              ></batch-but>
+            </template>
+          </paging-table>
+        </el-main>
+      </el-container>
+
+      <organizationAdmin
+        :dialogVisible="dialogFormVisible"
+        @beforeClose="dialogFormVisible=false"
+        :botButs="glyBut"
+        :param="glysz"
+        :title="glysz.pgname+'-管理员设置'"
+      />
+      <organizationInstructor
+        :dialogVisible="dialogFormVisible1"
+        @beforeClose="dialogFormVisible1=false"
+        @GuideFileShow="GuideFileShow"
+        :botButs="fdyBut"
+        :param="fdysz"
+        :title="fdysz.pgname+'-辅导员设置'"
+      />
+      <organiztionAdd
+        :title="ortype==1?'添加组织':'修改组织'"
+        :dialogVisible="ortype==1?dialogShow:modifyShow"
+        :button="[{type: '2',name: '确定'}]"
+        :defaultData="ortype==1?defaultData:modifyDefaultData"
+        @submitForm="submitForm"
+        @beforeClose="ortype==1?dialogShow=false:modifyShow=false;modifyDefaultData={}"
+        dynamic
+      ></organiztionAdd>
+      <guideFile
+        :dialogVisible="dialogGuideFile"
+        :importButs="importButs"
+        :exportButs="exportButs"
+        @handleClose="dialogGuideFile=false"
+      ></guideFile>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import guideFile from "@/views/common/guideFile.vue";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import organizationAdmin from "./organizationAdmin";
+import organiztionAdd from "./organiztionAdd";
+import organizationInstructor from "./organizationInstructor";
+export default {
+  name: "zzjggl2",
+  components: {
+    organiztionAdd,
+    organizationAdmin,
+    organizationInstructor,
+    guideFile
+  },
+  data() {
+    let $this = this;
+    return {
+      ortype: Number,
+      glyBut: [], //管理员按钮
+      fdyBut: [],
+      param: {
+        search: "",
+        pgid: ""
+      },
+      buttoms: [],
+      foortbuts: [],
+      piliangbuts: [],
+      fatheragid: {},
+      glyfatheragid: {},
+      exportButs: [],
+      importButs: [],
+      dialogGuideFile: false,
+      glysz: {}, //管理员设置
+      fdysz: {},
+      dialogFormVisible: false,
+      dialogFormVisible1: false,
+      addVisible: false,
+      tableloading: false,
+      pgid: "",
+      gridData: [], //弹出层数据
+      ptRefresh: 0,
+      dialogShow: false,
+      defaultData: {},
+      moveShow: true,
+      list: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "归属组织",
+          prop: "pglocation"
+        },
+        {
+          name: "下级组织名称",
+          prop: "pgname"
+        },
+        {
+          name: "下级组织编号",
+          prop: "pgcode"
+        },
+        {
+          name: "建立账号",
+          prop: "userlogin"
+        },
+        {
+          name: "建立时间",
+          prop: "pgdate"
+        },
+        {
+          name: "操作",
+          width: "270px",
+          template: {
+            computed: {
+              buttoms() {
+                return $this.buttoms;
+              }
+            },
+            props: ["scope"],
+            methods: {
+              onClick(key) {
+                $this.onClick(key, this.scope);
+              },
+              getShow(v, i) {
+                if ($this.moveShow) {
+                  return true;
+                } else {
+                  if (v.type == "l5" || v.type == "l6") {
+                    return false;
+                  }
+                  return true;
+                }
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <fel-button v-if="getShow(v,i)" v-for="(v,i) of buttoms" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</fel-button>
+            </div>`
+          }
+        }
+      ],
+      tableindex: [],
+      modifyShow: false, //修改弹出框
+      modifyDefaultData: {},
+      treeRefresh: 0,
+      sonmenu: 0
+    };
+  },
+  computed: {
+    getTitle() {
+      let t = "组织管理";
+      if (this.fatheragid.pgid && this.fatheragid.pgid != 0) {
+        t = this.fatheragid.pgname;
+        if (this.fatheragid.pgcode) {
+          t += "(组织编号" + this.fatheragid.pgcode + ")";
+        }
+      }
+      return t;
+    }
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    onEjectChange() {
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("zzjggl2.eject", arr);
+    },
+    getEject() {
+      let arr = Storages.getlocalStorage("zzjggl2.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        obj.show = arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    },
+    onReset() {
+      this.param.search = "";
+      this.inSearch(false);
+    },
+    async onClick(key, obj) {
+      if (key == "l5") {
+        this.$confirm("此操作将此组织上移一位，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.inpposition({
+              pgid: obj.row.pgid,
+              movetype: 1
+            });
+          })
+          .catch(err => {});
+      } else if (key == "l6") {
+        this.$confirm("此操作将此组织下移一位，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.inpposition({
+              pgid: obj.row.pgid,
+              movetype: 2
+            });
+          })
+          .catch(err => {});
+      } else if (key == "l4") {
+        this.$confirm("确定要删除当前组织及全部子组织吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.updatebuild([obj.row.pgid]);
+          })
+          .catch(err => {});
+      } else if (key == "l9") {
+        this.glyfatheragid = obj.row;
+        this.dialogFormVisible = true;
+      } else if (key == "l2") {
+        this.ortype = 2;
+        this.modifyDefaultData = obj.row;
+        this.modifyDefaultData.uppgname = this.fatheragid.pgname;
+        // let result = await new Promise((resolve, reject) => {
+        //   this.$ajax(
+        //     "/system/group/savegroup/3/getpgcode",
+        //     { fatherpgid: this.fatheragid.pgid },
+        //     "1"
+        //   )
+        //     .then(res => {
+        //       resolve(res.result);
+        //     })
+        //     .catch(err => {
+        //       reject(err);
+        //     });
+        // });
+        // this.modifyDefaultData.pgcode = await result;
+        this.modifyShow = true;
+      } else if (key == "l7") {
+        //管理员事件
+        this.glysz = obj.row;
+        this.dialogFormVisible = true;
+        this.glyButButtonclick();
+      } else if (key == "l8") {
+        //辅导员事件
+        this.fdysz = obj.row;
+        this.dialogFormVisible1 = true;
+        // this.fdyButButtonclick();
+      }
+    },
+    inpposition(data) {
+      this.$ajax("/system/group/updategroup/3/updategroupposition", data, "1")
+        .then(res => {
+          this.inSearch(false);
+          this.treeRefresh = new Date().getTime();
+          this.$message({
+            message:
+              "组织移动成功                                                                                  ",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onSelection(data) {
+      this.tableindex = data;
+    },
+
+    submitForm(data) {
+      //提交表单事件 添加及修改
+      if (this.ortype == 1) {
+        this.$ajax("/system/group/savegroup/2/savegroup", data, "1")
+          .then(res => {
+            this.refreshData();
+            this.$message({
+              message:
+                "添加成功                                                                                  ",
+              type: "success"
+            });
+            this.dialogShow = false;
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      } else if (this.ortype == 2) {
+        this.$ajax("/system/group/updategroup/2/updategroup", data, "1")
+          .then(res => {
+            this.refreshData();
+            this.$message({
+              message:
+                "组织修改成功                                                                                  ",
+              type: "success"
+            });
+            this.modifyShow = false;
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      }
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "2" }, "1")
+        .then(res => {
+          if (res.result) {
+            res.result.forEach(value => {
+              let id = value.entity.id;
+              let alias = value.entity.alias;
+              if (id == "3") {
+                this.foortbuts.push(value.entity);
+              } else if (id == "7") {
+                this.piliangbuts.push(value.entity);
+                this.buttoms.push({
+                  type: "l4",
+                  name: "删除"
+                });
+              } else if (id == "4") {
+                this.glyBut.push({
+                  type: "g1",
+                  name: alias
+                });
+              } else if (id == "8") {
+                this.glyBut.push({
+                  type: "g4",
+                  name: alias
+                });
+              } else if (id == "5") {
+                this.buttoms.push({
+                  type: "l2",
+                  name: "修改"
+                });
+              } else if (id == "374") {
+                this.buttoms.push({
+                  type: "l5",
+                  name: alias
+                });
+              } else if (id == "375") {
+                this.buttoms.push({
+                  type: "l6",
+                  name: alias
+                });
+              } else if (id == "469") {
+                //管理员
+                this.buttoms.push({
+                  type: "l7",
+                  name: alias
+                });
+                if (value.childs) {
+                  this.glyBut = value.childs.map(o => o.entity); //管理员添加删除按钮
+                }
+              } else if (id == "609") {
+                //辅导员
+                this.buttoms.push({
+                  type: "l8",
+                  name: alias
+                });
+                if (value.childs) {
+                  this.fdyBut = value.childs.map(o => o.entity);
+                }
+              } else if (id == "612") {
+                this.fdyBut.push(value.entity);
+                if (value.childs) {
+                  value.childs.forEach(item => {
+                    if (item.entity.id == "613") {
+                      this.importButs.push({
+                        name: item.entity.alias,
+                        // tempUrl: "",
+                        url: "/system/group/uploadgroup/1/uploadinstructor",
+                        errUrl: "/system/group/uploadgroup/3/downfail"
+                      });
+                    } else if (item.entity.id == "614") {
+                      this.exportButs.push({
+                        name: item.entity.alias,
+                        url: "/system/group/uploadgroup/2/downmodel"
+                        // data: this.param
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          }
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    glyButButtonclick() {
+      if (this.fatheragid && this.fatheragid.pgname) {
+        this.glyfatheragid = this.fatheragid;
+        this.dialogFormVisible = true;
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选中左侧组织",
+          type: "warning"
+        });
+      }
+    },
+    // fdyButButtonclick(){
+    //   console.log("kaishi")
+    // },
+    handleNodeClick(val) {
+      this.fatheragid = val;
+      this.param.search="";
+      this.inSearch(false);
+    },
+    beforeclose(val) {
+      this.dialogFormVisible = false;
+    },
+    updatebuild(data) {
+      this.$ajax(`/system/group/delete/1/deletegroup`, {}, "1", data, true)
+        .then(res => {
+          this.$message({
+            message: "删除组织成功",
+            type: "success"
+          });
+          this.refreshData();
+        })
+        .catch(err => {
+          console.log(err);
+          this.$message.error(
+            `[${err.resultCode}] ` + err.resultMsg || "连接失败"
+          );
+        });
+    },
+    async buttonclick(val) {
+      //打开弹出层
+      if (val == 3) {
+        this.ortype = 1;
+        if (this.fatheragid && this.fatheragid.pgname) {
+          let result = await new Promise((resolve, resject) => {
+            this.$ajax(
+              "/system/group/savegroup/3/getpgcode",
+              { fatherpgid: this.fatheragid.pgid },
+              "1"
+            )
+              .then(res => {
+                resolve(res.result);
+              })
+              .catch(err => {
+                reject(err);
+              });
+          });
+          //添加组织
+          this.defaultData = await {
+            uppgname: this.fatheragid.pgname,
+            fatherpgid: this.fatheragid.pgid,
+            pgcode: result
+          };
+          this.dialogShow = true;
+        } else {
+          this.$message({
+            showClose: true,
+            message: "请先选中左侧组织",
+            type: "warning"
+          });
+        }
+      } else if (val == 2) {
+        if (this.tableindex.length != 1) {
+          this.$message({
+            showClose: true,
+            message: "请先选中单个组织!",
+            type: "error"
+          });
+        } else {
+          this.modifyDefaultData = this.tableindex[0];
+          this.modifyDefaultData.uppgname = this.fatheragid.pgname;
+          this.modifyShow = true;
+        }
+      } else if (val == 7) {
+        //删除组织
+        if (this.tableindex.length == 0) {
+          this.$message({
+            showClose: true,
+            message: "请先选中组织!",
+            type: "warning"
+          });
+          return;
+        }
+        this.$confirm("确定要删除当前组织及全部子组织吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.updatebuild(this.tableindex.map(o => o.pgid));
+          })
+          .catch(err => {});
+      }
+    },
+    //刷新数据
+    refreshData() {
+      this.param.pgid = this.fatheragid.pgid;
+      this.ptRefresh = new Date().getTime();
+      this.treeRefresh = new Date().getTime();
+    },
+    // 搜索数据
+    inSearch(bool = true) {
+      this.param.pgid = this.fatheragid.pgid;
+      this.ptRefresh = new Date().getTime();
+      setTimeout(()=>{
+        if (bool) {
+          this.moveShow = false;
+        } else {
+          this.moveShow = true;
+        }
+      }, 600);
+    },
+    GuideFileShow() {
+      this.dialogGuideFile = true;
+    }
+  }
+};
+</script>
+

@@ -1,0 +1,171 @@
+<!-- 历史开门 -->
+<template>
+  <el-container class="fjhistory">
+    <!-- <el-header class="heig30 query_headbox">
+    </el-header>-->
+    <el-main class="padt0 query_main">
+      <retrieval class="query_head marpadbor0">
+        <inpbox :inpb="true">
+          <el-select
+            class="con-select qh_inp"
+            v-model="param.unlockingtype"
+            placeholder="请选择"
+            clearable
+          >
+            <el-option
+              v-for="item in options"
+              :key="item.type"
+              :label="item.typename"
+              :value="item.type"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <!-- <el-date-picker
+            v-model="param.sdate"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            type="datetime"
+            size="mini"
+            placeholder="请选择起始时间"
+          ></el-date-picker>-->
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+        </inpbox>
+        <inpbox inpb>
+          <el-input
+            clearable
+            class="con-select qh_inp"
+            v-model="param.search"
+            :placeholder="'姓名/'+getNumber()+'/卡号/账号'"
+          ></el-input>
+        </inpbox>
+        <inpbox inpb>
+          <el-button class="qh_btn" type="primary" @click="onRefresh">确定</el-button>
+          <el-button class="qh_btn" type @click="onRefresh">刷新</el-button>
+        </inpbox>
+      </retrieval>
+      <paging-table
+        height="100%"
+        interface="/lock/operate/info/7/getlockinfo"
+        class="heig100"
+        @onSelection="onSelection"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :noOpera="true"
+      ></paging-table>
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    checkedroom: Object
+  },
+  name: "history",
+  components: {},
+  data() {
+    let $this = this;
+    return {
+      options: [{ typename: "全部", type: "" }],
+      value: "",
+      refresh: 0,
+      dates: [],
+      param: {
+        search: "",
+        sdate: this.getparam(true),
+        edate: this.getparam(),
+        roomid: $this.checkedroom.roomid,
+        unlockingtype: ""
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+        {
+          name: "时间",
+          prop: "unlockingdate"
+        },
+        {
+          name: "开门方式",
+          prop: "unlockingtype"
+        },
+        {
+          name: "操作人姓名",
+          prop: "personname",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {}
+            }, //<div><a @click.stop='onClick'>{{scope.row.personname}}</a></div>
+            template: `<el-tooltip class="item" effect="dark" :content="'组织:'+scope.row.personlocation" placement="right-start">
+      <a>{{scope.row.personname}}</a>
+    </el-tooltip>`
+          }
+        },
+        {
+          name: `操作${this.getNumber()}`,
+          prop: "personcode"
+        },
+        {
+          name: "卡号或指纹号",
+          prop: "cardcode"
+        }
+      ]
+    };
+  },
+  computed: {
+    roomid() {
+      // this.param.roomid = this.$store.state.fj38.checkedroom.roomid + "";
+      return this.$store.state.fj38.checkedroom.roomid + "";
+    }
+  },
+  watch: {
+    roomid() {},
+    checkedroom(val) {
+      this.param.roomid = val.checkedroom.roomid;
+    },
+    dates(val) {
+      if (val && val.length == 2) {
+        this.param.sdate = format(val[0], "yyyy-MM-dd HH:mm:ss");
+        this.param.edate = format(val[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        let T = new Date();
+        let YM = format(T, "yyyy-MM");
+        let time = format(T, "dd HH:mm:ss");
+        let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+        this.param.sdate = tValue[0];
+        this.param.edate = tValue[1];
+      }
+    }
+  },
+  created() {
+    this.$ajax("/lock/operate/info/d/getunlockingtype", {}, "1").then(res => {
+      this.options = this.options.concat(res.result);
+    });
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    getparam(val = false) {
+      let T = new Date();
+      let YM = format(T, "yyyy-MM");
+      let time = format(T, "dd HH:mm:ss");
+      let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+      if (val) {
+        return tValue[0];
+      } else {
+        return tValue[1];
+      }
+    },
+    onRefresh() {
+      //刷新表格
+      this.refresh = new Date().getTime();
+    },
+    onSelection(data) {}
+  }
+};
+</script>

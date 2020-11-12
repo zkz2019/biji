@@ -1,0 +1,393 @@
+<template>
+  <fel-container @onReset="onReset" @onQuery="onQuery" :title="setTitle()">
+    <template slot="retrieve">
+      <fel-retrie v-model="param.search" placeholder="输入房间/姓名查询"></fel-retrie>
+    </template>
+    <paging-table
+      ref="paging-table"
+      interface="/arearoom/1/listAreaRoom"
+      ajaxType="9"
+      class="heig100"
+      @onSelection="(d)=>{listArrs=d}"
+      noInit
+      :param="param"
+      :list="list"
+      :refresh="refresh"
+    >
+      <template v-if="param.areaid == '0' && param.ammanager == 1">
+        <template v-for="(v,k) of topButs">
+          <span v-if="v.id == 912" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+            <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+            {{v.alias}}
+          </span>
+        </template>
+      </template>
+      <template v-else-if="param.ammanager == 1">
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+      </template>
+      <template v-if="listButs && listButs.length > 0">
+        <batch-but class="sli but-blue" :list="listArrs" :param="listButs" @onClick="onBatchClick"></batch-but>
+      </template>
+    </paging-table>
+    <!-- css="popup-photo" -->
+    <fel-popup
+      width="80%"
+      :title="setTitle()"
+      @close="()=>{choice.box=false;refreshIsNoshow=true}"
+      :value="choice.box"
+    >
+      <fel-left-tree>
+        <div slot="left" class="left-tree">
+          <fel-tree1
+            slot="top"
+            :showCheckbox="true"
+            class="tree1 co_tree"
+            :idArr="[0]"
+            ajaxType="9"
+            :refresh="choice.treeRefresh"
+            :param="choice.treeParam"
+            interface="/arearoom/b/getBuildTree"
+            @checkchange="onCheckchange"
+          ></fel-tree1>
+        </div>
+        <el-container>
+          <paging-table
+            noInit
+            ref="choice-paging-table"
+            height="100%"
+            interface="/arearoom/c/listBuildRoom"
+            ajaxType="9"
+            :noRefresh="refreshIsNoshow"
+            :list="choice.list"
+            :param="choice.param"
+            :refresh="choice.refresh"
+          >
+            <span class="sli but-blue" @click="onClick(11)">
+              <i class="ficon-add"></i>
+              确认进组
+            </span>
+          </paging-table>
+        </el-container>
+      </fel-left-tree>
+    </fel-popup>
+    <effect-classify
+      :title="setTitle()"
+      @onRefresh="onRefresh"
+      :param="param"
+      :dialogVisible="effect.box"
+      @beforeClose="effect.box=false"
+    ></effect-classify>
+  </fel-container>
+</template>
+
+<script>
+import effectClassify from "@/components/dialog/effect-classify";
+export default {
+  components: {
+    "effect-classify": effectClassify,
+  },
+  props: {
+    topButs: Array,
+    listButs: Array,
+  },
+  data() {
+    let $this = this;
+    return {
+      refreshIsNoshow: true,
+      effect: {
+        box: false,
+      },
+      choice: {
+        treeParam: {},
+        box: false,
+        treeRefresh: 0,
+        refresh: 0,
+        param: {},
+        list: [
+          {
+            name: "序号",
+            type: "$index",
+            width: "60px",
+          },
+          {
+            name: "建筑类型",
+            prop: "buildtypename",
+          },
+          {
+            name: "建筑编号",
+            prop: "buildcode",
+          },
+          {
+            name: "建筑名称",
+            prop: "buildname",
+          },
+          {
+            name: "区域类型",
+            prop: "agtypename",
+          },
+          {
+            name: "最大入住人数/绑卡数",
+            prop: "roommaxperson",
+          },
+          {
+            name: "建立账户",
+            prop: "userlogin",
+          },
+          {
+            name: "建立时间",
+            prop: "agdate",
+          },
+        ],
+      },
+      param: {
+        areaid: "",
+        search: "",
+      },
+      refresh: 0,
+      list: [
+        {
+          type: "selection",
+          selectable(row) {
+            return Boolean(row.rmmanager == 1);
+          },
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "分组",
+          prop: "arealocation",
+        },
+        {
+          name: "建筑位置",
+          minWidth: "240px",
+          prop: "buildname",
+        },
+        {
+          show: true,
+          name: "建筑类型",
+          width: "80px",
+          prop: "buildtypename",
+        },
+        {
+          name: "建筑编号",
+          width: "120px",
+          prop: "buildcode",
+        },
+        {
+          name: "区域类型",
+          width: "80px",
+          prop: "agtypename",
+        },
+        {
+          name: "最大入住人数/绑卡数",
+          minWidth: "155px",
+          prop: "roommaxperson",
+        },
+        {
+          name: "建立账户",
+          minWidth: "90px",
+          prop: "userlogin",
+        },
+        {
+          name: "建立时间",
+          minWidth: "155px",
+          prop: "roomdate",
+        },
+        {
+          name: "操作",
+          width: "140px",
+          custom: "buts",
+          value(obj) {
+            if (obj && obj.row && obj.row.rmmanager == 1) {
+              return $this.listButs;
+            }
+          },
+          click(obj, id, value) {
+            $this.onListClick(id, value, obj.row);
+          },
+        },
+      ],
+      listArrs: [],
+      treeNodes: null,
+    };
+  },
+  methods: {
+    onRefresh(key) {
+      if (key == 1) {
+        this.onQuery();
+      } else {
+        if (this.treeNodes) {
+          this.treeNodes.loaded = false;
+          this.treeNodes.expand();
+        }
+      }
+    },
+    setTitle() {
+      if (this.param.arealocation) {
+        return this.param.arealocation + "-" + this.param.areaname;
+      } else {
+        return this.param.areaname;
+      }
+    },
+    onListClick(key, value, data) {
+      if (key == "30") {
+        let obj = {
+          buildid: data.roomid,
+          buildtype: data.buildtype,
+          roomnexttype: data.roomnexttype,
+          agtype: data.agtype,
+          roommaxperson: data.roommaxperson,
+          agdate: "",
+          agtypename: "",
+          buildcode: "",
+          buildname: "",
+          buildtypename: "",
+          houseid: "",
+          housename: "",
+          houseprice: "",
+          ismanager: "",
+          leftright: "",
+          prebuildid: "",
+          roomcount: "",
+          roomnexttypename: "",
+          sequence: "",
+          userlogin: "",
+        };
+        this.$emit("modify", [obj]);
+      } else if (key == "913") {
+        this.indelAreaRoom([data.arid]);
+      }
+    },
+    indelAreaRoom(arr) {
+      this.$confirmCon("确定要把选择的房间移出当前分组吗？", () => {
+        this.$ajax(
+          "/arearoom/e/delAreaRoom",
+          {
+            arids: arr,
+          },
+          "9",
+          {},
+          true
+        )
+          .then((res) => {
+            this.$message({
+              message: "移出组成功",
+              type: "success",
+            });
+            this.onQuery();
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      });
+    },
+    onClick(key, data) {
+      if (key == "911") {
+        this.choice.treeParam = {
+          areaid: this.param.areaid,
+          buildid: "",
+          buildtype: "0",
+        };
+        this.choice.treeRefresh = new Date().getTime();
+        this.choice.box = true;
+        if (this.$refs["choice-paging-table"]) {
+          this.$refs["choice-paging-table"].setQueryData([]);
+        }
+      } else if (key == "11") {
+        this.$ajax(
+          "/arearoom/d/saveBuildRoom",
+          this.choice.param,
+          "9",
+          {},
+          true
+        )
+          .then((res) => {
+            this.$message({
+              message: "添加房间成功",
+              type: "success",
+            });
+            this.choice.box = false;
+            this.onQuery();
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      } else if (key == "912") {
+        this.effect.box = true;
+      }
+    },
+    onBatchClick(key) {
+      if (key == "30") {
+        let arr = this.listArrs.map((data) => {
+          return {
+            buildid: data.roomid,
+            buildtype: data.buildtype,
+            roomnexttype: data.roomnexttype,
+            agtype: data.agtype,
+            roommaxperson: data.roommaxperson,
+            agdate: "",
+            agtypename: "",
+            buildcode: "",
+            buildname: "",
+            buildtypename: "",
+            houseid: "",
+            housename: "",
+            houseprice: "",
+            ismanager: "",
+            leftright: "",
+            prebuildid: "",
+            roomcount: "",
+            roomnexttypename: "",
+            sequence: "",
+            userlogin: "",
+          };
+        });
+        this.$emit("modify", arr);
+      } else if (key == "913") {
+        this.indelAreaRoom(this.listArrs.map((o) => o.arid));
+      }
+    },
+    onQuery() {
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      this.param.search = "";
+      this.onQuery();
+    },
+    handleNodeClick(data, node) {
+      this.treeNodes = node;
+      this.param = Object.assign(this.param, data);
+      this.onQuery();
+    },
+    onCheckchange(data, node) {
+      if (node.checkedKeys.length > 0) {
+        this.refreshIsNoshow = false;
+      } else {
+        this.refreshIsNoshow = true;
+      }
+      this.choice.param = {
+        areaid: this.param.areaid,
+        builds: node.checkedNodes,
+      };
+      this.choice.refresh = new Date().getTime();
+    },
+  },
+};
+</script>
+
+<style>
+</style>

@@ -1,0 +1,97 @@
+<!-- 巡更记录查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <el-input
+          clearable
+          class="search con-search qh_inp"
+          v-model="param.search"
+          placeholder="输入角色名/账号查询"
+        >
+          <i slot="prefix" class="el-input__icon el-icon-search"></i>
+        </el-input>
+        <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+        <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/analysis/lockrecord/3/getlockrecord"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+export default {
+  name: "xgjlcx98",
+  data() {
+    return {
+      param: { search: "" },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "巡更路线名",
+          prop: "unlockingtype"
+        },
+        {
+          name: "巡更卡号",
+          prop: "unlockingdate"
+        },
+        {
+          name: "使用人类别",
+          prop: "roomlocation"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: "编号",
+          prop: "cardtype"
+        },
+        {
+          name: "巡更日期",
+          prop: "cardcode"
+        },
+        {
+          name: "开始时间",
+          prop: "personcode"
+        },
+        {
+          name: "结束时间",
+          prop: "personlocation"
+        },
+        {
+          name: "状态",
+          prop: "personlocation"
+        }
+      ],
+      refresh: 0
+    };
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

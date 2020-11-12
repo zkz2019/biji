@@ -1,0 +1,65 @@
+<template>
+  <div class="groupMain">
+    <div v-if="true" class="groupMain_top">
+      <div class="groupMain_top_top">下级分组</div>
+      <div class="groupMain_top_bottom">
+        <group></group>
+      </div>
+    </div>
+    <div class="groupMain_bottom">
+      <div class="groupMain_bottom_top">
+        本组房间
+        <div class="groupMain_bottom_top_iconBox">
+          <div class="icon1"></div>
+          <div>通讯正常</div>
+          <div class="icon2"></div>
+          <div>通讯异常</div>
+          <div class="icon3"></div>
+          <div>未安装</div>
+        </div>
+      </div>
+      <div class="groupMain_bottom_bottom">
+        <door></door>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import group from './group'
+import door from './door'
+export default {
+  components: {
+    group,
+    door,
+  },
+  data: () => {
+    return {}
+  },
+}
+</script>
+
+<style lang="scss">
+.groupMain {
+  .groupMain_bottom_top_iconBox {
+    padding-top: 10px;
+    display: flex;
+    .icon1,
+    .icon2,
+    .icon3 {
+      width: 15px;
+      height: 15px;
+      margin: 3px 10px 0;
+    }
+    .icon1 {
+      border: solid #24a6f9 1px;
+    }
+    .icon2 {
+      border: solid #ff4141 1px;
+    }
+    .icon3 {
+      border: solid #999999 1px;
+    }
+  }
+}
+</style>

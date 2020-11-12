@@ -1,0 +1,614 @@
+<!-- 即将到期授权查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox inptext="位置类型">
+          <el-select class="con-select qh_inp" @change="onChange" v-model="devicetype">
+            <el-option
+              v-for="item in deviceTypes"
+              :key="item.type"
+              :label="item.typename"
+              :value="item.type"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox inptext="剩余天数<=">
+          <el-input-number
+            class="numlineH maR10 con-num qh_inp"
+            v-model="param.expiredays"
+            :min="0"
+          ></el-input-number>
+        </inpbox>
+        <inpbox inptext="查询时段">
+          <fel-date
+            class="maR10 qh_date con-date"
+            :pickerShow="false"
+            style="width:370px!important;"
+            v-model="dates"
+          ></fel-date>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <queryPosition
+            ref="queryPosition"
+            class="maR10 con-popover qh_inp"
+            :devicetype="devicetype"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/expireauth/1/listAreaTree"
+          ></queryPosition>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <queryOrgan
+            ref="queryOrgan"
+            class="maR10 con-popover qh_inp"
+            @onChoice="onChoiceZZ"
+            interface="/analysis/expireauth/2/listPersonTree"
+          ></queryOrgan>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select placeholder="全部授权类型" class="con-select qh_inp" v-model="param.authtype">
+            <el-option v-for="item in authTypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="search con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'输入房间名称/门禁名称/'+getNumber()+'查询'"
+          ></el-input>
+        </inpbox>
+
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        ref="paging-table"
+        class="tobleList wid100 heig100"
+        height="100%"
+        :interface="interface"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        :param="param"
+        ajaxType="9"
+        :paramObj="paramObj"
+        @onSelection="(d)=>{selecArr=d}"
+        @sort-change="sortChange"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="but of topButs" class="sli but-blue" @click="onClick(but.id)">
+          <i v-if="but.icon" :class="'ficon-'+but.icon"></i>
+          {{but.alias}}
+        </span>
+        <template v-if="batchButs.length > 0">
+          <div class="full-list" v-show="!list[0].show">
+            <el-checkbox v-model="range" @change="onChangeRange" true-label="2" false-label="1">跨页全选</el-checkbox>
+          </div>
+          <batch-but
+            class="sli but-blue"
+            :type="range"
+            :list="selecArr"
+            :param="batchButs"
+            @onClick="onAction"
+          ></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <exportHistory
+      historyUrl="/analysis/expireauth/b/listExportExcel"
+      :dialogVisible="iHvisible"
+      ajaxType="9"
+      @beforeClose="()=>{iHvisible=false}"
+    ></exportHistory>
+
+    <modify
+      @confirm="modifyConfirm"
+      @beforeClose="()=>{modifyVisible=false}"
+      :dialogVisible="modifyVisible"
+      :defaultData="defaultData"
+      :param="modifyData"
+    ></modify>
+    <history
+      :authTypes="authTypes"
+      :dialogVisible="historyVisible"
+      @beforeClose="()=>{historyVisible=false}"
+    ></history>
+  </el-container>
+</template>
+
+<script>
+import modify from "./dialog/modify";
+import history from "./dialog/jjdqsqHistory";
+import { getDates, getparam } from "./query.js";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import { format, download } from "@/utils/utils.js";
+import exportHistory from "../personnel/export-history";
+import { timerDownload } from "../personnel/index.js";
+import queryPosition from "./queryPosition1";
+import queryOrgan from "./queryOrgan1";
+export default {
+  name: "wgcx190",
+  components: {
+    queryPosition,
+    exportHistory,
+    queryOrgan,
+    history,
+    modify,
+  },
+  data() {
+    let $this = this;
+    return {
+      historyVisible: false,
+      modifyVisible: false,
+      iHvisible: false,
+      interface: "/analysis/expireauth/4/listLockExpireAuth",
+      refreshTable: 0,
+      modifyData: [],
+      isSelectable: true,
+      range: "1",
+      defaultData: {},
+      selecArr: [],
+      paramObj: {
+        type: "1",
+        agid: [],
+        pgid: [],
+        arearooms: [],
+      },
+      batchButs: [],
+      topButs: [],
+      listButs: [],
+      dates: [],
+
+      deviceTypes: [
+        {
+          type: "1",
+          typename: "门锁",
+        },
+        {
+          type: "2",
+          typename: "门禁",
+        },
+      ],
+      authTypes: [],
+      param: {
+        sdate: "",
+        edate: "",
+        authtype: "",
+        search: "",
+        sortby: "",
+        sorttype: "",
+        expiredays: "30",
+      },
+      devicetype: "1",
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "到期时间",
+          sortable: "custom",
+          prop: "expiredate",
+        },
+        {
+          name: "剩余天数",
+          sortable: "custom",
+          prop: "expiredays",
+        },
+        {
+          name: "授权位置",
+          sortable: "custom",
+          prop: "authlocation",
+        },
+        {
+          name: "位置类型",
+          sortable: "custom",
+          prop: "devicetype",
+        },
+        {
+          name: "授权类型",
+          sortable: "custom",
+          prop: "authtype",
+          formatter(row) {
+            if ($this.authTypes.length > 0) {
+              let key = $this.authTypes.find((item) => {
+                return item.id == row.authtype;
+              });
+              return key.name;
+            } else {
+              setTimeout(() => {
+                let key = $this.authTypes.find((item) => {
+                  return item.id == row.authtype;
+                });
+                return key.name;
+              }, 500);
+            }
+          },
+        },
+        {
+          name: "授权详情",
+          sortable: "custom",
+          prop: "authcode",
+        },
+        {
+          name: "卡片类型",
+          sortable: "custom",
+          prop: "cardtype",
+        },
+        {
+          name: "权限类型",
+          sortable: "custom",
+          prop: "authmanager",
+          formatter(row) {
+            return row.authmanager == "0" ? "使用权限" : "管理权限";
+          },
+        },
+        {
+          name: "读头名称",
+          sortable: "custom",
+          prop: "ahname",
+        },
+        {
+          name: "归属人",
+          sortable: "custom",
+          prop: "personname",
+        },
+        {
+          name: "人员编号",
+          sortable: "custom",
+          prop: "personcode",
+        },
+        {
+          name: "归属人组织",
+          sortable: "custom",
+          prop: "personlocation",
+        },
+        {
+          name: "下发状态",
+          sortable: "custom",
+          prop: "sendstate",
+          template: {
+            props: ["scope"],
+            methods: {
+              name() {
+                let value = this.scope.row.sendstate;
+                if (value == "1") {
+                  return "下发成功";
+                } else if (value == "-1") {
+                  return "下发失败";
+                } else {
+                  return "正在下发";
+                }
+              },
+              getClass() {
+                let value = this.scope.row.sendstate;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class="getClass()">{{name()}}</span>`,
+          },
+        },
+        {
+          name: "操作",
+          prop: "",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listButs;
+              },
+            },
+            methods: {
+              onClick(key, obj) {
+                let arr = [Object.assign({}, this.scope.row)];
+                let row = this.scope.row;
+                if (key == 979) {
+                  $this.defaultData = {
+                    empsdate: row.empsdate,
+                    empedate: row.expiredate,
+                    openstime: row.opentime.substring(0, 5),
+                    openetime: row.opentime.substring(6),
+                    opencount: row.opencount,
+                  };
+                  $this.modify(arr);
+                } else if (key == 980) {
+                  $this.heavyLoad(arr);
+                }
+              },
+            },
+            template: `<div class="operat-buts">
+             <fel-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.id, v)">{{v.alias}}</fel-button>
+            </div>`,
+          },
+        },
+      ],
+      refresh: 0,
+      isExport: false,
+      sonmenu: 0,
+    };
+  },
+  watch: {
+    dates(val) {
+      this.param.sdate = format(val[0], "yyyy-MM-dd HH:mm:ss");
+      this.param.edate = format(val[1], "yyyy-MM-dd HH:mm:ss");
+    },
+  },
+  created() {
+    this.inGetsonmenu();
+    this.getTypes();
+  },
+  mounted() {
+    // this.getEject();
+  },
+  methods: {
+    onSelectable() {
+      return this.isSelectable;
+    },
+    ...mapGetters(["getNumber"]),
+    onClick(val) {
+      if (val == "977") {
+        let url = "/analysis/expireauth/a/exportExpireAuth";
+        let name = "即将到期授权查询";
+        // let tValue = getDates(this.dates);
+        // this.param.sdate = tValue[0];
+        // this.param.edate = tValue[1];
+        this.inExportPackage(
+          url,
+          name,
+          { ...this.param, devicetype: this.devicetype },
+          this.paramObj
+        );
+      } else if (val == "978") {
+        this.iHvisible = true;
+      } else if (val == "981") {
+        this.historyVisible = true;
+      }
+    },
+
+    inExportPackage(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "9", obj, true, 60000)
+        .then((res) => {
+          this.$message({
+            message: name + "文件导出已下发，文件正在生成中",
+            type: "success",
+          });
+          timerDownload(
+            res.result,
+            "/analysis/expireauth/b/listExportExcel",
+            this,
+            name,
+            "9"
+          );
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+
+    getParam(obj, num, data) {
+      let param = {
+        actiontype: this.range,
+        agid: this.paramObj.agid,
+        pgid: this.paramObj.pgid,
+        arearooms: this.paramObj.arearooms,
+        authids: obj.map((item) => {
+          return item.authid;
+        }),
+        authtype: this.param.authtype,
+        devicetype: this.devicetype,
+        edate: this.param.edate,
+        expiredays: this.param.expiredays,
+        sdate: this.param.sdate,
+        search: this.param.search,
+        sortby: this.param.sortby,
+        sorttype: this.param.sorttype,
+        type: this.paramObj.type,
+      };
+      if (num == 2) {
+        param.opencount = data ? data.opencount || "" : "";
+        param.empedate = data ? data.empedate || "" : "";
+        param.empsdate = data ? data.empsdate || "" : "";
+        param.openetime = data ? data.openetime || "" : "";
+        param.openstime = data ? data.openstime || "" : "";
+      }
+      return param;
+    },
+    heavyLoad(data) {
+      let param = this.getParam(data, 1);
+      this.actionReq(param, "重载");
+    },
+
+    modify(data) {
+      this.modifyData = data;
+      this.modifyVisible = true;
+    },
+    modifyConfirm(data) {
+      let param = this.getParam(data.obj, 2, data);
+      this.actionReq(param, "修改");
+    },
+    onAction(val, data) {
+      if (val == 980) {
+        this.heavyLoad(this.selecArr);
+      } else if (val == 979) {
+        this.modify(this.selecArr);
+      }
+    },
+
+    actionReq(param, str) {
+      let url = "/analysis/expireauth/6/reloadExpireAuth";
+      if (str == "修改") {
+        url = "/analysis/expireauth/7/updateExpireAuth";
+      }
+      this.$confirm("确定要" + str + "当前人员吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        this.$ajax(url, param, "9", {}, true)
+          .then((res) => {
+            this.$message({
+              message: str + "成功!",
+              type: "success",
+            });
+            this.modifyVisible = false;
+            this.onRefreshTable();
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      });
+    },
+    onChange(val) {
+      console.log("val", val);
+      if (val == "1") {
+        this.interface = "/analysis/expireauth/4/listLockExpireAuth";
+      } else {
+        this.interface = "/analysis/expireauth/5/listAccessExpireAuth";
+      }
+      this.search();
+      this.getTypes(val);
+    },
+    onChangeRange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    getTypes(val = "1") {
+      this.$ajax(
+        "/analysis/expireauth/3/getSearchType",
+        { devicetype: val },
+        "9"
+      )
+        .then((res) => {
+          this.authTypes = [{ id: "", name: "全部授权类型" }, ...res.result];
+        })
+        .catch((err) => {
+          console.log("err", err);
+        });
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "976" }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let entity = value.entity;
+            let id = entity.id;
+            if (id == "977") {
+              this.topButs.push(entity);
+            } else if (id == "978") {
+              this.topButs.push(entity);
+            } else if (id == "981") {
+              this.topButs.push(entity);
+            } else if (id == "979") {
+              this.listButs.push(entity);
+              this.batchButs.push(entity);
+            } else if (id == "980") {
+              this.listButs.push(entity);
+              this.batchButs.push(entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    onChoiceWZ(data, type) {
+      if (type == "1") {
+        this.paramObj.type = 2;
+        this.paramObj.arearooms = data;
+        this.paramObj.agid = [];
+      } else {
+        this.paramObj.type = 1;
+        this.paramObj.arearooms = [];
+        this.paramObj.agid = data.map((item) => {
+          return item.agid;
+        });
+      }
+    },
+    onChoiceZZ(data) {
+      this.paramObj.pgid = data.map((item) => {
+        return item.pgid;
+      });
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      Object.keys(this.param).forEach((key) => {
+        if (key != "") {
+          this.param[key] = "";
+        }
+      });
+      this.devicetype = "1";
+      this.param.expiredays = "30";
+      this.modifyData = [];
+      this.dates = [];
+      this.onChange("1");
+      this.$refs.queryPosition.onClear();
+      this.$refs.queryOrgan.onClear();
+      console.log("this.devicetype", this.devicetype);
+      this.search();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "jjdqsqcx976");
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sorttype = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sorttype = "1";
+        }
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sorttype = "";
+        this.param.sortby = "";
+      }
+      this.search();
+    },
+  },
+};
+</script>

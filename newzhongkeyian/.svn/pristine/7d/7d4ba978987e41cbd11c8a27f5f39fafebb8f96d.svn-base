@@ -1,0 +1,111 @@
+<!-- 系统参数 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" v-model="dates"></fel-date>
+        </inpbox>
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="wid300 qh_inp"
+            v-model="param.search"
+            placeholder="输入操作人/操作人账号进行检索"
+          ></el-input>
+        </inpbox>
+
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/system/log/1/getlog"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+      >
+       <!-- 日志导出 -->
+        <journalExport :param="param" fatherid="458" url="/system/log/param/upload/1/downlog"></journalExport>
+      </paging-table>
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import journalExport from "./../common/journalExport"
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    toParam: null
+  },
+  components:{
+    journalExport,
+  },
+  data() {
+    return {
+      dates: [],
+      param: { sdate: "", edate: "", search: "" },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "日志标题",
+          prop: "logtitle"
+        },
+        {
+          name: "日志类型",
+          prop: "logtype"
+        },
+        {
+          tooltip: false,
+          name: "日志内容",
+          prop: "logcontent"
+        },
+        {
+          name: "操作人",
+          prop: "username"
+        },
+        {
+          name: "操作人账号",
+          prop: "userlogin"
+        },
+        {
+          name: "操作日期",
+          prop: "logdate"
+        }
+      ],
+      refresh: 0
+    };
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        this.param.sdate = "";
+        this.param.edate = "";
+      }
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

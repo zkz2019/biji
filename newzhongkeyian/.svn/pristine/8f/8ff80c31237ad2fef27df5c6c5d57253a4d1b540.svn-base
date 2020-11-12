@@ -1,0 +1,119 @@
+<!-- 操作记录详情 -门禁 -->
+<template>
+  <fel-dialog
+    title="门禁授权操作记录详情"
+    width="70%"
+    minWidth="1050px"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="mjRecord">
+      <paging-table
+        height="100%"
+        interface="/access/v2.0/auth/info/g/listCardAccessAuthManageDetails"
+        class="heig100"
+        @onSelection="onSelection"
+        :list="list"
+        ajaxType="9"
+        :refresh="refresh"
+        :param="paramObj"
+      ></paging-table>
+    </el-container>
+  </fel-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    paramObj: Object,
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      param: {},
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+        {
+          name: "授权开始时间",
+          prop: "aamdsdate"
+        },
+        {
+          name: "授权结束时间",
+          prop: "aamdedate"
+        },
+        {
+          name: "可用时间段",
+          formatter(row) {
+            return row.aamdopenstime + "-" + row.aamdopenetime;
+          }
+        },
+        {
+          name: "门位置",
+          prop: "adlocation"
+        },
+        {
+          name: "门名称",
+          prop: "adname"
+        },
+        {
+          name: "处理状态",
+          prop: "aamdstatus",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.aamdstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.aamdstatus>="0"?scope.row.aamdstatus=="0"?"正在处理":"处理成功":"处理失败"}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "aaudreason"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.onRefresh();
+      }
+    }
+  },
+  created() {},
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onRefresh() {
+      //刷新表格
+      this.refresh = new Date().getTime();
+    },
+    onSelection(data) {}
+  }
+};
+</script>
+
+<style lang="scss">
+.mjRecord {
+  height: 450px;
+}
+</style>
+

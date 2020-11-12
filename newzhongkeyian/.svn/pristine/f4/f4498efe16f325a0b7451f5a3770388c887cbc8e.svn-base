@@ -1,0 +1,725 @@
+<template>
+  <el-container class="kinguser">
+    <!-- <el-header class="query_headbox">
+    </el-header>-->
+    <el-main class="padt0 query_main">
+      <retrieval class="query_head marpadbor0">
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.authtype">
+            <el-option
+              v-for="item in empowers"
+              :key="item.authtype"
+              :label="item.authname"
+              :value="item.authtype"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.statetype">
+            <el-option
+              v-for="item in states"
+              :key="item.statetype"
+              :label="item.statename"
+              :value="item.statetype"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.managertype">
+            <el-option
+              v-for="item in rightType"
+              :key="item.managertype"
+              :label="item.managername"
+              :value="item.managertype"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'输入' + getNumber() + '/姓名/身份证查询'"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="onRefresh"
+            >查询</fel-button
+          >
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/lock/operate/info/h/getroomauths"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        :param="param"
+        :paramObj="paramObj"
+        ref="paging-table"
+        :isAll="range == 2 ? true : false"
+        @onEjectChange="onEjectChange"
+        :class="{ 'cover-up': range == 2 }"
+        @onRefreshTable="onRefreshTable"
+        @onSelection="
+          (d) => {
+            selecArr = d;
+          }
+        "
+      >
+        <template>
+          <span
+            v-for="(v, k) of topButs"
+            v-show="v.show"
+            :key="k"
+            class="sli but-blue"
+            @click="onClick(v.id, v)"
+          >
+            <i v-if="v.icon" :class="'ficon-' + v.icon"></i>
+            {{ v.alias }}
+          </span>
+          <template v-if="batchButs.length > 0">
+            <div class="full-list" v-show="!list[0].show">
+              <el-checkbox
+                v-model="range"
+                @change="onChange"
+                true-label="2"
+                false-label="1"
+                >跨页全选</el-checkbox
+              >
+            </div>
+            <batch-but
+              class="sli but-blue"
+              :type="range"
+              :list="selecArr"
+              :param="batchButs"
+              @onClick="onAction"
+            ></batch-but>
+          </template>
+        </template>
+      </paging-table>
+      <ul class="paging-statistics">
+        <li>
+          人员
+          <span>{{ statistics.personcount || 0 }}</span
+          >人
+        </li>
+        <li>
+          卡片
+          <span>{{ statistics.cardcount || 0 }}</span
+          >张
+        </li>
+        <li>
+          密码
+          <span>{{ statistics.passcount || 0 }}</span
+          >个
+        </li>
+        <li>
+          指纹
+          <span>{{ statistics.fingercount || 0 }}</span
+          >枚
+        </li>
+        <li>
+          蓝牙钥匙
+          <span>{{ statistics.appcount || 0 }}</span
+          >个
+        </li>
+        <li>
+          未生效
+          <span>{{ statistics.failcount || 0 }}</span
+          >个
+        </li>
+      </ul>
+    </el-main>
+    <kinguserAdd
+      :checkedroom="checkedroom"
+      @onRefresh="onRefreshTables"
+      @beforeClose="dialogAdd = false"
+      :dialogVisible="dialogAdd"
+    ></kinguserAdd>
+    <kinguserModify
+      :checkedroom="checkedroom"
+      :param="modifyParam"
+      :paramObj="modifyParamObj"
+      @onRefresh="onRefreshTables"
+      @beforeClose="dialogModify = false"
+      :dialogVisible="dialogModify"
+    ></kinguserModify>
+    <remarks
+      :dialogVisible="dialogRemark"
+      :row="auth"
+      @beforeClose="remarkClose"
+    ></remarks>
+  </el-container>
+</template>
+
+<script>
+import remarks from "./dialog/remarks";
+import { mapGetters } from "vuex";
+import kinguserAdd from "./kinguserAdd";
+import kinguserModify from "./kinguserModify";
+export default {
+  components: {
+    kinguserAdd,
+    kinguserModify,
+    remarks,
+  },
+  props: {
+    checkedroom: Object,
+    btnRight: {
+      type: Array,
+      default: () => {
+        return [];
+      },
+    },
+  },
+  data() {
+    let $this = this;
+    return {
+      statistics: {},
+      selecArr: [],
+      auth: {},
+      modifyParam: {},
+      modifyParamObj: [],
+      dialogRemark: false,
+      dialogAdd: false,
+      dialogModify: false,
+      topButs: [
+        // {
+        //   id: "1",
+        //   show: true,
+        //   alias: "添加授权"
+        // },
+        // {
+        //   id: "2",
+        //   show: true,
+        //   alias: "清除待发指令"
+        // }
+      ],
+      batchButs: [
+        // {
+        //   id: "1",
+        //   alias: "修改授权"
+        // },
+        // {
+        //   id: "4",
+        //   alias: "删除授权"
+        // },
+        // {
+        //   id: "9",
+        //   alias: "重载授权"
+        // }
+      ],
+      empowers: [
+        {
+          authtype: "",
+          authname: "全部授权",
+        },
+      ],
+      rightType: [
+        {
+          managertype: "",
+          managername: "全部权限",
+        },
+      ],
+      states: [
+        {
+          statetype: "",
+          statename: "全部授权状态",
+        },
+      ],
+      param: {
+        roomid: this.checkedroom.roomid,
+        search: "",
+        authtype: "",
+        statetype: "",
+        managertype: "",
+      },
+      paramObj: {},
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px",
+        },
+        {
+          name: "创建时间",
+          show: true,
+          prop: "senddate",
+          width: "110px",
+        },
+        {
+          name: "下发时间",
+          prop: "authosdate",
+          width: "110px",
+        },
+        {
+          name: "归属人",
+          width: "65px",
+          prop: "personname",
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode",
+          minWidth: "80px",
+        },
+        {
+          show: true,
+          name: "身份证",
+          prop: "personcard",
+        },
+
+        {
+          name: "归属人组织",
+          prop: "personlocation",
+          minWidth: "96px",
+        },
+        {
+          name: "授权类型",
+          prop: "authtype",
+          width: "80px",
+        },
+        {
+          name: "授权详情",
+          width: "80px",
+          prop: "cardcode",
+        },
+        {
+          name: "卡片类型",
+          width: "80px",
+          prop: "cardtype",
+        },
+        {
+          name: "权限类型",
+          width: "80px",
+          prop: "ismanager",
+        },
+        {
+          name: "授权账号",
+          width: "80px",
+          prop: "userlogin",
+        },
+        {
+          name: "操作IP",
+          width: "120px",
+          prop: "ip",
+        },
+        // {
+        //   name: "是否管理卡下发",
+        //   prop: "ismcard"
+        // },
+        // {
+        //   name: "有效期",
+        //   prop: "persontypename"
+        // },
+        // {
+        //   name: "每日授权时间段",
+        //   prop: "persontypename"
+        // },
+        // {
+        //   name: "授权有效次数",
+        //   prop: "persontypename"
+        // },
+        // {
+        //   name: "授权人",
+        //   prop: "persontypename"
+        // },
+        {
+          name: "下发状态",
+          prop: "issend",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.issend;
+                if (value == "下发成功") {
+                  return "puc-pg";
+                } else if (value == "下发失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class="getClass()">{{scope.row.issend}}</span>`,
+          },
+        },
+        {
+          name: "失败原因",
+          prop: "failtype",
+        },
+        {
+          name: "备注信息",
+          prop: "remark",
+        },
+        {
+          name: "操作",
+          width: "170px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                if (this.scope.row.rcstate == 0) {
+                  return $this.listBut.filter((obj) => {
+                    if (obj.type == 1) {
+                      return false;
+                    } else {
+                      return true;
+                    }
+                  });
+                } else {
+                  return $this.listBut;
+                }
+              },
+            },
+            methods: {
+              onClick(key, obj) {
+                let arr = [Object.assign({}, this.scope.row)];
+                if (key == 1) {
+                  $this.modify("0", arr);
+                } else if (key == 9) {
+                  $this.heavyLoad("0", arr);
+                } else if (key == 4) {
+                  $this.delete("0", arr);
+                } else if (key == 11) {
+                  $this.remark("0", arr);
+                }
+              },
+              getName(name) {
+                let row = this.scope.row;
+                if (row.authtype.includes("删除") && name == "删除") {
+                  return "";
+                } else {
+                  return name;
+                }
+              },
+            },
+            template: `<div class="operat-buts">
+             <fel-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{getName(v.name)}}</fel-button>
+            </div>`,
+          },
+        },
+      ],
+      range: "1",
+      ranges: [
+        {
+          value: "1",
+          label: "勾选范围",
+        },
+        {
+          value: "2",
+          label: "全部列表",
+        },
+      ],
+      refresh: 0,
+      refreshTable: 0,
+      listBut: [
+        // { type: "1", name: "修改" },
+        // { type: "4", name: "删除" },
+        // { type: "9", name: "重载" }
+      ],
+      isSelectable: true,
+    };
+  },
+  computed: {
+    // allBtnShow() {
+    //   let is = this.btnRight.includes("328");
+    //   return is;
+    // }
+  },
+  created() {
+    this.ingetauthtype();
+    this.onRefreshTable();
+    this.getmunu();
+  },
+  mounted() {
+    if (this.topButs[1]) {
+      if (this.checkedroom.isnb == 0) {
+        this.topButs[1].show = false;
+      } else {
+        this.topButs[1].show = true;
+      }
+    }
+    this.getEject();
+  },
+  methods: {
+    getmunu(num = 0) {
+      if (this.btnRight && this.btnRight.length > 0) {
+        this.btnRight.forEach((item) => {
+          let id = item.entity.id;
+          if (id == "738") {
+            this.topButs.push({
+              id: "1",
+              icon: "image622",
+              show: true,
+              alias: "添加授权",
+            });
+          } else if (id == "739") {
+            this.batchButs.push({
+              id: "1",
+              icon: "image30",
+              alias: "修改授权",
+            });
+            this.listBut.push({ type: "1", name: "修改" });
+          } else if (id == "740") {
+            this.batchButs.push({
+              id: "4",
+              icon: "image106",
+              alias: "删除授权",
+            });
+            this.listBut.push({ type: "4", name: "删除" });
+          } else if (id == "741") {
+            this.batchButs.push({
+              id: "9",
+              icon: "heavy",
+              alias: "重载授权",
+            });
+            this.listBut.push({ type: "9", name: "重载" });
+          } else if (id == "960") {
+            this.listBut.push({ type: "11", name: "备注" });
+          } else if (id == "742") {
+            this.topButs.push({
+              id: "2",
+              show: true,
+              icon: "image106",
+              alias: "清除待发指令",
+            });
+          }
+        });
+      } else {
+        setTimeout(() => {
+          if (num < 10) {
+            this.getmunu(num);
+            num++;
+          }
+        }, 200);
+      }
+    },
+    ...mapGetters(["getNumber"]),
+    ingetauthtype() {
+      this.$ajax("/lock/operate/info/g/getauthtype", {}, "1")
+        .then((res) => {
+          let result = res.result;
+          this.empowers.push(...result.types);
+          this.states.push(...result.states);
+          this.rightType.push(...result.manager);
+        })
+        .catch((err) => {
+          // this.$message({
+          //   showClose: true,
+          //   message: `[${err.resultCode}] `+err.resultMsg ,
+          //   type: "error"
+          // });
+        });
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    remarkClose(bool) {
+      this.dialogRemark = false;
+      if (bool) {
+        this.onRefreshTables();
+      }
+    },
+    onAction(key, obj) {
+      if (key == 9) {
+        this.heavyLoad(1, this.selecArr);
+      } else if (key == 4) {
+        this.delete(1, this.selecArr);
+      } else if (key == 1) {
+        this.modify(1, this.selecArr);
+      }
+    },
+    onReset() {
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.param.roomid = this.checkedroom.roomid;
+      this.onRefresh();
+    },
+    onClick(key, data) {
+      if (key == "1") {
+        this.dialogAdd = true;
+      } else if (key == "2") {
+        this.$ajax(
+          "/lock/operate/info/p/clearnbauthorder",
+          { roomid: this.checkedroom.roomid },
+          "1",
+          {},
+          true
+        )
+          .then((res) => {
+            this.$message({
+              type: "success",
+              message: res.result,
+            });
+            this.onRefreshTables();
+          })
+          .catch((err) => {
+            this.$message({
+              type: "error",
+              message: err.resultMsg,
+            });
+          });
+      }
+    },
+    heavyLoad(type, arr) {
+      let text = "确定要重载当前授权吗？";
+      if (type == 1) {
+        text = "确定要重载当前选中的全部授权吗？";
+        if (this.range == 2) {
+          arr = [];
+          text = "确定要重载当前查询的全部授权吗？";
+        }
+      }
+      this.$confirmCon(text, () => {
+        this.inreadauths(arr, type);
+      });
+    },
+    inreadauths(arr, type) {
+      let data = Object.assign({}, this.param);
+      if (type == "0") {
+        data.actiontype = "勾选范围";
+      } else {
+        data.actiontype = this.range == "2" ? "跨页全选" : "勾选范围";
+      }
+      this.$ajax("/lock/operate/info/i/readauths", data, "1", arr, true)
+        .then((res) => {
+          this.onRefreshTables();
+          this.$message({
+            message: "重载已发送",
+            type: "success",
+          });
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    remark(type, arr) {
+      this.auth = arr[0];
+      this.dialogRemark = true;
+    },
+    delete(type, arr) {
+      let text = "确定要删除当前授权吗？";
+      if (type == 1) {
+        text = "确定要删除当前选中的全部授权吗？";
+        if (this.range == 2) {
+          arr = [];
+          text = "确定要删除当前查询的全部授权吗？";
+        }
+      }
+      this.$confirmCon(text, () => {
+        this.indeleteauths(arr, type);
+      });
+    },
+    indeleteauths(arr, type) {
+      let data = Object.assign({}, this.param);
+      if (type == "0") {
+        data.actiontype = "勾选范围";
+      } else {
+        data.actiontype = this.range == "2" ? "跨页全选" : "勾选范围";
+      }
+      this.$ajax("/lock/operate/info/j/deleteauths", data, "1", arr, true)
+        .then((res) => {
+          this.onRefreshTables();
+          this.$message({
+            message: "删除成功",
+            type: "success",
+          });
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    modify(type, arr) {
+      this.modifyParam = Object.assign(
+        { range: this.range, _clicktype: type },
+        this.param
+      );
+      this.modifyParamObj = arr;
+      this.dialogModify = true;
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTables() {
+      this.refreshTable = new Date().getTime();
+    },
+
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "kinguserFjgl");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "kinguserFjgl");
+    },
+    onRefreshTable() {
+      this.$ajax(
+        "/lock/operate/info/o/getauthanalysis",
+        { roomid: this.checkedroom.roomid },
+        "1"
+      )
+        .then((res) => {
+          this.statistics = res.result;
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.kinguser {
+  .query_headbox {
+    .marpadbor0 {
+      padding-left: 20px;
+    }
+  }
+  .query_main {
+    position: relative;
+    .paging-statistics {
+      position: absolute;
+      bottom: 5px;
+      left: 16px;
+      display: flex;
+      li {
+        padding-right: 10px;
+        span {
+          padding: 2px;
+        }
+      }
+    }
+  }
+}
+</style>

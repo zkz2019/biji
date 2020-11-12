@@ -1,0 +1,450 @@
+<!-- 批量下发 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" v-model="dates"></fel-date>
+        </inpbox>
+        <inpbox :inptext="'请选择指令类型'">
+          <el-select class="qh_w270 qh_inp" v-model="param.lotordertype">
+            <el-option v-for="item in options" :key="item.id" :label="item.text" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="qh_w270 qh_inp"
+            v-model="param.search"
+            :placeholder="'输入账号进行检索'"
+          ></el-input>
+        </inpbox>
+
+        <inpbox>
+          <!-- <fel-button class="qh_btn" @click="register">创建账号</fel-button> -->
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        ref="pagingTable"
+        height="100%"
+        interface="/lock/lotorder/2/getlotorder"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="paramObj"
+      >
+        <span class="sli but-blue" @click="onClick()">
+          <i class="ficon-image622"></i>新增批量下发
+        </span>
+        <!-- <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>-->
+      </paging-table>
+    </el-main>
+    <batchDialog
+      :options="options1"
+      :dialogVisible="dialogVisible"
+      @beforeClose="beforeClose"
+      @onRefresh="onRefresh(true)"
+    ></batchDialog>
+    <Dialogtabel
+      :param="detailsParam"
+      :dialogVisible="dialogTableVisible"
+      @beforeClose="dialogTableVisible=false"
+    />
+  </el-container>
+</template>
+
+<script>
+import Storages from '../../utils/Storage.js' //缓存工具
+import Dialogtabel from "./dialog/fjDialogtabel";
+import batchDialog from "./dialog/batchDialog";
+import { mapGetters } from "vuex";
+import { format, download } from "@/utils/utils.js";
+export default {
+  components: {
+    batchDialog,
+    Dialogtabel
+  },
+  data() {
+    var $this = this;
+    return {
+      dialogTableVisible: false,
+      dialogVisible: false,
+      detailsParam: {},
+      paramObj: {
+        build: [],
+        persontree: []
+      },
+      dates: [],
+      param: { sdate: "", edate: "", search: "", lotordertype: "" },
+      options: [],
+      options1: [], //弹框数据
+      coid: "",
+      newList: { alreadycount: "", failcount: "", testrate: "" },
+      times: null,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "创建日期",
+          prop: "cocdate"
+        },
+        {
+          name: "指令类型",
+          prop: "cotype"
+        },
+        {
+          name: "创建账号",
+          prop: "userlogin"
+        },
+        {
+          name: "总下发数",
+          prop: "cocount",
+          template: {
+            props: ["scope"],
+            computed: {
+              row() {
+                return this.scope.row;
+              },
+              coid() {
+                return $this.coid;
+              },
+              newList() {
+                return $this.newList;
+              }
+            },
+            methods: {
+              onClick() {
+                let data = this.scope.row;
+                let obj = { coid: data.coid, search: "" };
+                $this.detailsParam = obj;
+                $this.dialogTableVisible = true;
+              }
+            },
+            template: `<div><a v-if='scope.row.cocount!=0||newList.cocount!=0' class="a-click" @click.stop="onClick">
+            {{scope.row.coid==coid?newList.cocount:scope.row.cocount}}</a><span v-else>{{scope.row.cocount}}</span></div>`
+          }
+        },
+        {
+          name: "已下发数",
+          prop: "alreadycount"
+        },
+        {
+          name: "处理失败数",
+          prop: "conocount"
+        },
+        {
+          name: "处理成功数",
+          prop: "cookcount"
+        },
+        {
+          name: "下发失败",
+          prop: "failcount",
+          template: {
+            props: ["scope"],
+            computed: {
+              row() {
+                return this.scope.row;
+              },
+              coid() {
+                return $this.coid;
+              },
+              newList() {
+                return $this.newList;
+              }
+            },
+            methods: {
+              onClick() {
+                let data = this.scope.row;
+                let obj = { coid: data.coid, orderstate: "-1", search: "" };
+                $this.detailsParam = obj;
+                $this.dialogTableVisible = true;
+              }
+            },
+            template: `<div><a v-if='scope.row.failcount!=0||newList.failcount!=0' class="a-click" @click.stop="onClick">
+            {{scope.row.coid==coid?newList.failcount:scope.row.failcount}}</a><span v-else>{{scope.row.failcount}}</span></div>`
+          }
+        },
+        {
+          name: "进度",
+          prop: "testrate",
+          template: {
+            props: ["scope"],
+            computed: {
+              coid() {
+                return $this.coid;
+              },
+              newList() {
+                return $this.newList;
+              }
+            },
+            methods: {},
+            template: `<div :class="scope.row.testrate=='100%'||newList.testrate=='100%'?'puc-pg':'puc-px'">
+            {{scope.row.coid==coid?newList.testrate:scope.row.testrate}}</div>`
+          }
+        },
+        {
+          name: "操作",
+          width: "220px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              }
+            },
+            methods: {
+              onClick(id, obj) {
+                $this.onClick(id, this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.id, v)">{{v.alias}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      refresh: 0
+    };
+  },
+  computed: {
+    listBut() {
+      let all = Storages.getStorage("plxfBtn"); 
+      let but = [];
+      all.childs.forEach((item, ind) => {
+        let id = item.entity.id;
+        if (id == 560) {
+          but.push(item.entity);
+        } else if (id == 561) {
+          but.push(item.entity);
+        } else if (id == 562) {
+          but.push(item.entity);
+        }
+      });
+      return but;
+    }
+  },
+  watch: {
+    listBut(val) {}
+  },
+  created() {
+    this.getlotordertype();
+    this.progress();
+  },
+  destroyed() {
+    clearInterval(this.times);
+  },
+  methods: {
+    onClick(id, obj) {
+      if (id == 560) {
+        if (obj.testrate === "100%") {
+          this.$message.error("指令下发已完成,无法停止下发!");
+          return;
+        }
+        this.$confirm("确定要停止下发吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(
+            "/lock/lotorder/sendfail/3/stoplotorder",
+            { orderid: obj.coid },
+            "1",
+            {},
+            true
+          )
+            .then(res => {
+              this.$message({
+                message: "停止下发指令已下发!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      } else if (id == 561) {
+        this.$confirm("确定要再次下发吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(
+            "/lock/lotorder/sendfail/2/sendlotorderregain",
+            { orderid: obj.coid },
+            "1",
+            {},
+            true
+          )
+            .then(res => {
+              this.$message({
+                message: "再次下发指令已下发!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      } else if (id == 562) {
+        this.$confirm("确定要失败重发吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(
+            "/lock/lotorder/sendfail/1/sendfaillotorder",
+            { orderid: obj.coid },
+            "1",
+            {},
+            true
+          )
+            .then(res => {
+              this.$message({
+                message: "失败重发指令已下发!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      } else {
+        this.dialogVisible = true;
+      }
+    },
+    //查询可操作的批量下发类型
+    getlotordertype() {
+      this.$ajax("/lock/lotorder/1/getlotordertype", {}, "1")
+        .then(res => {
+          let aa = JSON.parse(JSON.stringify(res.result));
+          aa.unshift({ text: "全部", id: "0" });
+          this.options = aa;
+          this.options1 = res.result;
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        this.param.sdate = "";
+        this.param.edate = "";
+      }
+      this.onRefresh();
+    },
+    onRefresh(bool = false) {
+      this.refresh = new Date().getTime();
+      if (bool) {
+        clearInterval(this.times);
+        this.progress();
+      }
+    },
+    progress() {
+      let is = true;
+      this.times = setInterval(() => {
+        if (this.$refs.pagingTable.queryData != undefined) {
+          let data = this.$refs.pagingTable.queryData;
+          this.$ajax(
+            "/lock/lotorder/save/d/getSlClusterorderResult",
+            { coid: data[0].coid },
+            "1"
+          ).then(res => {
+            this.coid = data[0].coid;
+            this.newList = res.result;
+            if (res.result.testrate == "100%") {
+              clearInterval(this.times);
+              this.onRefresh();
+              setTimeout(() => {
+                this.coid = "";
+                this.newList = {
+                  alreadycount: "",
+                  failcount: "",
+                  testrate: ""
+                };
+              }, 1500);
+            }
+          });
+        }
+      }, 10000);
+    },
+    register() {},
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    //根据登录用户和批量下发类型获取历史批量下发列表
+    getlotorder(aa) {
+      if (aa != "1") {
+        this.tableloading = true;
+      }
+      let token = Storages.getStorage("token");
+      this.$post("/lock/lotorder/2/getlotorder", {
+        token: token,
+        lotordertype: this.value_type,
+        page: this.page,
+        rows: this.rows
+      })
+        .then(res => {
+          if (aa != "1") {
+            this.tableloading = false;
+            this.gridData = res.result.data;
+            this.total = res.result.total * 1;
+          } else if (
+            res.result.data[0].testrate >= "40%" &&
+            res.result.data[0].testrate <= "60%"
+          ) {
+            this.tableloading = false;
+            this.gridData = res.result.data;
+            this.total = res.result.total * 1;
+          } else if (res.result.data[0].testrate == "100%") {
+            this.tableloading = false;
+            this.gridData = res.result.data;
+            this.total = res.result.total * 1;
+          }
+          if (res.result.data[0].testrate != "100%") {
+            setTimeout(() => {
+              this.getlotorder("1"); //实参"1"表示为循环判断下发状态
+            }, 5000);
+          }
+        })
+        .catch(err => {
+          console.log(err);
+          this.tableloading = false;
+        });
+    }
+  }
+};
+</script>

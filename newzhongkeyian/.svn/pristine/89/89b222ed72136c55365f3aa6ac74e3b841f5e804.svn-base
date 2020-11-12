@@ -1,0 +1,1107 @@
+<!-- 账户管理 -->
+<template>
+  <el-container>
+    <el-header class="heig30 query_headbox">
+      <com-title>账户管理</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-select v-model="param.state" class="con-select qh_inp">
+            <el-option
+              v-for="item in states"
+              :key="item.value"
+              :label="item.statename"
+              :value="item.state"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select v-model="param.type" class="con-select qh_inp">
+            <el-option
+              v-for="item in types"
+              :key="item.value"
+              :label="item.statename"
+              :value="item.state"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <queryOrgan
+            ref="queryOrgan"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceZZ"
+            interface="/system/user/2/getpersontree"
+          ></queryOrgan>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            v-model="param.search"
+            class="con-search qh_inp"
+            clearable
+            type="text"
+            placeholder="输入姓名/账号/创建人查询"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <el-button class="qh_btn" type="primary" @click="onRefresh">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="pad0-10 query_main">
+      <paging-table
+        height="100%"
+        interface="/system/user/1/getuser"
+        class="heig100"
+        @sort-change="sortChange"
+        @onSelection="onSelection"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        :paramObj="paramObj"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v, k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-' + v.icon"></i>
+          {{ v.alias }}
+        </span>
+        <template v-if="batchButs && batchButs.length > 0">
+          <batch-but
+            class="sli but-blue"
+            :list="listArrs"
+            :param="batchButs"
+            @onClick="onBatchClick"
+          ></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <accountAdd
+      @onRefresh="onRefreshTable"
+      :param="addParam"
+      :dialogVisible="dialogAdd"
+      @beforeClose="dialogAdd = false"
+    ></accountAdd>
+    <addwz
+      :dialogVisible="dialogPosition"
+      @handleClose="dialogPosition = false"
+      :buttons="buttonswz"
+      :param="addParam"
+    ></addwz>
+    <addry
+      :dialogVisible="dialogPerson"
+      @handleClose="dialogPerson = false"
+      :buttons="buttonsry"
+      :param="addParam"
+    ></addry>
+    <addzz
+      :dialogVisible="dialogOrgani"
+      @handleClose="dialogOrgani = false"
+      :buttons="buttonszz"
+      :param="addParam"
+    ></addzz>
+    <addmj
+      :dialogVisible="dialogmj"
+      @handleClose="dialogmj = false"
+      :buttons="buttonsmj"
+      :param="addParam"
+    ></addmj>
+    <!-- <guideFile
+      :dialogVisible="dialogGuideFile"
+      :importButs="importButs"
+      :exportButs="exportButs"
+      @handleClose="dialogGuideFile=false"
+    ></guideFile>-->
+    <guideFile
+      :dialogVisible="dialogGuideFile"
+      :importButs="importButs"
+      :exportButs="exportButs"
+      :exImportButs="exImportButs"
+      :importShow="true"
+      :bottomBtn="bottomBtn"
+      :topBtn="topBtn"
+      @handleClose="dialogGuideFile = false"
+    ></guideFile>
+    <subAccount
+      :dialogVisible="subDialog"
+      @onClick="onClick"
+      :param="addParam"
+      :listBut="listBut"
+      @handleClose="subDialog=false"
+    ></subAccount>
+    <journalList
+      :dialogVisible="journalDialog"
+      :userlogin="JournalUser"
+      @beforeClose="journalDialog=false"
+    ></journalList>
+  </el-container>
+</template>
+
+<script>
+import journalList from "./dialog/journalList";
+import subAccount from "./subAccount";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import accountAdd from "./accountAdd";
+import addwz from "./addwz";
+import addry from "./addry";
+import addzz from "./addzz";
+import addmj from "./addmj";
+import queryOrgan from "./../query/queryOrgan";
+// import guideFile from "@/views/common/guideFile.vue";
+import guideFile from "@/views/common/guideFile/zguideFile.vue";
+export default {
+  name: "yhgl103",
+  components: {
+    accountAdd,
+    guideFile,
+    queryOrgan,
+    addry,
+    addwz,
+    addmj,
+    addzz,
+    subAccount,
+    journalList,
+  },
+  data() {
+    let $this = this;
+    return {
+      topBtn: [
+        {
+          historyUrl: "/system/user/upload/6/downuserhistory",
+          name: "导出历史",
+        },
+      ],
+      bottomBtn: [
+        {
+          id: 1,
+          type: "5",
+          name: "授权导入历史",
+          listInfo: [
+            {
+              name: "序号",
+              type: "$index",
+              width: "60px",
+            },
+            {
+              name: "账号",
+              prop: "userlogin",
+            },
+            {
+              name: "权限详情",
+              prop: "uuacontent",
+            },
+            {
+              name: "权限类型",
+              prop: "uuatype",
+            },
+            {
+              name: "时间",
+              prop: "uuadate",
+            },
+            {
+              name: "状态",
+              template: {
+                props: ["scope"],
+                computed: {
+                  name() {
+                    if (this.scope.row.uuastatus == "0") {
+                      return "正在导入";
+                    } else if (this.scope.row.uuastatus == "-1") {
+                      return "失败";
+                    } else {
+                      return "成功";
+                    }
+                  },
+                },
+                methods: {
+                  getClass() {
+                    let value = this.scope.row.uuastatus;
+                    if (value == "1") {
+                      return "puc-pg";
+                    } else if (value == "-1") {
+                      return "puc-px";
+                    } else {
+                      return "";
+                    }
+                  },
+                },
+                template: `<span :class='getClass()'>{{name}}</span>`,
+              },
+            },
+            {
+              name: "失败原因",
+              prop: "uuaremark",
+            },
+          ],
+          url: "/system/user/uploadauth/3/getupload",
+          interface: "/system/user/uploadauth/4/getuploaduserauth",
+        },
+        {
+          id: 1,
+          type: "6",
+          name: "属性导入历史",
+          listInfo: [
+            {
+              name: "序号",
+              type: "$index",
+              width: "60px",
+            },
+            {
+              name: "账号",
+              prop: "userlogin",
+            },
+            {
+              name: "角色",
+              prop: "uutcontent",
+            },
+            {
+              name: "时间",
+              prop: "uutdate",
+            },
+            {
+              name: "账号类型",
+              prop: "uuttype",
+            },
+            {
+              name: "状态",
+              template: {
+                props: ["scope"],
+                computed: {
+                  name() {
+                    if (this.scope.row.uutstatus == "0") {
+                      return "正在导入";
+                    } else if (this.scope.row.uutstatus == "-1") {
+                      return "失败";
+                    } else {
+                      return "成功";
+                    }
+                  },
+                },
+                methods: {
+                  getClass() {
+                    let value = this.scope.row.uutstatus;
+                    if (value == "1") {
+                      return "puc-pg";
+                    } else if (value == "-1") {
+                      return "puc-px";
+                    } else {
+                      return "";
+                    }
+                  },
+                },
+                template: `<span :class='getClass()'>{{name}}</span>`,
+              },
+            },
+            {
+              name: "失败原因",
+              prop: "uutremark",
+            },
+          ],
+          url: "/system/user/uploadtype/3/getupload",
+          interface: "/system/user/uploadtype/4/getuploadusertype",
+        },
+      ],
+
+      importButs: [],
+      exportButs: [],
+      exImportButs: [],
+      subDialog: false,
+      dialogGuideFile: false,
+      buttonszz: [],
+      buttonsmj: [],
+      buttonsry: [],
+      buttonswz: [],
+      isSuper: false,
+      batchButs: [],
+      topButs: [],
+      dialogOrgani: false,
+      dialogmj: false,
+      dialogPosition: false,
+      dialogPerson: false,
+      addParam: {},
+      refresh: 0,
+      refreshTable: 0,
+      JournalUser: "",
+      journalDialog: false,
+      states: [
+        {
+          statename: "全部状态",
+          state: "",
+        },
+        {
+          statename: "正常",
+          state: "1",
+        },
+        {
+          statename: "停用",
+          state: "0",
+        },
+      ],
+      types: [
+        {
+          statename: "全部类型",
+          state: "",
+        },
+        {
+          statename: "使用者",
+          state: "2",
+        },
+        {
+          statename: "管理者",
+          state: "1",
+        },
+        {
+          statename: "售后者",
+          state: "3",
+        },
+        {
+          statename: "管理+售后",
+          state: "4",
+        },
+      ],
+      param: {
+        state: "",
+        search: "",
+        sortby: "",
+        sequence: "",
+        // buildid: '',
+        type: "",
+      },
+      paramObj: [],
+      dialogJurisdiction: false,
+      dialogAdd: false,
+      listBut: [[], [], []],
+      list: [
+        {
+          type: "selection",
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "账户名",
+          sortable: "custom",
+          minWidth: "80px",
+          prop: "userlogin",
+        },
+        {
+          name: "账户类型",
+          sortable: "custom",
+          minWidth: "90px",
+          prop: "usertype",
+        },
+        {
+          name: "账户角色",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "userrole",
+        },
+        // {
+        //   name: "数据字典",
+        //   sortable: "custom",
+        //   prop: "dictionaryname"
+        // },
+        {
+          name: "组织",
+          prop: "personlocation",
+        },
+        {
+          name: "姓名",
+          sortable: "custom",
+          prop: "username",
+        },
+        {
+          name: "手机号",
+          sortable: "custom",
+          prop: "usermobile",
+        },
+        {
+          name: "创建人",
+          sortable: "custom",
+          prop: "userlogin2",
+        },
+        {
+          name: "创建时间",
+          sortable: "custom",
+          minWidth: "100px",
+          prop: "userdate",
+          template: {
+            props: ["scope"],
+            methods: {
+              getdate(data) {
+                if (this.scope.row.userdate.length == 0) {
+                  return false;
+                }
+                if (data) {
+                  return this.scope.row.userdate.substr(0, 10);
+                } else {
+                  return this.scope.row.userdate.substr(11);
+                }
+              },
+            },
+            template: `<ul v-if="getdate()"><li>{{getdate(true)}}</li><li>{{getdate(false)}}</li></ul>`,
+          },
+        },
+        // {
+        //   name: "最后变动时间",
+        //   prop: "userlastdate",
+        //   sortable: "custom",
+        //   width: "125px",
+        //   template: {
+        //     props: ["scope"],
+        //     methods: {
+        //       getdate(data) {
+        //         if (this.scope.row.userlastdate.length == 0) {
+        //           return false;
+        //         }
+        //         if (data) {
+        //           return this.scope.row.userlastdate.substr(0, 10);
+        //         } else {
+        //           return this.scope.row.userlastdate.substr(11);
+        //         }
+        //       }
+        //     },
+        //     template: `<ul v-if="getdate()"><li>{{getdate(true)}}</li><li>{{getdate(false)}}</li></ul>`
+        //   }
+        // },
+        {
+          name: "状态",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            template: `<span :class='scope.row.userstate=="正常"?"puc-pg":"puc-px"'>{{scope.row.userstate}}</span>`,
+          },
+        },
+        {
+          noClose: true,
+          show: true,
+          sortable: "custom",
+          name: "超级权限",
+          template: {
+            props: ["scope"],
+            template: `<span :class='scope.row.userisadmin=="是"?"puc-pg":"puc-px"'>{{scope.row.userisadmin}}</span>`,
+          },
+        },
+        {
+          name: "备注",
+          sortable: "custom",
+          prop: "userremark",
+        },
+        {
+          name: "操作",
+          width: "220px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                let listBut = [];
+                let userstate = this.scope.row.userstate;
+                if (userstate == "正常") {
+                  userstate = 1;
+                } else if (userstate == "停用") {
+                  userstate = 2;
+                }
+                listBut[0] = $this.listBut[0].filter((obj) => {
+                  if (userstate == 2 && obj.type == 7) {
+                    return false;
+                  } else if (userstate == 1 && obj.type == 6) {
+                    return false;
+                  } else {
+                    return true;
+                  }
+                });
+                if (
+                  this.scope.row.usertype != "使用者" &&
+                  this.scope.row.usertype != "售后者"
+                ) {
+                  if ($this.isSuper) {
+                    let isSuper = this.scope.row.userisadmin;
+                    if (isSuper == "是") {
+                      isSuper = 1;
+                    } else if (isSuper == "否") {
+                      isSuper = 2;
+                    }
+                    listBut[2] = $this.listBut[2].filter((obj) => {
+                      if (isSuper == 2 && obj.type == 17) {
+                        return false;
+                      } else if (isSuper == 1 && obj.type == 16) {
+                        return false;
+                      } else {
+                        return true;
+                      }
+                    });
+                  }
+                  listBut[1] = $this.listBut[1];
+                }
+                return listBut;
+              },
+            },
+            methods: {
+              onClick(key) {
+                $this.onClick(key, Object.assign({}, this.scope.row));
+              },
+              isShow(val) {
+                if (
+                  Boolean(val.id == "604" || val.id == "377") &&
+                  this.scope.row.usertype == "售后者"
+                ) {
+                  return true;
+                } else {
+                  return false;
+                }
+              },
+            },
+            template: `<div class="operat-buts">
+            <template v-for="(val,key) of listBut">
+              <span class="buts-div" v-if="val && val.length > 0" :key="key">
+              <el-button v-for="(v,i) of val" :disabled="isShow(v)" :key="i" type="text" size="small" @click.stop="onClick(v.type||v.id)">{{v.name||v.alias}}</el-button>
+              </span>
+            </template>
+            </div>`,
+          },
+        },
+      ],
+      listArrs: [],
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    onChoiceZZ(obj) {
+      this.paramObj.splice(0);
+      let data = JSON.parse(JSON.stringify(obj)) || [];
+      data.forEach((item) => {
+        delete item.isLeaf;
+      });
+      this.paramObj.push(...data);
+      console.log("data,obj", data, obj);
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        let sortby = obj.prop;
+        this.param.sortby = sortby;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.$refs.queryOrgan.onClear();
+      this.onRefresh();
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", {
+        fatherid: "103",
+      })
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "104") {
+              this.topButs.push(value.entity);
+            } else if (id == "105") {
+              this.listBut[0].push({
+                type: "2",
+                name: "修改",
+              });
+            } else if (id == "378") {
+              this.batchButs.push(value.entity);
+              this.listBut[0].push({
+                type: "7",
+                name: "停用",
+              });
+            } else if (id == "514") {
+              this.batchButs.push(value.entity);
+              this.listBut[0].push({
+                type: "6",
+                name: "启用",
+              });
+            } else if (id == "-1") {
+              this.isSuper = true;
+              this.batchButs.push(value.entity);
+              this.listBut[2].push({
+                type: "16",
+                name: alias,
+              });
+            } else if (id == "-2") {
+              this.isSuper = true;
+              this.batchButs.push(value.entity);
+              this.listBut[2].push({
+                type: "17",
+                name: alias,
+              });
+            } else if (id == "106") {
+              this.batchButs.push(value.entity);
+              this.listBut[0].push({
+                type: "4",
+                name: "删除",
+              });
+            } else if (id == "376") {
+              this.listBut[1].push(value.entity);
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  this.buttonswz.push(item.entity);
+                });
+              }
+            } else if (id == "377") {
+              this.listBut[1].push(value.entity);
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  this.buttonsry.push(item.entity);
+                });
+              }
+            } else if (id == "604") {
+              this.listBut[1].push(value.entity);
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  this.buttonszz.push(item.entity);
+                });
+              }
+            } else if (id == "891") {
+              this.listBut[1].push(value.entity);
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  this.buttonsmj.push(item.entity);
+                });
+              }
+            } else if (id == "658") {
+              let arr = value.childs;
+              if (arr && arr.length > 0) {
+                this.topButs.push(value.entity);
+                arr.forEach((obj) => {
+                  let vid = obj.entity.id;
+                  let valias = obj.entity.alias;
+                  if (vid == "659") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "/system/user/upload/3/downmodel",
+                      url: "/system/user/upload/1/uploaduser",
+                      errUrl: "/system/user/upload/2/downuser",
+                    });
+                  } else if (vid == "660") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "",
+                      url: "/system/user/uploadauth/1/uploaduserauth",
+                      errUrl: "/system/user/uploadauth/1/uploaduserauth",
+                      progUrl: "/system/user/uploadauth/6/getuploadrate",
+                    });
+                  } else if (vid == "661") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "",
+                      url: "/system/user/uploadtype/1/uploadusertype",
+                      errUrl:
+                        "/system/user/uploadtype/5/downuploadusertypefail",
+                      progUrl: "/system/user/uploadtype/6/getuploadrate",
+                    });
+                  } else if (vid == "662") {
+                    this.exImportButs.push({
+                      name: valias,
+                      url: "/system/user/upload/3/downmodel",
+                      // data: this.param
+                    });
+                  } else if (vid == "663") {
+                    this.exImportButs.push({
+                      name: valias,
+                      url: "/system/user/uploadauth/2/downuserauthmodel",
+                    });
+                  } else if (vid == "664") {
+                    this.exImportButs.push({
+                      name: valias,
+                      url: "/system/user/uploadtype/2/downusertypemodel",
+                    });
+                  } else if (vid == "665") {
+                    this.exportButs.push({
+                      id: vid,
+                      name: valias,
+                      url: "/system/user/upload/5/downusers",
+                      data: this.param,
+                      async: true,
+                      obj: this.paramObj,
+                    });
+                  }
+                });
+              }
+            } else if (id == "743") {
+              this.listBut[1].push({
+                type: "8",
+                name: "子账号管理",
+              });
+            } else if (id == "754") {
+              this.listBut[1].push({
+                type: "9",
+                name: "账户日志",
+              });
+            }
+          });
+          if (this.isSuper) {
+            this.list[10].show = false;
+            this.list[10].noClose = false;
+            // this.list[14].width = "200px";
+          } else {
+            this.list[10].show = true;
+            this.list[10].noClose = true;
+            // this.list[14].width = "200px";
+          }
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          console.log("err", err);
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    onRefresh() {
+      this.listArrs = [];
+      //刷新表格
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.listArrs = [];
+      //刷新表格
+      this.refreshTable = new Date().getTime();
+    },
+    onBatchClick(key) {
+      if (this.listArrs.length != 0) {
+        if (key == "378") {
+          this.inStopuser();
+        } else if (key == "106") {
+          this.inDeleteuser();
+        } else if (key == "514") {
+          this.inRegainuser();
+        } else if (key == "-1") {
+          this.inSavesuperuser();
+        } else if (key == "-2") {
+          this.inDeletesuperuser();
+        }
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选中账户",
+          type: "warning",
+        });
+      }
+    },
+    onClick(key, data) {
+      if (key == 104) {
+        this.addParam = {};
+        this.dialogAdd = true;
+      } else if (key == 2) {
+        this.addParam = {
+          userlogin: data.userlogin,
+        };
+        this.dialogAdd = true;
+      } else if (key == "376") {
+        //位置权限
+        this.addParam = {
+          type: "1",
+          lockstate: "",
+          userlogin: data.userlogin,
+        };
+        this.dialogPosition = true;
+      } else if (key == "377") {
+        //人员权限
+        this.addParam = {
+          userlogin: data.userlogin,
+        };
+        this.dialogPerson = true;
+      } else if (key == "604") {
+        //组织权限
+        this.addParam = {
+          userlogin: data.userlogin,
+        };
+        this.dialogOrgani = true;
+        // this.dialogOrgani = true;
+      } else if (key == "891") {
+        //门禁权限
+        this.addParam = {
+          userlogin: data.userlogin,
+          agid: "0",
+          agtype: "0",
+          sortby: "",
+          sequence: "",
+          amstate: "",
+        };
+        this.dialogmj = true;
+      } else if (key == 7) {
+        this.inStopuser([data]);
+      } else if (key == 4) {
+        this.inDeleteuser([data]);
+      } else if (key == 6) {
+        this.inRegainuser([data]);
+      } else if (key == 16) {
+        this.inSavesuperuser([data]);
+      } else if (key == 17) {
+        this.inDeletesuperuser([data]);
+      } else if (key == 8) {
+        this.addParam = {
+          userlogin: data.userlogin,
+        };
+        this.subDialog = true;
+      } else if (key == "658") {
+        this.dialogGuideFile = true;
+      } else if (key == 9) {
+        this.journalDialog = true;
+        this.JournalUser = data.userlogin;
+        console.log("key,data", key, data);
+      }
+    },
+    inRegainuser(data) {
+      let arrs = this.listArrs;
+      if (arrs.length > 0 || data.length > 0) {
+        let ctext = "此操作将启用勾选的账户, 是否继续?";
+        if (data) {
+          arrs = data;
+          ctext = "此操作将启用当前的账户, 是否继续?";
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/user/delete/3/regainuser",
+              {},
+              "1",
+              arrs.map((o) => o.userlogin),
+              true
+            )
+              .then(() => {
+                this.onRefreshTable();
+                this.$message({
+                  showClose: true,
+                  message: "启用成功",
+                  type: "success",
+                });
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch(() => {});
+      } else {
+        this.$message({
+          message: "请选择要启用的账户!",
+          type: "warning",
+        });
+      }
+    },
+    inStopuser(data) {
+      let arrs = this.listArrs;
+      if (arrs.length > 0 || data.length > 0) {
+        let ctext = "此操作将停用勾选的账户, 是否继续?";
+        if (data) {
+          arrs = data;
+          ctext = "此操作将停用当前的账户, 是否继续?";
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/user/delete/1/stopuser",
+              {},
+              "1",
+              arrs.map((o) => o.userlogin),
+              true
+            )
+              .then(() => {
+                this.onRefreshTable();
+                this.$message({
+                  showClose: true,
+                  message: "停用成功",
+                  type: "success",
+                });
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch(() => {});
+      } else {
+        this.$message({
+          message: "请选择要停用的账户!",
+          type: "warning",
+        });
+      }
+    },
+    inSavesuperuser(data) {
+      let arrs = this.listArrs;
+      if (arrs.length > 0 || data.length > 0) {
+        let ctext = "此操作将添加勾选账户的超级权限, 是否继续?";
+        if (data) {
+          arrs = data;
+          ctext = "此操作将添加当前账户的超级权限, 是否继续?";
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/user/super/1/savesuperuser",
+              {},
+              "1",
+              arrs.map((o) => o.userlogin),
+              true
+            )
+              .then(() => {
+                this.onRefreshTable();
+                this.$message({
+                  showClose: true,
+                  message: "添加超级权限成功",
+                  type: "success",
+                });
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch(() => {});
+      } else {
+        this.$message({
+          message: "请选择要添加超级权限的账户!",
+          type: "warning",
+        });
+      }
+    },
+    inDeletesuperuser(data) {
+      let arrs = this.listArrs;
+      if (arrs.length > 0 || data.length > 0) {
+        let ctext = "此操作将删除勾选账户的超级权限, 是否继续?";
+        if (data) {
+          arrs = data;
+          ctext = "此操作将删除当前账户的超级权限, 是否继续?";
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/user/super/2/deletesuperuser",
+              {},
+              "1",
+              arrs.map((o) => o.userlogin),
+              true
+            )
+              .then(() => {
+                this.onRefreshTable();
+                this.$message({
+                  showClose: true,
+                  message: "删除超级权限成功",
+                  type: "success",
+                });
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch(() => {});
+      } else {
+        this.$message({
+          message: "请选择要删除超级权限的账户!",
+          type: "warning",
+        });
+      }
+    },
+    inDeleteuser(data) {
+      let arrs = this.listArrs;
+      if (arrs.length > 0 || data.length > 0) {
+        let ctext = "此操作将删除勾选的账户, 是否继续?";
+        if (data) {
+          arrs = data;
+          ctext = "此操作将删除当前的账户, 是否继续?";
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/user/delete/2/deleteuser",
+              {},
+              "1",
+              arrs.map((o) => o.userlogin),
+              true
+            )
+              .then(() => {
+                this.onRefreshTable();
+                this.$message({
+                  showClose: true,
+                  message: "删除成功",
+                  type: "success",
+                });
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch(() => {});
+      } else {
+        this.$message({
+          message: "请选择要删除的账户!",
+          type: "warning",
+        });
+      }
+    },
+    onSelection(data) {
+      this.listArrs = data;
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "yhgl103");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "yhgl103");
+    },
+  },
+};
+</script>

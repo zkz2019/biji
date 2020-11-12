@@ -1,0 +1,517 @@
+<!-- 授权未下发查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+        </inpbox>
+        <inpbox :inpb="true">
+          <queryPosition
+            ref="queryPosition"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceWZ"
+            :devicetype="this.param.devicetype"
+            interface="/analysis/failauth/1/listAreaTree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox :inpb="true">
+          <queryOrgan
+            ref="queryOrgan"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceZZ"
+            interface="/analysis/failauth/2/listPersonTree"
+          ></queryOrgan>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.devicetype">
+            <el-option
+              v-for="item in deviceTypes"
+              :key="item.type"
+              :label="item.typename"
+              :value="item.type"
+            ></el-option>
+          </el-select>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.authtype">
+            <el-option v-for="item in authtypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'输入房间/门禁名称/归属人/'+getNumber()+'进行查询'"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        ref="paging-table"
+        class="tobleList wh100"
+        height="100%"
+        :isAll="range == 2? true:false"
+        :class="{'cover-up':range == 2}"
+        :interface="urls"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        ajaxType="9"
+        @onSelection="(data)=>{this.listArrs = data}"
+        :paramObj="paramObj"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="but of topButs" class="sli but-blue" @click="exportBut(but.id)">
+          <i v-if="but.icon" :class="'ficon-'+but.icon"></i>
+          {{but.alias}}
+        </span>
+        <!-- <span v-if="isHistory" class="sli but-blue" @click="reloadHistory">
+          <i class="ficon-history"></i>
+          重载授权记录
+        </span>-->
+        <template v-if="batchButs && batchButs.length > 0">
+          <div class="full-list" v-show="!list[0].show">
+            <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+          </div>
+          <batch-but
+            class="sli but-blue"
+            :type="range"
+            :list="listArrs"
+            :param="batchButs"
+            @onClick="onBatchClick"
+          ></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <exportHistory
+      historyUrl="/analysis/failauth/a/listExportExcel"
+      :dialogVisible="iHvisible"
+      ajaxType="9"
+      @beforeClose="()=>{iHvisible=false}"
+    ></exportHistory>
+
+    <reloadHistory :dialogVisible="reLoadDialog" @beforeClose="()=>{reLoadDialog=false}"></reloadHistory>
+  </el-container>
+</template>
+
+<script>
+import reloadHistory from "./dialog/reLoadHistory";
+import { getDates, getparam } from "./query.js";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import { format, download } from "@/utils/utils.js";
+import exportHistory from "../personnel/export-history";
+import { timerDownload } from "../personnel/index.js";
+import queryPosition from "./queryPosition1";
+import queryOrgan from "./queryOrgan1";
+export default {
+  name: "sqwxfcx935",
+  components: {
+    queryPosition,
+    exportHistory,
+    queryOrgan,
+    reloadHistory,
+  },
+  data() {
+    let $this = this;
+    return {
+      iHvisible: false,
+      reLoadDialog: false,
+      paramObj: {
+        type: "1",
+        arearooms: [],
+        agid: [],
+        pgid: [],
+      },
+      listArrs: [],
+      listBut: [],
+      batchButs: [],
+      isSelectable: true,
+      range: "1",
+      topButs: [],
+      dates: [],
+      authtypes: [
+        {
+          id: "",
+          name: "全部授权类型",
+        },
+      ],
+      deviceTypes: [
+        {
+          type: "1",
+          typename: "门锁",
+        },
+        {
+          type: "2",
+          typename: "门禁",
+        },
+      ],
+      param: {
+        sdate: "",
+        edate: "",
+        search: "",
+        devicetype: "1",
+        authtype: "",
+      },
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "下发时间",
+          prop: "senddate",
+        },
+        {
+          name: "授权位置",
+          minWidth: "120px",
+          prop: "authlocation",
+        },
+        // {
+        //   name: "房间/门禁名称",
+        //   prop: "adname",
+        // },
+        {
+          name: "设备类型",
+          prop: "devicetypename",
+        },
+        {
+          name: "授权类型",
+          prop: "authtype",
+          formatter(row) {
+            let obj = $this.authtypes.find((item) => {
+              if (item.id == row.authtype) {
+                return item;
+              }
+            });
+            return obj && obj.name ? obj.name : "";
+          },
+        },
+        {
+          name: this.getCardcodeName(),
+          minWidth: "120px",
+          prop: "authcode",
+        },
+        {
+          name: "归属人",
+          prop: "personname",
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode",
+        },
+        {
+          name: "归属组织",
+          prop: "personlocation",
+        },
+
+        {
+          name: "下发状态",
+          minWidth: "80px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.sendstate == "0") {
+                  return "正在下发";
+                } else if (this.scope.row.sendstate <= 0) {
+                  return "下发失败";
+                } else if (this.scope.row.sendstate == "") {
+                  return "";
+                } else {
+                  return "下发成功";
+                }
+              },
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.sendstate;
+                if (value == "0") {
+                  return "";
+                } else if (value <= 0) {
+                  return "puc-px";
+                } else {
+                  return "puc-pg";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`,
+          },
+        },
+        {
+          name: "失败原因",
+          prop: "authbei",
+        },
+        {
+          name: "操作",
+          template: {
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            props: ["scope"],
+            methods: {
+              onClick(key, obj) {
+                $this.onClick(key, this.scope.row);
+              },
+            },
+            template: `<div class="operat-buts"> 
+            <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+      refresh: 0,
+      refreshTable: 0,
+      isExport: false,
+      isHistory: false,
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+    this.inGetType();
+    getparam(this);
+  },
+  activated() {
+    let obj = this.$route.params;
+    if (obj.devicetype) {
+      this.param.devicetype = obj.devicetype;
+      this.search();
+    }
+  },
+  computed: {
+    urls() {
+      if (this.param.devicetype == "1") {
+        return "/analysis/failauth/4/listLockFailAuth";
+      } else {
+        return "/analysis/failauth/5/listAccessFailAuth";
+      }
+    },
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    getCardcodeName() {
+      let text = [];
+      if (this.getIsCard()) {
+        text.push("卡号");
+      }
+      if (this.getIsFinger()) {
+        text.push("指纹号");
+      }
+      if (this.getIsFace()) {
+        text.push("人脸号");
+      }
+      if (text.length == 0) {
+        text.push("编号");
+      }
+      return text.join("/");
+    },
+    onBatchClick(key, obj) {
+      let data = {
+        actiontype: String(this.range),
+        authids: this.listArrs.map((item) => {
+          return item.authid;
+        }),
+        ...this.param,
+        ...this.paramObj,
+      };
+      this.onReLoad(data);
+    },
+    onClick(key, obj) {
+      let data = {
+        actiontype: "1",
+        authids: [obj.authid],
+        ...this.param,
+        ...this.paramObj,
+      };
+      this.onReLoad(data);
+    },
+    onReLoad(data) {
+      this.$ajax("/analysis/failauth/6/reloadFailAuth", data, "9", {}, true)
+        .then((res) => {
+          this.$message({
+            type: "success",
+            message: "重载成功!",
+          });
+          this.search(true);
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "935" }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let entity = value.entity;
+            let id = entity.id;
+            if (id == "938") {
+              this.topButs.push(entity);
+            }
+            if (id == "953") {
+              this.topButs.push(entity);
+            } else if (id == "936") {
+              this.listBut.push({
+                type: "1",
+                name: "重载授权",
+              });
+              this.batchButs.push(value.entity);
+            } else if (id == "937") {
+              this.topButs.push(entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    onSelection(data) {
+      this.listArrs = data;
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      this.$refs.dates.value2 = new Date();
+      Object.keys(this.param).forEach((key) => {
+        if (key == "devicetype") {
+          this.param[key] = "1";
+        } else {
+          this.param[key] = "";
+        }
+      });
+      this.range = "1";
+      this.$refs.queryPosition.onClear();
+      this.$refs.queryOrgan.onClear();
+      this.search();
+    },
+    exportHistory() {
+      this.iHvisible = true;
+    },
+    reloadHistory() {
+      this.reLoadDialog = true;
+    },
+    exportBut(id) {
+      if (id == "938") {
+        let url = "/analysis/failauth/9/exportFailAuth";
+        let name = "授权未下发查询";
+        let tValue = getDates(this.dates);
+        this.param.sdate = tValue[0];
+        this.param.edate = tValue[1];
+        this.inExportPackage(url, name, this.param, this.paramObj);
+      } else if (id == "937") {
+        this.reloadHistory();
+      } else if (id == "953") {
+        this.exportHistory();
+      }
+    },
+    inExportPackage(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "9", obj, true, 60000)
+        .then((res) => {
+          this.$message({
+            message: name + "文件导出已下发，文件正在生成中",
+            type: "success",
+          });
+          timerDownload(
+            res.result,
+            "/analysis/failauth/a/listExportExcel",
+            this,
+            name,
+            "9"
+          );
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    ...mapGetters(["getNumber", "getIsCard", "getIsFinger", "getIsFace"]),
+    inGetType() {
+      this.$ajax("/analysis/failauth/3/getSearchType", { devicetype: 1 }, "9")
+        .then((res) => {
+          this.authtypes.push(...res.result.authtypes);
+        })
+        .catch((err) => {});
+    },
+    onChoiceWZ(data, type) {
+      if (type == "1") {
+        this.paramObj.type = 2;
+        this.paramObj.arearooms = data;
+        this.paramObj.agid = [];
+      } else {
+        this.paramObj.type = 1;
+        this.paramObj.arearooms = [];
+        this.paramObj.agid = data.map((item) => {
+          return item.agid;
+        });
+      }
+    },
+    onChoiceZZ(data) {
+      this.paramObj.pgid = data.map((item) => {
+        return item.pgid;
+      });
+    },
+    search(bool) {
+      let tValue = getDates(this.dates);
+      this.param.sdate = tValue[0];
+      this.param.edate = tValue[1];
+      if (bool) {
+        this.refreshTable = new Date().getTime();
+      } else {
+        this.refresh = new Date().getTime();
+      }
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "sklscx92");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "sklscx92");
+    },
+  },
+};
+</script>

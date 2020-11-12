@@ -1,0 +1,348 @@
+<template>
+  <fel-container title="人脸数据管理" @onQuery="onQuery">
+    <template slot="retrieve">
+      <fel-retrie type="select" v-model="param.type" :selects="personnels"></fel-retrie>
+      <fel-retrie text="选择组织">
+        <el-cascader
+          ref="cascader"
+          class="con-popover qh_inp"
+          size="mini"
+          v-model="param.pgid"
+          filterable
+          clearable
+        ></el-cascader>
+      </fel-retrie>
+      <fel-retrie text="请输入" v-model="param.search" placeholder="请输入卡号姓名|手机号搜索"></fel-retrie>
+    </template>
+    <paging-table
+      ref="paging-table"
+      interface="/auth/cardcenter/card/1/getcard"
+      class="heig100"
+      @onEjectChange="onEjectChange"
+      @onSelection="(d)=>{listArrs=d}"
+      :param="param"
+      :list="list"
+      :refresh="refresh"
+    >
+      <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+        <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+        {{v.alias}}
+      </span>
+      <template v-if="batchButs && batchButs.length > 0">
+        <batch-but class="sli but-blue" :list="listArrs" :param="batchButs" @onClick="onBatchClick"></batch-but>
+      </template>
+    </paging-table>
+    <fel-popup title="已授权列表" @close="grant.box=false" :value="grant.box">
+      <paging-table
+        ref="grant-paging-table"
+        :list="grant.list"
+        interface="/auth/cardcenter/card/1/getcard"
+        :isAll="grant.range == 2? true:false"
+        :class="{'cover-up':grant.range == 2}"
+        :param="grant.param"
+        @onSelection="(data)=>{grant.listArrs = data}"
+        :refresh="grant.refresh"
+      >
+        <template v-if="grant.batchButs && grant.batchButs.length > 0">
+          <div class="full-list" v-show="!grant.list[0].show">
+            <el-checkbox
+              v-model="grant.range"
+              @change="onGrantChange"
+              true-label="2"
+              false-label="1"
+            >跨页全选</el-checkbox>
+          </div>
+          <batch-but
+            class="sli but-blue"
+            :type="grant.range"
+            :list="grant.listArrs"
+            :param="grant.batchButs"
+            @onClick="onGrantBatchClick"
+          ></batch-but>
+        </template>
+      </paging-table>
+    </fel-popup>
+  </fel-container>
+</template>
+
+<script>
+export default {
+  data() {
+    let $this = this;
+    return {
+      grant: {
+        isSelectable: true,
+        box: false,
+        listButs: [
+          {
+            id: 3,
+            alias: "修改"
+          },
+          {
+            id: 4,
+            alias: "删除"
+          }
+        ],
+        list: [
+          {
+            type: "selection",
+            selectable(row) {
+              return $this.grant.isSelectable;
+            }
+          },
+          {
+            name: "序号",
+            type: "$index",
+            width: "60px"
+          },
+          {
+            name: "门禁位置",
+            prop: "cardtype"
+          },
+          {
+            name: "门禁名称",
+            prop: "cardtype"
+          },
+          {
+            name: "门名称",
+            prop: "cardtype"
+          },
+          {
+            name: "读头编号",
+            prop: "cardtype"
+          },
+          {
+            name: "授权账号",
+            prop: "cardtype"
+          },
+          {
+            name: "授权创建时间",
+            prop: "cardtype"
+          },
+          {
+            name: "授权开始时间",
+            prop: "cardtype"
+          },
+          {
+            name: "开门时间段",
+            prop: "cardtype"
+          },
+          {
+            name: "可开门次数",
+            prop: "cardtype"
+          },
+          {
+            name: "操作",
+            width: "100px",
+            template: {
+              props: ["scope"],
+              computed: {
+                listBut() {
+                  return $this.grant.listButs;
+                }
+              },
+              methods: {
+                onClick(key, obj) {
+                  // $this.onClick(key, Object.assign({}, this.scope.row), obj);
+                }
+              },
+              template: `<fel-table-but :buts="listBut" @click="onClick"></fel-table-but>`
+            }
+          }
+        ],
+        listArrs: [],
+        param: {},
+        range: "1",
+        refresh: 0,
+        batchButs: [
+          { id: "3", alias: "修改" },
+          { id: "4", alias: "删除" }
+        ]
+      },
+      personnels: [
+        {
+          id: "1",
+          name: "11"
+        },
+        {
+          id: "2",
+          name: "22"
+        }
+      ],
+      param: {},
+      topButs: [
+        { id: "1", alias: "录入人脸" },
+        { id: "2", alias: "导入" }
+      ],
+      listArrs: [],
+      listButs: [
+        {
+          id: 1,
+          alias: "启用"
+        },
+        {
+          id: 2,
+          alias: "停用"
+        },
+        {
+          id: 9,
+          alias: "同步"
+        },
+        {
+          id: 4,
+          alias: "删除"
+        }
+      ],
+      batchButs: [],
+      list: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "姓名",
+          prop: "cardtype"
+        },
+
+        {
+          name: "人员工号",
+          prop: "cardcode"
+        },
+        {
+          name: "手机号",
+          prop: "personname"
+        },
+        {
+          name: "归属组织",
+          prop: "personlocation",
+          width: "110px"
+        },
+        {
+          name: "人脸照片",
+          prop: "empowercount",
+          template: {
+            props: ["scope"],
+            methods: {
+              isNumber(num) {
+                if (num) {
+                  return /^[0-9]*$/.test(num);
+                }
+                return false;
+              },
+              onClick() {
+                // if (this.scope.row.cardcode) {
+                //   $this.grantParam = this.scope.row;
+                //   $this.grantRefresh = new Date().getTime();
+                //   $this.dialogVisible = true;
+                // }
+              }
+            },
+            template: `<fel-num-but :formatter="isNumber" :value="scope.row.empowercount" @click="onClick"></fel-num-but>`
+          }
+        },
+        {
+          name: "已授权数量",
+          prop: "empowercount",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                if (this.scope.row.cardcode) {
+                  // $this.grantParam = this.scope.row;
+                  // $this.grantRefresh = new Date().getTime();
+                  $this.grant.box = true;
+                }
+              }
+            },
+            template: `<fel-num-but :value="scope.row.empowercount" @click="onClick"></fel-num-but>`
+          }
+        },
+        {
+          name: "状态",
+          prop: "cardstate",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.cardstate;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "2") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<fel-table-color :type='getClass()'>{{scope.row.cardstate}}</fel-table-color>`
+          }
+        },
+        {
+          name: "操作",
+          width: "160px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listButs;
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                // $this.onClick(key, Object.assign({}, this.scope.row), obj);
+              },
+              getState(str, state) {
+                if (state == "过期" && str == "启用") {
+                  return false;
+                } else if (state == "过期" && str == "停用") {
+                  return false;
+                } else if (state == str) {
+                  return false;
+                } else {
+                  return true;
+                }
+              }
+            },
+            template: `<fel-table-but :buts="listBut" @click="onClick"></fel-table-but>`
+          }
+        }
+      ],
+      refresh: 0
+    };
+  },
+  methods: {
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "kpgl384");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "kpgl384");
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onGrantChange(val) {
+      if (val == 2) {
+        this.$refs["grant-paging-table"].clearSelection();
+        this.$refs["grant-paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.grant.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["grant-paging-table"].clearSelection();
+        this.grant.isSelectable = true;
+      }
+    },
+    onGrantBatchClick() {},
+    onQuery() {
+      console.log("this", this);
+    }
+  }
+};
+</script>
+
+<style>
+</style>

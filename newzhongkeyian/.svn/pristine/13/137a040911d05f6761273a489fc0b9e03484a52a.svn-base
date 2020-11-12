@@ -1,0 +1,295 @@
+<!--  -->
+<template>
+  <el-dialog
+    title="角色账号管理"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        interface="/system/role/manager/1/getrolemanager"
+        ref="paging-table"
+        :list="list"
+        :paramObj="paramObj"
+        :refresh="refresh"
+        @onSelection="(d)=>{selecArr=d}"
+      >
+        <span v-if="isAdd" class="sli but-blue" @click="onClickAdd">
+          <i class="ficon-add"></i>添加
+        </span>
+        <span v-if="isDelete" class="sli but-blue" @click="onClick">
+          <i class="ficon-image106"></i>批量删除
+        </span>
+      </paging-table>
+    </el-container>
+    <el-dialog
+      title="添加账号"
+      width="50%"
+      append-to-body
+      :close-on-click-modal="false"
+      :before-close="beforeCloseAdd"
+      :visible.sync="dialogVisibleAdd"
+    >
+      <el-container class="dialog-table6 query_main">
+        <paging-table
+          interface="/system/role/manager/2/getuser"
+          :list="listAdd"
+          :param="addParam"
+          :paramObj="paramObj"
+          :refresh="refreshAdd"
+          @onSelection="(d)=>{selecArrAdd=d}"
+        >
+          <span class="sli">
+            <el-input
+              class="con-search search"
+              placeholder="输入唯一ID/IMEI进行检索"
+              v-model="addParam.search"
+            ></el-input>
+            <fel-button type="primary" @click="onRefreshAdd">查询</fel-button>
+          </span>
+        </paging-table>
+      </el-container>
+      <div slot="footer" class="dialog-form-but">
+        <el-button class="com-but-small" @click="beforeCloseAdd">取消</el-button>
+        <el-button class="com-but-small" type="primary" @click="submitForm">确定</el-button>
+      </div>
+    </el-dialog>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    buts: Array,
+    paramObj: {
+      type: Array | Object,
+      default() {
+        return [];
+      }
+    },
+    param: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      isAdd: false,
+      isDelete: false,
+      addParam: {
+        search: ""
+      },
+      dialogVisibleAdd: false,
+      refresh: 0,
+      selecArr: [],
+      listAdd: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "姓名",
+          prop: "username"
+        },
+        {
+          name: "账号",
+          prop: "userlogin"
+        }
+      ],
+      refreshAdd: 0,
+      selecArrAdd: [],
+      list: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "角色名称",
+          prop: "rolename"
+        },
+        {
+          name: "管理账号",
+          prop: "userlogin"
+        },
+        {
+          name: "授权账号",
+          prop: "userlogin2"
+        },
+        {
+          name: "操作时间",
+          prop: "rmdate"
+        },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              buts() {
+                return $this.isDelete;
+              }
+            },
+            methods: {
+              onClick(key) {
+                $this.delete(this.scope.row.rmid);
+              }
+            },
+            template: `<div v-if="buts" class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick()">删除</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.buts.forEach(item => {
+          if (item.id == "805") {
+            this.isAdd = true;
+          } else if (item.id == "806") {
+            this.isDelete = true;
+          }
+        });
+        this.addParam.search = "";
+        this.onRefresh();
+      }
+    }
+  },
+  methods: {
+    onRefreshAdd() {
+      this.refreshAdd = new Date().getTime();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onClickAdd() {
+      this.dialogVisibleAdd = true;
+      this.onRefreshAdd();
+    },
+    onClick() {
+      let arr = this.selecArr.map(o => o.rmid);
+      if (arr.length <= 0) {
+        return this.$message({
+          showClose: true,
+          message: "请选择需要删除的账号!",
+          type: "error"
+        });
+      }
+      console.log("kkk", arr, this.range);
+      this.$confirm("确定要删除当前选中账号吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax(
+            "/system/role/manager/4/delrolemanager",
+            {},
+            "1",
+            arr,
+            true
+          )
+            .then(res => {
+              this.$message({
+                type: "success",
+                message: "批量删除成功!"
+              });
+              this.onRefresh();
+              this.$emit("onRefresh");
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(err => {});
+    },
+    delete(rmid) {
+      this.$confirm("确定要删除当前账号吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax(
+            "/system/role/manager/4/delrolemanager",
+            {},
+            "1",
+            [rmid],
+            true
+          )
+            .then(res => {
+              this.onRefresh();
+              this.$emit("onRefresh");
+              this.$message({
+                message: "删除成功!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    beforeCloseAdd() {
+      this.addParam.search = "";
+      this.dialogVisibleAdd = false;
+    },
+    submitForm() {
+      let userlogins = this.selecArrAdd.map(o => o.userlogin);
+      this.$ajax(
+        "/system/role/manager/3/saverolemanager",
+        {},
+        "1",
+        {
+          rolenames: this.paramObj,
+          userlogins: userlogins
+        },
+        true
+      )
+        .then(res => {
+          this.onRefresh();
+          this.$message({
+            message: "添加成功!",
+            type: "success"
+          });
+          this.beforeCloseAdd();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    }
+  }
+};
+</script>

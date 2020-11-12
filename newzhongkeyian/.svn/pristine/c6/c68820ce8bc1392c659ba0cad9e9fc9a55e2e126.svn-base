@@ -1,0 +1,133 @@
+<!-- 修改已选授权 -->
+<template>
+  <el-dialog
+    title="修改授权"
+    top="10%"
+    width="60%"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      @submitForm="onClick"
+      width="160px"
+      @closeForm="beforeClose"
+      :defaultData="defaultData"
+      dynamic
+      :formData="formData"
+    />
+  </el-dialog>
+</template>
+
+<script>
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    dialogVisible: Boolean,
+    param: Array,
+    defaultData: {
+      type: Object,
+      default() {
+        return {
+          sdate: "",
+          edate: "",
+          openstime: "00:00",
+          openetime: "23:59",
+          usecount: "",
+        };
+      },
+    },
+  },
+  data() {
+    return {
+      num: 1,
+      formData: [
+        {
+          value: "empsdate",
+          name: "授权起始日期",
+          width: "50%",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss",
+        },
+        {
+          value: "empedate",
+          name: "授权结束日期",
+          width: "50%",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss",
+        },
+        {
+          value: "openstime",
+          name: "每日开门起始时间",
+          width: "50%",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日开门开始时间",
+              trigger: "blur",
+            },
+          ],
+        },
+        {
+          value: "openetime",
+          name: "每日开门结束时间",
+          width: "50%",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日开门结束时间",
+              trigger: "blur",
+            },
+          ],
+        },
+        {
+          value: "opencount",
+          width: "50%",
+          name: "可开门次数",
+          type: "text",
+          onInput: this.useInput,
+        },
+      ],
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (!val) {
+        this.$refs["felForm"].resetForm();
+      }
+    },
+  },
+  methods: {
+    useInput(arr) {
+      this.num = arr;
+      if (arr == "") {
+        this.num = 1;
+      }
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onClick(data) {
+      //判断是否为整数
+      let num = /^\d+$/;
+      if (this.num >= 255 || this.num <= 0 || !num.test(this.num)) {
+        console.log("1", this.num);
+        this.$message({
+          message: "授权次数必须为大于0小于255的整数",
+          type: "error",
+        });
+        return;
+      }
+      this.$emit("confirm", Object.assign({}, { obj: this.param }, data));
+    },
+  },
+};
+</script>

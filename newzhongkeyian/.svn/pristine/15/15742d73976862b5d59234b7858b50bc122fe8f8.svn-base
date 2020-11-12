@@ -1,0 +1,257 @@
+<!--  -->
+<template>
+  <div>
+    <organization
+      ref="organization"
+      :title="'已授权门禁权限 - '+param.userlogin"
+      top="10vh"
+      treeUrl="/system/user/supergroup/1/getgroup"
+      tabelurl="/system/user/supergroup/2/getsupergroupmanager"
+      :dialogVisible="dialogVisible"
+      @handleClose="handleClose"
+      :param="param"
+      :list="listOrgani"
+      :button="buttons"
+      :refresh="refresh"
+      @onSelection="onSelection"
+      @checkchange="checkchange"
+      @onClick="onClick"
+      :checkStrictly="true"
+    ></organization>
+    <!-- /system/user/supergroup/save/2/getsavesupergroupmanagers -->
+    <organization
+      :title="'添加门禁授权 - '+param.userlogin"
+      top="10vh"
+      treeUrl="/system/user/supergroup/save/1/getgroup"
+      tabelurl="/system/user/supergroup/save/4/getnextgroup"
+      :dialogVisible="dialogOrganiAdd"
+      @handleClose="dialogOrganiAdd=false"
+      :checkStrictly="true"
+      :next="false"
+      prop="fatherpgid"
+      :param="addParam"
+      :list="listOrganiAdd"
+      :button="buttonAdds"
+      @onSelection="onSelectionAdd"
+      @checkchange="checkchangeAdd"
+      @onClick="onClick"
+    ></organization>
+    <rightList :dialogVisible="rightVisible" @beforeClose="rightVisible=false" types="4"></rightList>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import organization from "./organization";
+import rightList from "./dialog/rightList";
+export default {
+  components: {
+    organization,
+    rightList
+  },
+  props: {
+    dialogVisible: Boolean,
+    param: Object,
+    buttons: Array
+  },
+  data() {
+    return {
+      rightVisible: false,
+      addParam: {
+        userlogin: this.param.userlogin,
+        search: ""
+      },
+      refresh: 0,
+      // buttons: [
+      //   { type: "z1", name: "删除权限" },
+      //   { type: "z2", name: "添加权限" }
+      // ],
+      buttonAdds: [{ type: "a1", icon: "image622", name: "新增授权" }],
+      dialogOrganiAdd: false,
+      listOrganiAdd: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "详情",
+          prop: ""
+        },
+        {
+          name: "门禁名称",
+          prop: ""
+        }
+      ],
+      listOrgani: [
+        // {
+        //   type: "selection"
+        // },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "已授权门禁位置",
+          prop: ""
+        },
+        {
+          name: "授权人",
+          prop: ""
+        },
+        {
+          name: "授权时间",
+          prop: ""
+        },
+        {
+          name: "门禁名称",
+          prop: ""
+        }
+      ],
+      leftArrs: [],
+      arrs: [],
+      leftArrsAdd: [],
+      arrsAdd: []
+    };
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    onRefresh() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.refresh = new Date().getTime();
+    },
+    handleClose() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.$emit("handleClose");
+    },
+    onSelection(data) {
+      this.arrs = data;
+    },
+    onSelectionAdd(data) {
+      this.arrsAdd = data;
+    },
+    checkchange(data, Nodes) {
+      this.leftArrs = Nodes.checkedNodes;
+    },
+    checkchangeAdd(data, Nodes) {
+      this.leftArrsAdd = Nodes.checkedNodes;
+    },
+    inDeleteuserroom() {
+      this.$confirm("此操作将删除勾选的权限, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          let obj1 = this.leftArrs ? this.leftArrs.map(o => o.pgid + "") : [];
+          let obj2 = this.arrs ? this.arrs.map(o => o.pgid + "") : [];
+          let obj = [...obj1, ...obj2];
+          console.log(obj);
+          this.$ajax(
+            "/system/user/supergroup/delete/2/deletesupergroupmanager2",
+            { userlogin: this.param.userlogin },
+            "1",
+            obj,
+            true,
+            30000
+          )
+            .then(res => {
+              this.$refs.organization.param.pgid = [];
+              this.onRefresh();
+              this.$message({
+                showClose: true,
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+
+    inSaveuserroom() {
+      let obj1 = this.leftArrsAdd ? this.leftArrsAdd.map(o => o.pgid + "") : [];
+      let obj2 = this.arrsAdd ? this.arrsAdd.map(o => o.pgid + "") : [];
+      let obj = [...obj1, ...obj2];
+      // if (obj[0] == "0") {
+      // obj.shift();
+      // }
+      // {
+      //   grouplist: this.leftArrsAdd
+      //     ? this.leftArrsAdd.map(o => o.pgid + "")
+      //     : [],
+      //   personlist: this.arrsAdd ? this.arrsAdd.map(o => o.personcode) : []
+      // };
+      this.$ajax(
+        "/system/user/supergroup/save/7/savesupergroupmanager2",
+        { userlogin: this.param.userlogin },
+        "1",
+        obj,
+        true,
+        120000
+      )
+        .then(res => {
+          this.$message({
+            showClose: true,
+            message: "添加成功",
+            type: "success"
+          });
+          this.dialogOrganiAdd = false;
+          this.onRefresh();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onClick(key) {
+      console.log("进入", key);
+      if (key == "606") {
+        this.arrsAdd = [];
+        this.leftArrsAdd = [];
+        this.addParam = {
+          userlogin: this.param.userlogin,
+          fatherpgid: "0",
+          search: ""
+        };
+        this.dialogOrganiAdd = true;
+      } else if (key == "607") {
+        if (this.arrs.length > 0 || this.leftArrs.length > 0) {
+          this.inDeleteuserroom();
+        } else {
+          this.$message({
+            message: "请选择要删除的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "a1") {
+        if (this.arrsAdd.length > 0 || this.leftArrsAdd.length > 0) {
+          this.inSaveuserroom();
+        } else {
+          this.$message({
+            message: "请选择要添加的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "670") {
+        this.rightVisible = true;
+      }
+    }
+  }
+};
+</script>

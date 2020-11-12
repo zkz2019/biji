@@ -1,0 +1,516 @@
+<!-- NB锁运行监控 -->
+<template>
+  <el-container class="nbsrz313">
+    <el-header class="elheader query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <div class="hederboxright">
+            <el-select
+              class="con-select qh_inp"
+              @change="search"
+              v-model="param.llstate"
+              placeholder="请选择"
+            >
+              <el-option
+                v-for="item in selectarr"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+          </div>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            placeholder="输入门锁唯一ID/创建人查询"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <el-button class="buta qh_btn" type="primary" @click="search">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="elmin query_main">
+      <paging-table
+        height="100%"
+        @onSelection="(d)=>{this.rcids = d}"
+        interface="/system/control/nblocklog/1/getnblocklog"
+        class="heig100"
+        :param="param"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        :list="list"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+        <template v-if="batchButs && batchButs.length > 0">
+          <batch-but class="sli but-blue" :list="rcids" :param="batchButs" @onClick="onBatchClick"></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <el-dialog
+      title="监控日志列表"
+      width="70%"
+      class="grantDialog"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="dialogVisible"
+    >
+      <el-container class="dialog-table6 query_main">
+        <paging-table
+          interface="/system/control/nblocklog/info/2/getnblockloginfo"
+          :param="grantParam"
+          :refresh="grantRefresh"
+          :list="grantList"
+        >
+          <span class="sli">
+            <span class="maR5">门锁唯一ID</span>
+            <el-select @change="onChangeJournal" class="wid150" v-model="grantParam.wcode">
+              <el-option v-for="(value, key) of roomids" :key="key" :label="value" :value="value"></el-option>
+            </el-select>
+          </span>
+        </paging-table>
+      </el-container>
+    </el-dialog>
+    <el-dialog
+      ref="formDialog"
+      title="添加日志"
+      top="10vh"
+      width="60%"
+      :close-on-click-modal="false"
+      :before-close="closeForm"
+      :visible.sync="dialogForm"
+    >
+      <el-container class="dialog-table6">
+        <paging-table
+          interface="/system/control/nblocklog/save/1/getnblock"
+          class="card-paging"
+          @onSelection="onSelect"
+          :list="cardList"
+          :refresh="cardRefresh"
+          :param="cardParam"
+        >
+          <span class="sli">
+            <el-input
+              class="con-search search"
+              placeholder="输入唯一ID/IMEI查询"
+              v-model="cardParam.search"
+            ></el-input>
+            <fel-button type="primary" @click="inSearch">查询</fel-button>
+          </span>
+        </paging-table>
+      </el-container>
+      <div slot="footer" class="dialog-form-but">
+        <el-button class="com-but-small" @click="closeForm">取消</el-button>
+        <el-button class="com-but-small" type="primary" @click="submitForm">确定</el-button>
+      </div>
+    </el-dialog>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+export default {
+  props: ["toParam"],
+  data() {
+    let $this = this;
+    return {
+      topButs: [],
+      batchButs: [],
+      cardRefresh: 0,
+      cardParam: {
+        search: "",
+      },
+      dialogForm: false,
+      cardList: [
+        {
+          type: "selection",
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation",
+        },
+        {
+          name: "房间名",
+          prop: "roomname",
+        },
+        {
+          name: "唯一ID",
+          prop: "roomcode2",
+        },
+        {
+          name: "IMEI",
+          prop: "roomimei",
+        },
+      ],
+      olremark: "",
+      gateway: [],
+      grantRefresh: 0,
+      grantParam: {},
+      roomids: [],
+      grantList: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "门锁唯一ID",
+          prop: "wcode",
+          width: "100px",
+        },
+        {
+          name: "指令内容",
+          prop: "nbcontent",
+          tooltip: false,
+        },
+        {
+          name: "指令时间",
+          prop: "nbdate",
+          width: "160px",
+        },
+        {
+          name: "日志类型",
+          prop: "nbtype",
+          width: "80px",
+        },
+      ],
+      rcids: [],
+      dialogVisible: false,
+      selectarr: [
+        { label: "全部门锁", value: "" },
+        { label: "监控中门锁", value: "1" },
+      ],
+      param: {
+        llstate: "",
+        search: "",
+      },
+      listBut: [],
+      refresh: 0,
+      refreshTable: 0,
+      list: [
+        // {
+        //   type: "selection"
+        // },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "门锁唯一ID",
+          prop: "wcodes",
+        },
+        // {
+        //   name: "日志ID",
+        //   prop: "nbid"
+        // },
+        {
+          name: "开始监控时间",
+          prop: "nbsdate",
+        },
+        {
+          name: "结束监控时间",
+          prop: "nbedate",
+        },
+        {
+          name: "监控状态",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.nbstate;
+                if (value == "1") {
+                  return "";
+                } else if (value == "0") {
+                  return "puc-px";
+                } else {
+                  return "puc-pg";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.nbstatename}}</span>`,
+          },
+        },
+        {
+          name: "监控创建人",
+          prop: "userlogin",
+        },
+        {
+          name: "操作",
+          width: "140px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+              row() {
+                return this.scope.row;
+              },
+            },
+            methods: {
+              onClick(key, obj) {
+                $this.onClick(key, Object.assign({}, this.scope.row), obj);
+              },
+              isShow(state, type) {
+                console.log("state,type", state, type);
+                if (state == "1" && type == "6") {
+                  return false;
+                } else if (state == "0" && type == "7") {
+                  return false;
+                } else {
+                  return true;
+                }
+              },
+            },
+            template: `<div class="operat-buts">
+            <template v-for="(v,i) of listBut">
+             <el-button v-show="isShow(row.nbstate,v.type)" :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+            </template>
+            </div>`,
+          },
+        },
+      ],
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "293") {
+              this.topButs.push(value.entity);
+            } else if (id == "294") {
+              this.listBut.push({
+                type: "7",
+                name: "停止",
+                alias,
+              });
+              // this.batchButs.push(value.entity);
+            } else if (id == "296") {
+              this.listBut.push({
+                type: "6",
+                name: "启用",
+                alias,
+              });
+            } else if (id == "295") {
+              this.listBut.push({
+                type: "3",
+                name: "查看",
+                alias,
+              });
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    inSearch() {
+      this.cardRefresh = new Date().getTime();
+    },
+    onSelect(obj) {
+      this.gateway = obj;
+    },
+    closeForm() {
+      this.gateway = [];
+      this.dialogForm = false;
+    },
+    submitForm() {
+      if (this.gateway && this.gateway.length > 0) {
+        this.$ajax(
+          "/system/control/nblocklog/save/2/savenblocklog",
+          {},
+          "1",
+          this.gateway.map((o) => o.roomid),
+          true
+        )
+          .then((res) => {
+            this.closeForm();
+            this.onRefreshTable();
+            this.$message({
+              message: "添加成功",
+              type: "success",
+            });
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      } else {
+        this.$message({
+          message: "请先选择要添加日志的门锁",
+          type: "warning",
+        });
+      }
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onBatchClick(key, obj) {
+      if (this.rcids.length != 0) {
+        if (key == "185") {
+          let arr = this.rcids.map((o) => o.olid);
+          this.deleteJournal(arr, obj.alias);
+        }
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选中日志",
+          type: "warning",
+        });
+      }
+    },
+    onClick(key, data, obj) {
+      if (key == "6") {
+        this.$confirm("此操作将此启用此日志，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/control/nblocklog/regain/1/regainnblocklog",
+              {
+                nbid: data.nbid,
+              },
+              "1",
+              {},
+              true
+            )
+              .then((res) => {
+                this.$message({
+                  message: "启动成功",
+                  type: "success",
+                });
+                this.onRefreshTable();
+              })
+              .catch((err) => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error",
+                });
+              });
+          })
+          .catch((err) => {});
+      } else if (key == "7") {
+        this.$confirm("此操作将此停用此日志，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            this.deleteJournal([data.nbid], obj.alias);
+          })
+          .catch((err) => {});
+      } else if (key == "3") {
+        this.$ajax(
+          "/system/control/nblocklog/info/1/getnblock",
+          {
+            nbid: data.nbid,
+          },
+          "1"
+        )
+          .then((res) => {
+            this.roomids = res.result;
+            this.grantParam.nbid = data.nbid;
+            this.grantParam.wcode = this.roomids[0];
+
+            this.onChangeJournal();
+            this.dialogVisible = true;
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      } else if (key == "293") {
+        this.inSearch();
+        this.dialogForm = true;
+      }
+    },
+    onChangeJournal() {
+      this.grantRefresh = new Date().getTime();
+    },
+    deleteJournal(data, ts) {
+      this.$ajax(
+        "/system/control/nblocklog/delete/1/deletenblocklog",
+        { nbid: data },
+        "1",
+        {},
+        true
+      )
+        .then((res) => {
+          this.$message({
+            message: ts + "成功",
+            type: "success",
+          });
+          this.onRefreshTable();
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    //查询
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "nbsrz313");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "nbsrz313");
+    },
+  },
+};
+</script>

@@ -1,0 +1,132 @@
+<!-- NB 平台推送 -->
+<template>
+  <el-container class="tsrz290">
+    <el-header class="elheader query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-select class="qh_inp wid200" v-model="param.type" placeholder="请选择">
+            <el-option v-for="item in selectarr" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" v-model="dates"></fel-date>
+        </inpbox>
+        <inpbox>
+          <el-button class="qh_btn" size="small" type="primary" @click="search">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="pad0-10 query_main">
+      <paging-table
+        height="100%"
+        interface="/system/push/1/getpush"
+        class="heig100"
+        :param="param"
+        :refresh="refresh"
+        :list="list"
+        @onEjectChange="onEjectChange"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { format } from "@/utils/utils.js";
+export default {
+  props: ["toParam"],
+  data() {
+    return {
+      dates: [],
+      refresh: 0,
+      selectarr: [
+        {
+          id: "",
+          name: "所有平台"
+        }
+      ],
+      param: {
+        search: "",
+        edate: "",
+        sdate: "",
+        type: ""
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "平台类型",
+          prop: "mltype",
+          width: "100px"
+        },
+        {
+          name: "日志类型",
+          prop: "mltype2",
+          width: "200px"
+        },
+        {
+          tooltip: false,
+          name: "日志内容",
+          prop: "mlcontent"
+        },
+        {
+          name: "最后通讯时间",
+          prop: "mldate",
+          width: "200px"
+        }
+      ]
+    };
+  },
+  mounted() {
+    this.getEject();
+    this.$ajax("/login/home/g/getnbtype", {}, "1")
+      .then(res => {
+        this.selectarr.push(...res.result);
+      })
+      .catch(err => {
+        console.log("err", err);
+      });
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        this.param.sdate = "";
+        this.param.edate = "";
+      }
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      //将用户隐藏表格的信息存到localStorage
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("tsrz290.eject", arr);
+    },
+    getEject() {
+      //从localStorage获取用户隐藏表格的信息
+      let arr = Storages.getlocalStorage("tsrz290.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        obj.show = arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    }
+  }
+};
+</script>

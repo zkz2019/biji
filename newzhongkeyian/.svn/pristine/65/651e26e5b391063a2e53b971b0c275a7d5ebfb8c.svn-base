@@ -1,0 +1,151 @@
+<!--  输入密码弹出框 -->
+<template>
+  <el-dialog
+    :title="type=='0'?'编辑密码':'修改密码'"
+    :visible.sync="dialogVisible"
+    width="35%"
+    :before-close="handleClose"
+    append-to-body
+  >
+    <!-- <el-input v-model="input" placeholder="输入密码"></el-input>-->
+    <fel-form
+      v-loading="loading"
+      ref="felForm"
+      @submitForm="onClick"
+      @closeForm="handleClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+    <!-- <span slot="footer" class="dialog-footer"
+      :selects="selects"
+      <el-button @click="handleClose">取 消</el-button>
+      <el-button type="primary" @click="onClick">确 定</el-button>
+    </span>-->
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    type: String,
+    dialogVisible: Boolean,
+    roomid: Number,
+    personcode: String
+  },
+  data() {
+    var $this = this;
+    return {
+      loading: false,
+      defaultData: {},
+      formData: [
+        {
+          value: "input",
+          name: "输入密码",
+          type: "password",
+          rules: [
+            {
+              required: true,
+              message: "请输入密码",
+              trigger: "blur"
+            },
+            {
+              validator: (rule, value, callback) => {
+                let password = $this.$refs.felForm.ruleForm.input1;
+                if (!value && value !== 0) {
+                  if (password) {
+                    callback(new Error("请输入密码"));
+                  } else {
+                    callback();
+                    $this.$refs.felForm.validateField("input1");
+                  }
+                } else if (password) {
+                  callback();
+                  $this.$refs.felForm.validateField("input1");
+                } else {
+                  callback();
+                  $this.$refs.felForm.validateField("input1");
+                }
+              },
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          value: "input1",
+          name: "确认密码",
+          type: "password",
+          rules: [
+            {
+              required: true,
+              message: "请确认密码",
+              trigger: "blur"
+            },
+            {
+              validator: (rule, value, callback) => {
+                let password = $this.$refs.felForm.ruleForm.input;
+                if (!value && value !== 0) {
+                  if (password) {
+                    callback(new Error("请输入确认密码"));
+                  } else {
+                    callback();
+                  }
+                } else if (password && password != value) {
+                  callback(new Error("密码不一致!"));
+                } else {
+                  callback();
+                }
+              },
+              trigger: "blur"
+            }
+          ]
+        }
+      ]
+      // input: "",
+      // input1: ""
+    };
+  },
+  watch: {
+    dialogVisible(val) {}
+  },
+  methods: {
+    onClick(data) {
+      if (this.type == "0") {
+        this.$emit("getinp", data.input);
+      } else {
+        this.$ajax(
+          "/lock/operate/auth/b/updatepsw",
+          {
+            personcode: this.personcode,
+            roomid: this.roomid,
+            password: data.input
+          },
+          "1",
+          {},
+          true
+        )
+          .then(res => {
+            this.$emit("refresh")
+            this.$message({type:"success",message:"修改密码已下发!"})
+          })
+          .catch(err => {
+            this.$message.error(`[${err.resultCode}] `+err.resultMsg||"修改密码失败!");
+
+          });
+      }
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    },
+    handleClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+

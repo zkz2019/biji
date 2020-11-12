@@ -1,0 +1,178 @@
+<!--  房间列表 -->
+<template>
+  <el-main>
+    <div class="query_main fjglBox_middle">
+      <paging-table
+        interface="/lock/2/getbuildanalysis"
+        :list="ldlist"
+        ajaxType="1"
+        :paramObj="param"
+        :refresh="refresh"
+        @onEjectChange="onEjectChange"
+      >
+        <span
+          v-if="btnAll&&btnAll.czsqjlBtn"
+          class="sli but-blue"
+          @click="onClick(btnAll.czsqjlBtn.entity.id, btnAll.czsqjlBtn.entity)"
+        >
+          <i v-if="btnAll.czsqjlBtn.entity.icon" :class="'ficon-'+btnAll.czsqjlBtn.entity.icon"></i>
+          {{btnAll.czsqjlBtn.entity.alias}}
+        </span>
+      </paging-table>
+      <sqtabel
+        :param="detailsParam"
+        :listBtn="btnAll.czwsxsqBtn"
+        :dialogVisible="sqtabelVisible"
+        @beforeClose="sqtabelVisible=false"
+        ref="sqtabel"
+      />
+      <rztjChart :data="rztjdata" :dialogVisible="rztjVisible" @beforeClose="rztjVisible=false" />
+      <reloadList :dialogVisible="reloadVisible" @beforeClose="reloadVisible=false"></reloadList>
+    </div>
+  </el-main>
+</template>
+
+<script>
+import reloadList from "./dialog/reloadList";
+import { mapGetters } from "vuex";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import sqtabel from "./dialog/sqtabel";
+import rztjChart from "./dialog/rztjchart";
+export default {
+  props: {
+    param: Object,
+    btnAll: Object,
+  },
+  components: {
+    sqtabel,
+    rztjChart,
+    reloadList,
+  },
+  watch: {
+    param(val) {
+      this.onRefresh();
+    },
+  },
+  data() {
+    var $this = this;
+    return {
+      refresh: 0,
+      rztjdata: {},
+      reloadVisible: false,
+      rztjVisible: false,
+      detailsParam: {},
+      getRoomtype2s: {},
+      sqtabelVisible: false,
+      ldlist: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        { prop: "agname", name: "名称" },
+        { prop: "floorcount", name: "楼栋数" },
+        { prop: "publiccount", name: this.getRoomtype2()()[2] || "公共房间" },
+        { prop: "roomcount", name: this.getRoomtype2()()[1] || "宿舍房间" },
+        {
+          prop: "rz",
+          minWidth: "110px",
+          name: (this.getRoomtype2()()[1] || "宿舍房间") + "人数",
+          template: {
+            props: ["scope"],
+            computed: {},
+            methods: {
+              onClick() {
+                $this.rztjVisible = true;
+                $this.rztjdata = this.scope.row;
+              },
+            },
+            template: `<div><a class="a-click" @click.stop="onClick">{{scope.row.rz}}</a></div>`,
+          },
+        },
+        {
+          prop: "wsxauth",
+          minWidth: "120px",
+          name: "授权未下发名单",
+          template: {
+            props: ["scope"],
+            computed: {},
+            methods: {
+              onClick() {
+                $this.sqtabelVisible = true;
+                $this.detailsParam = { agid: this.scope.row.agid };
+              },
+            },
+            template: `<div><a v-if="scope.row.wsxauth!='0'" class="a-click" @click.stop="onClick">{{scope.row.wsxauth}}</a><span v-else>{{scope.row.wsxauth}}</span></div>`,
+          },
+        },
+        {
+          name: "操作",
+          width: "120px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBtn() {
+                return $this.btnAll.czwsxsqBtn.entity;
+              },
+            },
+            methods: {
+              onClick() {
+                this.$confirm("确定要重载未生效授权吗？", "提示", {
+                  confirmButtonText: "确定",
+                  cancelButtonText: "取消",
+                  type: "warning",
+                }).then(() => {
+                  $this.onClick(this.listBtn.id, this.scope.row.agid);
+                });
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick()">{{listBtn.alias}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+    };
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    ...mapGetters(["getRoomtype2"]),
+    onClick(id, obj) {
+      if (id == "570") {
+        this.$ajax("/lock/7/reloadfailauthbyagid", { agid: obj }, "1", {}, true)
+          .then((res) => {
+            this.$message({
+              message: "重载成功,请在重载授权记录查看结果!",
+              type: "success",
+            });
+            this.onRefresh();
+          })
+          .catch((err) => {
+            console.log(err);
+            this.$message({
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      } else if (id == "924") {
+        this.reloadVisible = true;
+      }
+    },
+    onRefresh() {
+      //刷新
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.ldlist, "fjgl38");
+    },
+    getEject() {
+      this.$common.getEject(this, "ldlist", "fjgl38");
+    },
+  },
+};
+</script>
+
+<style>
+</style>

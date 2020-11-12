@@ -1,0 +1,29 @@
+<template>
+  <el-input  
+  @onClick.native="scecountclick" :readonly="true" style="display: inline-block;width: 250px;margin-right: 10px;" :placeholder="'请输入|'+this.getNumber()+'|姓名|手机号搜索'" size="small">
+  <i slot="prefix" class="el-input__icon el-icon-search"></i>
+  </el-input>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    
+  },
+  data() {
+    return {
+    };
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    scecountclick(key) {
+      this.$emit("onClick", key);
+    }
+  }
+};
+</script>
+
+<style lang='scss' scoped>
+
+</style>

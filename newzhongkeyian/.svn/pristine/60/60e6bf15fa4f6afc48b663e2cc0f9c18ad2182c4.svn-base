@@ -1,0 +1,449 @@
+<template>
+  <div class="form fel-form">
+    <div class="form-content" :class="{row:flexRow}">
+      <slot class="slot" name="top"></slot>
+      <div class="content-div">
+        <el-form
+          status-icon
+          class="form-el"
+          :model="ruleForm"
+          :rules="rules"
+          ref="refForm"
+          :label-width="width"
+        >
+          <template v-for="(value, key) of formData">
+            <template v-if="value.type == 'div'">
+              <div :key="key" class="form-div" :class="value.css">{{value.name}}</div>
+            </template>
+            <template v-else>
+              <el-form-item
+                class="form-it"
+                v-if="!value.noShow"
+                :key="key"
+                :style="value.width?'width: '+value.width+';display: '+(value.display ? value.display :'inline-block') +';':''"
+                :label="value.name"
+                :prop="value.value"
+                :ref="value.ref"
+                :label-width="value.labelWidth"
+              >
+                <template v-if="value.type == 'template'">
+                  <component
+                    class="inp"
+                    v-model="ruleForm[value.value]"
+                    :is="value.template | filterExtend"
+                  ></component>
+                </template>
+                <template v-else-if="value.type == 'select'">
+                  <el-select
+                    :ref="value.ref"
+                    @change="(...arr)=>{formClick(arr,value.onChange)}"
+                    :disabled="value.disabled"
+                    class="inp"
+                    v-model="ruleForm[value.value]"
+                    :placeholder="value.placeholder"
+                    :multiple="value.multiple"
+                    :value-key="value.vkey"
+                  >
+                    <template v-if="typeof(value.select) == 'string'">
+                      <el-option
+                        v-for="(v, k) of selects[value.select]"
+                        :key="k"
+                        :label="typeof(value.slabel) == 'undefined' ? v.label : (value.slabel == '' ? v : v[value.slabel])"
+                        :value="typeof(value.svalue) == 'undefined' ? v.value : (value.svalue == '' ? v : v[value.svalue])"
+                      ></el-option>
+                    </template>
+                    <template v-else>
+                      <el-option
+                        v-for="(v, k) of value.select"
+                        :key="k"
+                        :label="typeof(value.slabel) == 'undefined' ? v.label : (value.slabel == '' ? v : v[value.slabel])"
+                        :value="typeof(value.svalue) == 'undefined' ? v.value : (value.svalue == '' ? v : v[value.svalue])"
+                      ></el-option>
+                    </template>
+                  </el-select>
+                </template>
+                <template v-else-if="value.type == 'cascader'">
+                  <template v-if="typeof(value.options) == 'string'">
+                    <el-cascader
+                      clearable
+                      @change="(...arr)=>{formClick(arr,value.onChange)}"
+                      :show-all-levels="value.all"
+                      :change-on-select="value.change"
+                      :filterable="value.filterable"
+                      :options="selects[value.options]"
+                      :disabled="value.disabled"
+                      class="inp"
+                      v-model="ruleForm[value.value]"
+                      :placeholder="value.placeholder"
+                      :props="value.props"
+                    ></el-cascader>
+                  </template>
+                  <template v-else>
+                    <el-cascader
+                      clearable
+                      :show-all-levels="value.all"
+                      :change-on-select="value.change"
+                      :options="value.options"
+                      :disabled="value.disabled"
+                      class="inp"
+                      v-model="ruleForm[value.value]"
+                      :placeholder="value.placeholder"
+                      :props="value.props"
+                    ></el-cascader>
+                  </template>
+                </template>
+                <template v-else-if="value.type == 'time'">
+                  <template v-if="value.date == 'select'">
+                    <el-time-select
+                      :disabled="value.disabled"
+                      class="inp"
+                      v-model="ruleForm[value.value]"
+                      :picker-options="value.options"
+                      :placeholder="value.placeholder"
+                    ></el-time-select>
+                  </template>
+                  <!-- <template v-else-if="value.date == 'ftime'">
+                    <fel-time
+                      :disabled="value.disabled"
+                      class="inp"
+                      :arrow="value.arrow"
+                      v-model="ruleForm[value.value]"
+                      :picker-options="value.options"
+                      :placeholder="value.placeholder"
+                      :format="value.format"
+                      :value-format="value.vformat || value.format"
+                    ></fel-time>
+                  </template>-->
+                  <template v-else-if="value.date=='ftime'">
+                    <fel-Stime
+                      class="inp"
+                      :disabled="value.disabled"
+                      :picker-options="value.options"
+                      :times="ruleForm[value.value]"
+                      :placeholder="value.placeholder"
+                      :format="value.format"
+                      :value-format="value.vformat || value.format"
+                      @onDetermine="(e)=>{ruleForm[value.value]=(e?e:'')}"
+                    ></fel-Stime>
+                  </template>
+                  <template v-else>
+                    <el-time-picker
+                      :disabled="value.disabled"
+                      class="inp"
+                      v-model="ruleForm[value.value]"
+                      :picker-options="value.options"
+                      :placeholder="value.placeholder"
+                      :format="value.format"
+                      :value-format="value.vformat || value.format"
+                    ></el-time-picker>
+                  </template>
+                </template>
+                <template v-else-if="value.type == 'date'">
+                  <el-date-picker
+                    :disabled="value.disabled"
+                    class="inp"
+                    v-model="ruleForm[value.value]"
+                    :type="value.date"
+                    :picker-options="value.options"
+                    :default-time="value.dTime"
+                    :placeholder="value.placeholder"
+                    :format="value.format"
+                    @change="(...arr)=>{formClick(arr,value.onChange)}"
+                    :value-format="value.vformat || value.format"
+                  ></el-date-picker>
+                </template>
+                <template v-else-if="value.type == 'uploadImg'">
+                  <fel-upload-input
+                    ref="uploadImg"
+                    class="inp"
+                    v-on="$listeners"
+                    :width="value.uWidth"
+                    :height="value.uHeight"
+                    :urlObtain="value.urlObtain"
+                    :imgValue="ruleForm[value.imgValue]"
+                    v-model="ruleForm[value.value]"
+                    :label="value.ulabel"
+                    :url="value.url"
+                    :isCustom="value.isCustom"
+                    @exportFile="exportFile"
+                  ></fel-upload-input>
+                </template>
+                <template v-else-if="value.type == 'clearInput'">
+                  <fel-clearInput
+                    class="inp"
+                    @focus="(...arr)=>{formClick(arr,value.onFocus)}"
+                    @input="(...arr)=>{formClick(arr,value.onInput)}"
+                    @blur="(...arr)=>{formClick(arr,value.onBlur)}"
+                    :placeholder="value.placeholder"
+                    :readonly="value.readonly"
+                    :maxlength="value.maxlength"
+                    :type="value.type"
+                    :disabled="value.disabled"
+                    v-model="ruleForm[value.value]"
+                  >
+                    <slot>
+                      <span
+                        class="el-icon-circle-close clearInput_icon"
+                        v-if="ruleForm[value.value]"
+                        @click="ruleForm[value.value]=''"
+                      ></span>
+                    </slot>
+                  </fel-clearInput>
+                </template>
+                <template v-else>
+                  <el-input
+                    class="inp"
+                    @focus="(...arr)=>{formClick(arr,value.onFocus)}"
+                    @input="(...arr)=>{formClick(arr,value.onInput)}"
+                    @blur="(...arr)=>{formClick(arr,value.onBlur)}"
+                    :placeholder="value.placeholder"
+                    clearable
+                    :readonly="value.readonly"
+                    :maxlength="value.maxlength"
+                    :type="value.type"
+                    :rows="value.rows"
+                    :disabled="value.disabled"
+                    v-model="ruleForm[value.value]"
+                  ></el-input>
+                </template>
+                <template v-if="value.buts && value.buts.length > 0">
+                  <em
+                    v-for="(v,k) of value.buts"
+                    :key="k"
+                    v-show="!v.show"
+                    :title="v.title"
+                    class="form-but"
+                    :class="v.class + (value.disabled ? 'disabled' : '')"
+                    @click.stop="($event)=>{formClick($event,v.onClick, value.disabled)}"
+                  >
+                    <i v-if="v.icon" :class="v.icon"></i>
+                    {{v.name}}
+                  </em>
+                </template>
+              </el-form-item>
+            </template>
+          </template>
+        </el-form>
+      </div>
+      <slot class="slot" name="bottom"></slot>
+    </div>
+    <div v-if="button && button.length > 0" class="footerButton">
+      <template v-for="(o,i) of button">
+        <template v-if="o.type == '1'">
+          <el-button :key="i" @click="closeForm">{{o.name || "关闭"}}</el-button>
+        </template>
+        <template v-else-if="o.type == '0'">
+          <el-button :key="i" @click="resetForm">{{o.name || "重置"}}</el-button>
+        </template>
+        <template v-else>
+          <el-button :key="i" type="primary" @click="submitForm">{{o.name || "确认"}}</el-button>
+        </template>
+      </template>
+    </div>
+  </div>
+</template>
+<script>
+/**
+ * element-ui中form 表单的组件
+  :formData  // 表格列表 Array 
+    {
+        value: 值,
+        width: 列的宽度
+        display: 列的展示的样式
+        labelWidth: 名称的宽度
+        name: 名称,
+        disabled: 禁止输入
+        placeholder: 输入框提示
+        type:  input输入框的类型 或者 select,
+        format: date 数据格式
+        vformat: date 的 value数据格式 默认和format一样的格式
+        select: select列表数据 Array,
+            { 
+              label: "展示名称",
+              value: 值 
+            }
+        rules: 表格校验 Array 
+        class: "样式名"
+    }
+  :defaultData // 默认表单数据
+  :button // 表单按钮 Array 默认确认按钮
+    {
+        type: "类型", 0 重置 1 关闭 2 确认
+        name: "按钮名称",
+        class: "样式名"
+    },
+  @submitForm  // 确认点击按钮回调 (obj)  默认表单数据 + 表单输入数据
+  @closeForm // 关闭点击按钮回调
+  width // 表单的名称的宽度
+  dynamic // 默认表单数据是否默认动态改变
+ */
+import Vue from "vue";
+export default {
+  name: "fel-form",
+  props: {
+    flexRow: Boolean,
+    selects: Object,
+    width: String,
+    formData: Array,
+    dynamic: Boolean,
+    defaultData: {
+      type: Object,
+      default: function() {
+        return {};
+      }
+    },
+    button: {
+      type: Array,
+      default: function() {
+        return [
+          {
+            type: "1",
+            name: "取消"
+          },
+          {
+            type: "2",
+            name: "确定"
+          }
+        ];
+      }
+    }
+  },
+  created: function() {
+    let ruleForm = {};
+    let rules = {};
+    this.formData.forEach(v => {
+      if (v.value) {
+        ruleForm[v.value] = this.defaultData[v.value];
+        this.defaultObj[v.value] = "";
+      }
+      if (v.rules) {
+        rules[v.value] = v.rules;
+      }
+      if (v.formatter) {
+        this.formatters[v.value] = obj => {
+          v.formatter(v, obj);
+        };
+        this.formatters[v.value](this.defaultData);
+      }
+    });
+    this.ruleForm = ruleForm;
+    this.rules = rules;
+  },
+  data() {
+    return {
+      formatters: {},
+      ruleForm: {},
+      rules: {},
+      defaultObj: {}
+    };
+  },
+  methods: {
+    validateField(...arr) {
+      if (this.$refs["refForm"]) {
+        this.$refs["refForm"].validateField(...arr);
+      }
+    },
+    setData(key, value) {
+      this.ruleForm[key] = value;
+      if (this.formatters[key]) {
+        this.formatters[key](this.ruleForm);
+      }
+    },
+    formClick(arr, callback, disabled) {
+      if (callback && !disabled) {
+        callback(arr, this.ruleForm);
+      }
+    },
+    getValue() {
+      return Object.assign({}, this.defaultData, this.ruleForm);
+    },
+    submitForm() {
+      this.$refs["refForm"].validate(valid => {
+        if (valid) {
+          let obj = Object.assign({}, this.defaultData, this.ruleForm);
+          this.$emit("submitForm", obj);
+        } else {
+          return false;
+        }
+      });
+    },
+    resetFormRef(ref) {
+      if (this.$refs[ref]) {
+        if (this.$refs[ref].resetField) {
+          this.$refs[ref].resetField();
+        } else if (this.$refs[ref][0] && this.$refs[ref][0].resetField) {
+          this.$refs[ref][0].resetField();
+        }
+      }
+    },
+    resetForm() {
+      if (this.$refs["refForm"]) {
+        this.$refs["refForm"].resetFields();
+      }
+      if (this.$refs["uploadImg"] && this.$refs["uploadImg"][0]) {
+        this.$refs["uploadImg"][0].onDelete();
+      }
+    },
+    closeForm() {
+      this.resetForm();
+      this.$emit("closeForm");
+    },
+    merge(a, b) {
+      let obj = Object.assign({}, a);
+      Object.keys(b).forEach(k => {
+        if (typeof b[k] != undefined) {
+          obj[k] = b[k];
+        }
+      });
+      return obj;
+    },
+    toUpdate() {
+      Object.keys(this.formatters).forEach(key => {
+        if (this.formatters[key]) {
+          this.formatters[key](this.ruleForm);
+        }
+      });
+    },
+    exportFile(data) {
+      this.$emit("exportFile", data);
+    }
+  },
+  watch: {
+    defaultData() {
+      if (this.dynamic) {
+        this.ruleForm = this.merge(this.defaultObj, this.defaultData);
+        this.resetForm();
+        this.toUpdate();
+      }
+    },
+    //可能出现问题
+    formData() {
+      let ruleForm = {};
+      let rules = {};
+      this.formData.forEach(v => {
+        if (v.value) {
+          ruleForm[v.value] = this.defaultData[v.value];
+          this.defaultObj[v.value] = "";
+        }
+        if (v.rules) {
+          rules[v.value] = v.rules;
+        }
+        if (v.formatter) {
+          this.formatters[v.value] = obj => {
+            v.formatter(v, obj);
+          };
+          this.formatters[v.value](this.defaultData);
+        }
+      });
+      this.ruleForm = ruleForm;
+      this.rules = rules;
+    }
+  },
+  filters: {
+    filterExtend(value) {
+      return Vue.extend(value);
+    }
+  },
+  components: {}
+};
+</script>

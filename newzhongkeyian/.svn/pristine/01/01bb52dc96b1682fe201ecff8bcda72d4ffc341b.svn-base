@@ -1,0 +1,226 @@
+<template>
+  <div class="rowb_right">
+    <div class="jlbox heig100">
+      <el-tabs class="heig100" v-model="activeName" @tab-click="handleClick">
+        <el-tab-pane v-loading="Loading" v-if="querys5" label="试探开门" name="five">
+          <div class="paging-tables tables">
+            <sytabel
+              :showHeader="showHeader"
+              :noOpera="noOpera"
+              :queryData="unlocking.stopenrecord"
+              :list="list4"
+            ></sytabel>
+          </div>
+          <div v-show="more4" class="more" @click="shiMore">
+            <span class="ficon-image300">查看更多</span>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane v-loading="Loading" v-if="querys4" label="异动查询" name="four">
+          <div class="paging-tables tables">
+            <sytabel
+              :showHeader="showHeader"
+              :noOpera="noOpera"
+              :queryData="unlocking.changerecord"
+              :list="list3"
+            ></sytabel>
+          </div>
+          <div v-show="more4" class="more" @click="yiMore">
+            <span class="ficon-image300">查看更多</span>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane v-loading="Loading" v-if="querys3" label="低电量报警" name="third">
+          <div class="paging-tables tables">
+            <sytabel
+              :showHeader="showHeader"
+              :noOpera="noOpera"
+              :queryData="unlocking.quantityanalysis"
+              :list="list2"
+            ></sytabel>
+          </div>
+          <div v-show="more3" class="more" @click="lowMore">
+            <span class="ficon-image300">查看更多</span>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane v-loading="Loading" v-if="querys2" label="门虚掩报警" name="second">
+          <div class="paging-tables tables">
+            <sytabel
+              :showHeader="showHeader"
+              :noOpera="noOpera"
+              :queryData="unlocking.lockxyanalysis"
+              :list="list1"
+            ></sytabel>
+          </div>
+          <div v-show="more2" class="more" @click="xuyanMore">
+            <span class="ficon-image300">查看更多</span>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane v-loading="Loading" v-if="querys1" class="heig100" label="钥匙开门记录" name="first">
+          <div class="paging-tables tables">
+            <sytabel
+              :showHeader="showHeader"
+              class="heig100"
+              :noOpera="noOpera"
+              :queryData="unlocking.keyopenrecord"
+              :list="list"
+            ></sytabel>
+          </div>
+          <div v-show="more1" class="more" @click="keyMore">
+            <span class="ficon-image300">查看更多</span>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+  </div>
+</template>
+
+<script>
+import sytabel from "./sytabel";
+import { mapState } from "vuex";
+import echarts from "echarts";
+export default {
+  components: {
+    sytabel
+  },
+  props: ["querys1", "querys2", "querys3", "querys4", "querys5"],
+  data() {
+    return {
+      Loading:false,
+      showHeader: false,
+      more1: true,
+      more2: true,
+      more3: true,
+      more4: true,
+      noOpera: true,
+      list: [
+        { name: "开门时间", prop: "keyopendate" },
+        { name: "房间位置", prop: "roomlocation" },
+        { name: "房间类型", prop: "roomtype" },
+        { name: "开门方式", prop: "type" }
+      ],
+      list1: [
+        { name: "报警时间", prop: "lockxydate" },
+        { name: "房间位置", prop: "roomlocation" },
+        { name: "房间类型", prop: "roomtype" },
+        { name: "类型", prop: "type" }
+      ],
+      list2: [
+        // { name: "报警时间", prop: "quantitydate" },
+        { name: "房间位置", prop: "roomlocation" },
+        { name: "剩余电量", prop: "roomquantity" },
+        { name: "类型", prop: "type" }
+      ],
+      list3: [
+        { name: "异动时间", prop: "changedate" },
+        { name: "变动人", prop: "personname" },
+        { name: "房间类型", prop: "roomlocation" },
+        { name: "类型", prop: "type" }
+      ],
+      list4: [
+        { name: "开门时间", prop: "keyopendate" },
+        { name: "房间位置", prop: "roomlocation" },
+        { name: "房间类型", prop: "roomtype" },
+        { name: "类型", prop: "type" }
+      ],
+      activeName: "five",
+      unlocking: {}, //开门记录
+      times: null
+    };
+  },
+  computed: {
+    ...mapState({
+      menuObj: state => state.openTab.menuObj
+    })
+  },
+  mounted() {
+    this.setval(); //初始值设定
+    this.getunlocking();
+    this.getmore();
+  },
+  beforeDestroy() {
+    clearInterval(this.times);
+  },
+  methods: {
+    setval() {
+      this.times = setInterval(() => {
+        let aa = document.querySelector(".jlbox .el-tabs__content");
+        if (aa) {
+          if (aa.children[0]) {
+            let fid = aa.children[0].id.substring(5);
+            if (fid === "second") {
+              this.activeName = fid;
+            } else if (fid === "third") {
+              this.activeName = fid;
+            } else if (fid === "four") {
+              this.activeName = fid;
+            }
+            clearInterval(this.times);
+          }
+        }
+      }, 100);
+    },
+    //隐藏查看更多
+    getmore() {
+      if (this.menuObj && this.menuObj["sklscx92"]) {
+        this.more1 = true;
+      } else {
+        this.more1 = false;
+      }
+      if (this.menuObj && this.menuObj["mxybjtj252"]) {
+        this.more2 = true;
+      } else {
+        this.more2 = false;
+      }
+      // ddlbjtj261 改成 dcdlcx162
+      // 跳转页面是 dcdlcx162 所以 判断应该也是 dcdlcx162
+      // 改 bug 146
+      if (this.menuObj && this.menuObj["dcdlcx162"]) {
+        this.more3 = true;
+      } else {
+        this.more3 = false;
+      }
+      if (this.menuObj && this.menuObj["ydcx204"]) {
+        this.more4 = true;
+      } else {
+        this.more4 = false;
+      }
+    },
+    //查看更多
+    keyMore() {
+      this.$router.push({
+        name: "记录查询",
+        params: { type: "8" }
+      });
+    },
+    xuyanMore() {
+      this.$router.push("mxybjtj252");
+    },
+    lowMore() {
+      this.$router.push({name:"电池电量查询",params:{quantitylv:"30"}});
+    }, 
+    yiMore() {
+      this.$router.push("ydcx204");
+    },
+    shiMore() {
+      this.$router.push({name:"记录查询",params:{type:"6"}});
+    },
+    //选项卡切换 
+    handleClick(tab, event) {
+      this.getunlocking();
+    },
+    // 开门记录
+    getunlocking() {
+      this.Loading=true;
+      this.$ajax("/login/home/6/getunlocking", {})
+        .then(res => {
+          this.Loading=false;
+          this.unlocking = res.result;
+        })
+        .catch(err => {
+          this.Loading=false;
+          console.log(err);
+        });
+    }
+  }
+};
+</script>
+

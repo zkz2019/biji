@@ -1,0 +1,115 @@
+<template>
+  <el-dialog
+    title="卡片操作记录详情"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        interface="/auth/cardcenter/card/5/listCardDelDetails"
+        :list="listInfo"
+        :param="param"
+        ajaxType="9"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input clearable class="search" v-model="param.search" placeholder="输入账号进行检索"></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    cdid: String | Number
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { cdid: "", search: "" },
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "处理日期",
+          prop: "cdddate"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "处理状态",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.cddstatus == "0") {
+                  return "正在删除";
+                } else if (this.scope.row.cddstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.cddstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "cddremark"
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.cdid = this.cdid;
+        this.onRefresh();
+      } else {
+        this.param.cdid = "";
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

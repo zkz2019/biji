@@ -1,0 +1,381 @@
+<!-- 推送消息管理 -->
+<template>
+  <el-container class="wgljjl314">
+    <el-header class="elheader query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-select v-model="param.pushtype" class="con-select qh_inp">
+            <el-option
+              v-for="item in personnels"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            placeholder="输入消息名称查询"
+          ></el-input>
+        </inpbox>
+
+        <inpbox>
+          <el-button class="qh_btn" type="primary" @click="search">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="pad0-10 query_main">
+      <paging-table
+        height="100%"
+        interface="/push/1/getmsgpush"
+        class="heig100"
+        :param="param"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        :list="list"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+      </paging-table>
+    </el-main>
+    <role
+      :buts="roleButs"
+      :dialogVisible="dialogRole"
+      :defaultData="defaultData"
+      @onRefresh="onRefreshTable"
+      @beforeClose="dialogRole=false"
+    ></role>
+    <add
+      :dialogVisible="dialogAdd"
+      :type="typeAdd"
+      @onRefresh="onRefreshTable"
+      :defaultData="defaultDataAdd"
+      @beforeClose="dialogAdd=false"
+    ></add>
+    <addry
+      :buts="persoButs"
+      :dialogVisible="dialogAddRy"
+      @beforeClose="dialogAddRy = false"
+      :param="defaultData"
+    ></addry>
+    <admin :dialogVisible="dialogAdmin" :buts="adminButs" @beforeClose="dialogAdmin=false"></admin>
+    <phone
+      :buts="phoneButs"
+      :dialogVisible="dialogPhone"
+      @beforeClose="dialogPhone = false"
+      :param="defaultData"
+    ></phone>
+    <mail
+      :buts="mailButs"
+      :dialogVisible="dialogMail"
+      @beforeClose="dialogMail = false"
+      :param="defaultData"
+    ></mail>
+  </el-container>
+</template>
+
+<script>
+import Storages from "@/utils/Storage.js"; //缓存工具
+import add from "./add.vue";
+import admin from "./admin.vue";
+import role from "./role.vue";
+import addry from "./addry.vue";
+import phone from "./phone.vue";
+import mail from "./mail.vue";
+export default {
+  components: {
+    add,
+    admin,
+    addry,
+    phone,
+    mail,
+    role,
+  },
+  props: ["toParam"],
+  data() {
+    let $this = this;
+    return {
+      personnels: [
+        {
+          id: "",
+          name: "全部消息类型",
+        },
+      ],
+      dialogMail: false,
+      dialogAddRy: false,
+      dialogRole: false,
+      dialogPhone: false,
+      defaultData: {},
+      roleButs: [],
+      persoButs: [],
+      phoneButs: [],
+      mailButs: [],
+      dialogAdd: false,
+      defaultDataAdd: {},
+      dialogAdmin: false,
+      typeAdd: 1,
+      dates: [],
+      refresh: 0,
+      refreshTable: 0,
+      param: {
+        search: "",
+        pushtype: "",
+      },
+      listButs: [],
+      topButs: [],
+      adminButs: [],
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "推送编号",
+          prop: "pushid",
+        },
+        {
+          name: "推送消息类型",
+          minWidth: "100px",
+          prop: "pushtype",
+        },
+        {
+          name: "推送消息名称",
+          minWidth: "100px",
+          prop: "pushname",
+        },
+        {
+          name: "推送方式",
+          prop: "pushsendtype",
+        },
+        {
+          name: "推送时间点",
+          minWidth: "90px",
+          prop: "pushtime",
+        },
+        {
+          name: "推送频率",
+          prop: "pushcycle",
+        },
+        {
+          name: "创建时间",
+          prop: "pushcdate",
+        },
+        {
+          name: "备注",
+          prop: "pushremark",
+        },
+        {
+          name: "推送范围",
+          width: "180px",
+          template: {
+            props: ["scope"],
+            computed: {
+              isBut() {
+                return $this.listButs;
+              },
+            },
+            methods: {
+              onClick(key, obj) {
+                $this.defaultData = Object.assign({}, this.scope.row);
+                if (key == 1) {
+                  $this.dialogRole = true;
+                } else if (key == 2) {
+                  $this.dialogAddRy = true;
+                } else if (key == 5) {
+                  $this.dialogPhone = true;
+                } else if (key == 4) {
+                  $this.dialogMail = true;
+                }
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" v-if="isBut.includes('6')" size="small" @click.stop="onClick(1)">按角色</el-button>
+             <el-button type="text" v-if="isBut.includes('7')" size="small" @click.stop="onClick(2)">按人员</el-button>
+             <el-button type="text" v-if="isBut.includes('8') && scope.row.pushsendtype == '邮件'" size="small" @click.stop="onClick(4)">按邮箱</el-button>
+             <el-button type="text" v-if="isBut.includes('9') && scope.row.pushsendtype == '短信'" size="small" @click.stop="onClick(5)">按手机</el-button>
+            </div>`,
+          },
+        },
+        {
+          name: "操作",
+          width: "140px",
+          template: {
+            props: ["scope"],
+            computed: {
+              isBut() {
+                return $this.listButs;
+              },
+            },
+            methods: {
+              onClick(key, obj) {
+                if (key == 5) {
+                  $this.defaultDataAdd = Object.assign({}, this.scope.row);
+                  $this.typeAdd = 2;
+                  $this.dialogAdd = true;
+                } else {
+                  $this.modify(key, Object.assign({}, this.scope.row));
+                }
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" v-if='isBut.includes("5")' @click.stop="onClick(5)">编辑</el-button>
+             <el-button type="text" size="small" v-if='scope.row.pushstate == 0 && isBut.includes("1")' @click.stop="onClick(1)">开启</el-button>
+             <el-button type="text" size="small" v-if='scope.row.pushstate != 0 && isBut.includes("2")' @click.stop="onClick(0)">关闭</el-button>
+             <el-button type="text" size="small" v-if='isBut.includes("4")' @click.stop="onClick(-1)">删除</el-button>
+            </div>`,
+          },
+        },
+      ],
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+    this.ingetmsgpushtype();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "686") {
+              this.topButs.push(value.entity);
+            } else if (id == "687") {
+              this.topButs.push(value.entity);
+              if (value.childs) {
+                this.adminButs.push(...value.childs.map((o) => o.entity));
+              }
+            } else if (id == "688") {
+              //开启
+              this.listButs.push("1");
+            } else if (id == "689") {
+              //关闭
+              this.listButs.push("2");
+            } else if (id == "752") {
+              //删除
+              this.listButs.push("4");
+            } else if (id == "690") {
+              //编辑
+              this.listButs.push("5");
+            } else if (id == "691") {
+              //角色范围
+              this.listButs.push("6");
+              if (value.childs) {
+                this.roleButs = value.childs.map((o) => o.entity);
+              }
+            } else if (id == "753") {
+              //人员范围
+              this.listButs.push("7");
+              if (value.childs) {
+                this.persoButs = value.childs.map((o) => o.entity);
+              }
+            } else if (id == "757") {
+              //邮件范围
+              this.listButs.push("8");
+              if (value.childs) {
+                this.mailButs = value.childs.map((o) => o.entity);
+              }
+            } else if (id == "758") {
+              //手机范围
+              this.listButs.push("9");
+              if (value.childs) {
+                this.phoneButs = value.childs.map((o) => o.entity);
+              }
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+    ingetmsgpushtype() {
+      this.$ajax("/push/log/1/getmsgpushtype", {}, "1")
+        .then((res) => {
+          let result = res.result;
+          this.personnels.push(...result.msgtype);
+        })
+        .catch((err) => {});
+    },
+    modify(key, obj) {
+      let text = "开启";
+      if (key == 0) {
+        text = "关闭";
+      } else if (key == -1) {
+        text = "删除";
+      }
+      this.$confirmCon("确定要" + text + "当前推送消息吗？", () => {
+        this.$ajax(
+          "/push/update/4/startorstopmsgpush",
+          { pushid: obj.pushid, pushstate: key },
+          "1",
+          {},
+          true
+        )
+          .then((res) => {
+            this.onRefreshTable();
+            this.$message({
+              message: text + "成功",
+              type: "success",
+            });
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      });
+    },
+    onClick(key, obj) {
+      if (key == 686) {
+        this.defaultDataAdd = {};
+        this.typeAdd = 1;
+        this.dialogAdd = true;
+      } else if (key == 687) {
+        this.dialogAdmin = true;
+      }
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "tsxxgl684");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "tsxxgl684");
+    },
+  },
+};
+</script>

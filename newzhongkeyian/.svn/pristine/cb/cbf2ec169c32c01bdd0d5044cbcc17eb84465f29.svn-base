@@ -1,0 +1,360 @@
+<template>
+  <el-dialog
+    :title="type==1?'添加推送':'修改推送'"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <!-- class="single-row" -->
+    <fel-form
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultFormData"
+      :formData="formData"
+    ></fel-form>
+  </el-dialog>
+</template>
+
+<script>
+const EXPS = {
+  "1|1": `  晚归通知
+      您好，您管理的归寝情况：
+      平台账号：00000001
+      归属角色：班主任
+      归属人：张三
+      日期：2020年2月12日13:57:04
+      请点击详情查看！`
+};
+export default {
+  props: {
+    dialogVisible: Boolean,
+    defaultData: Object,
+    type: null
+  },
+  data() {
+    let $this = this;
+    return {
+      defaultFormData: {},
+      selects: {
+        pushtype: [],
+        pushtype2: [],
+        pushsendtype: [],
+        pushcycleparam: []
+      },
+      formData: [
+        {
+          width: "50%",
+          value: "pushtype",
+          name: "消息类型",
+          type: "select",
+          onChange: this.pushtypeChange,
+          select: "pushtype",
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            { required: true, message: "请选择消息类型", trigger: "change" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "pushtype2",
+          name: "推送类型",
+          type: "select",
+          ref: "pushtype2",
+          onChange: this.pushtype2Change,
+          select: "pushtype2",
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            { required: true, message: "请选择推送类型", trigger: "change" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "pushparam",
+          name: "推送参数设置",
+          ref: "pushparam",
+          type: "number",
+          format: "HH:mm",
+          rules: [
+            { required: true, message: "请设置推送参数", trigger: "blur" }
+          ]
+        },
+        {
+          noShow: true,
+          value: "pushname",
+          name: "推送类型名称"
+        },
+        {
+          width: "50%",
+          value: "pushcycletype",
+          name: "推送统计内容",
+          type: "select",
+          select: [
+            {
+              label: "本周期报表",
+              value: 1
+            },
+            {
+              label: "上周期报表",
+              value: 2
+            }
+          ],
+          rules: [
+            { required: true, message: "请选择推送统计内容", trigger: "change" }
+          ]
+        },
+        {
+          width: "50%",
+          name: "推送周期",
+          type: "select",
+          value: "pushcycle",
+          onChange: this.onBttype,
+          select: [
+            {
+              label: "每月",
+              value: 3
+            },
+            {
+              label: "每周",
+              value: 2
+            },
+            {
+              label: "每天",
+              value: 1
+            }
+          ],
+          rules: [
+            { required: true, message: "请选择推送周期", trigger: "change" }
+          ]
+        },
+        {
+          width: "50%",
+          name: "周期参数",
+          type: "select",
+          value: "pushcycleparam",
+          select: "pushcycleparam",
+          disabled: false,
+          ref: "pushcycleparam",
+          rules: []
+        },
+        {
+          width: "50%",
+          name: "推送时分",
+          type: "time",
+          format: "HH:mm",
+          value: "pushtime",
+          rules: [
+            { required: true, message: "请选择推送时分", trigger: "change" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "pushsendtype",
+          name: "推送方式",
+          type: "select",
+          select: "pushsendtype",
+          slabel: "",
+          svalue: "",
+          rules: [
+            { required: true, message: "请选择推送方式", trigger: "change" }
+          ]
+        },
+        {
+          name: "消息预览",
+          value: "preview",
+          type: "textarea",
+          rows: "5",
+          disabled: true
+        },
+        {
+          name: "备注",
+          value: "pushremark"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        if (this.type == 1) {
+          this.inSelectType();
+        } else {
+          this.inSelectType();
+          this.ingetupdatemsgpush();
+        }
+      }
+    }
+  },
+  created() {
+    this.inSelectType();
+  },
+  methods: {
+    pushtypeChange(arr, data, is) {
+      if (!is) {
+        data.pushtype2 = "";
+      }
+      let id = arr[0];
+      let obj = this.selects.pushtype.filter(obj => {
+        return (obj.id = id);
+      })[0];
+      this.selects.pushtype2 = obj.sontype;
+      this.$refs["felForm"].resetFormRef("pushtype2");
+    },
+    pushtype2Change(arr, data, is) {
+      if (!is) {
+        data.pushparam = "";
+      }
+      let id = arr[0];
+      data.pushname = this.selects.pushtype2.filter(obj => {
+        return obj.id == id;
+      })[0].name;
+      data.preview = EXPS[data.pushtype + "|" + id];
+      if (id == 1) {
+        this.formData[2].name = "晚归时间";
+        this.formData[2].type = "time";
+        this.$refs["felForm"].rules.pushparam = [
+          { required: true, message: "请选择晚归时间", trigger: "change" }
+        ];
+      } else if (id == 2) {
+        this.formData[2].name = "未归天数>=";
+        this.formData[2].type = "number";
+        this.$refs["felForm"].rules.pushparam = [
+          { required: true, message: "请输入未归天数", trigger: "blur" }
+        ];
+      } else if (id == 3) {
+        this.formData[2].name = "电量低于";
+        this.formData[2].type = "number";
+        this.$refs["felForm"].rules.pushparam = [
+          { required: true, message: "请输入电量低于的百分比", trigger: "blur" }
+        ];
+      }
+      this.$refs["felForm"].resetFormRef("pushparam");
+    },
+    onBttype(arr, valeu, is) {
+      if (!is) {
+        valeu.pushcycleparam = "";
+      }
+      let rules = [];
+      let type = "number";
+      if (arr[0] == "3" || arr[0] == "2") {
+        this.formData[6].disabled = false;
+        type = "select";
+        this.selects.pushcycleparam = this.getBtdays(arr[0]);
+        rules = [
+          { required: true, message: "请选择备份日", trigger: "change" }
+        ];
+      } else {
+        this.formData[6].disabled = true;
+      }
+      this.formData[6].type = type;
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].rules.pushcycleparam = rules;
+        this.$refs["felForm"].resetFormRef("pushcycleparam");
+      }
+    },
+    getBtdays(bttype) {
+      if (bttype == "3") {
+        let arr = [];
+        for (let i = 1; i < 32; i++) {
+          arr.push({ label: `每月${i}号`, value: i });
+        }
+        return arr;
+      } else if (bttype == "2") {
+        let arr = [
+          { label: "每周一", value: 1 },
+          { label: "每周二", value: 2 },
+          { label: "每周三", value: 3 },
+          { label: "每周四", value: 4 },
+          { label: "每周五", value: 5 },
+          { label: "每周六", value: 6 },
+          { label: "每周日", value: 7 }
+        ];
+        return arr;
+      }
+      return [];
+    },
+    persontypeChange(arr, data) {
+      let $this = this;
+      if (arr[0] == "3") {
+        this.$refs["felForm"].rules["personcode"] = [];
+      } else {
+        this.$refs["felForm"].rules["personcode"] = [
+          {
+            required: true,
+            message: "请输入" + $this.getNumber(),
+            trigger: "blur"
+          }
+        ];
+      }
+    },
+    inSelectType() {
+      let url = "/push/update/1/getmsgpushtype";
+      if (this.type == 1) {
+        url = "/push/save/1/getmsgpushtype";
+      }
+      this.$ajax(url, {}, "1")
+        .then(res => {
+          let result = res.result;
+          this.selects.pushtype = result.msgtype;
+          this.selects.pushsendtype = result.sendtype;
+        })
+        .catch(err => {});
+    },
+    ingetupdatemsgpush() {
+      this.$ajax(
+        "/push/update/2/getupdatemsgpush",
+        {
+          pushid: this.defaultData.pushid
+        },
+        "1"
+      )
+        .then(res => {
+          let obj = res.result || {};
+          this.pushtypeChange([obj.pushtype], obj, true);
+          this.pushtype2Change([obj.pushtype2], obj, true);
+          this.onBttype([obj.pushcycle], obj, true);
+          this.defaultFormData = obj;
+        })
+        .catch(err => {});
+    },
+    submitForm(data) {
+      delete data.preview;
+      let url = "/push/update/3/updatemsgpush",
+        ts = "修改";
+      if (this.type == 1) {
+        url = "/push/save/2/savemsgpush";
+        ts = "添加";
+      }
+      this.$ajax(url, data, "1", {}, true)
+        .then(res => {
+          this.$emit("onRefresh");
+          this.beforeClose();
+          this.$message({
+            message: ts + "推送成功",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      this.defaultFormData = {};
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

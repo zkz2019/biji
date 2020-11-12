@@ -1,0 +1,19 @@
+<template>
+  <div class="grouping">
+    <groupHeader></groupHeader>
+    <groupMain></groupMain>
+  </div>
+</template>
+
+<script>
+import groupHeader from './groupHeader'
+import groupMain from './groupMain'
+export default {
+  components: {
+    groupHeader,
+    groupMain,
+  },
+}
+</script>
+
+<style></style>

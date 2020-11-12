@@ -1,0 +1,369 @@
+<!-- 退房处理 -->
+<template>
+  <el-container :key="key">
+    <fel-left-tree class="checkIn">
+      <div slot="left" class="left-tree">
+        <adminLeft
+          url="/lock/operate/authback/1/getroomperson"
+          :checkedroom="checkedroom"
+          @checkp="checkp"
+        />
+      </div>
+      <el-container v-loading="loading" class="checkIn_right">
+        <el-main class="checkIn_right_center">
+          <div class="checkIn_right_table">
+            <form-table width="140px" :column="1" :param="defaultData" :list="tableData"></form-table>
+            <div class="table-img">
+              <img :src="personnel.personimage" />
+            </div>
+          </div>
+        </el-main>
+        <el-footer v-if="allBtnShow" class="checkIn_right_bottom">
+          <fel-button class="qh_btn com-but-small" type="primary" @click="Determine">确定退房</fel-button>
+        </el-footer>
+      </el-container>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import adminLeft from "./admin-left";
+import inpbox from "./../../common/inpbox";
+export default {
+  props: {
+    checkedroom: Object,
+    btnRight: {
+      type: Array,
+      default: () => {
+        return [];
+      }
+    }
+  },
+  components: {
+    inpbox,
+    adminLeft
+  },
+  data() {
+    return {
+      key: 0,
+      defaultData: { dates: [] },
+      dates: "",
+      tableData: [
+        {
+          name: "人员信息",
+          text: "内容"
+        },
+        {
+          name: "姓名",
+          value: "personname"
+        },
+        {
+          name: this.getNumber(), // "编号",
+          value: "personcode"
+        },
+        {
+          name: "组织",
+          value: "personlocation"
+        },
+        {
+          name: "电话",
+          value: "personmobile"
+        },
+        {
+          noShow: false,
+          name: "卡号",
+          // value: "cardcode"
+          render(obj, add) {
+            return add("div", {}, [
+              add("span", {}, obj.cardcode),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.cardissend
+              )
+            ]);
+          }
+        },
+
+        {
+          noShow: false,
+          name: "密码",
+          render(obj, add) {
+            return add("div", {}, [
+              add(
+                "span",
+                {},
+                obj.passcount && obj.passcount != "0"
+                  ? obj.passcount == "未授权"
+                    ? obj.passcount
+                    : `已授权(${obj.passcount})`
+                  : ""
+              ),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.passissend
+              )
+            ]);
+          }
+        },
+
+        {
+          noShow: false,
+          name: "指纹",
+          render(obj, add) {
+            return add("div", {}, [
+              add(
+                "span",
+                {},
+                obj.fingercount && obj.fingercount != "0"
+                  ? obj.fingercount == "未授权"
+                    ? obj.fingercount
+                    : `已授权(${obj.fingercount})`
+                  : ""
+              ),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.fingerissend
+              )
+            ]);
+          }
+        },
+
+        {
+          noShow: false,
+          name: "蓝牙钥匙",
+          funct(obj) {
+            return obj.appcount && obj.appcount != "0"
+              ? obj.appcount == "未授权"
+                ? obj.appcount
+                : `已授权`
+              : "";
+          }
+        },
+
+        {
+          noShow: false,
+          name: "主扫",
+          render(obj, add) {
+            return add("div", {}, [
+              add(
+                "span",
+                {},
+                obj.issweep && obj.issweep != "0"
+                  ? obj.issweep == "未授权"
+                    ? obj.issweep
+                    : `已授权`
+                  : ""
+              )
+            ]);
+          }
+        },
+
+        {
+          noShow: false,
+          name: "身份证",
+          render(obj, add) {
+            return add("div", {}, [
+              add("span", {}, obj.idcardcode),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.idcardissend
+              )
+            ]);
+          }
+        },
+
+        {
+          whole: true,
+          name: "入住开始结束日期",
+          render(obj, add) {
+            return add("fel-date", {
+              class: "checkIn_right_center_dates",
+              props: {
+                value: obj.dates,
+                disabled: true,
+                pEnd: obj.pEnd,
+                pickerShow: false
+              },
+              on: {
+                input: function(event) {
+                  obj.dates = event;
+                }
+              }
+            });
+          }
+        }
+        // {
+        //   name: "头像",
+        //   render(obj, add) {
+        //     if (obj.personimage && obj.personimage != "") {
+        //       return add(
+        //         "div",
+        //         {
+        //           class: "fjcz_headIcon"
+        //         },
+        //         [
+        //           add("fel-img", {
+        //             class: "fel-img",
+        //             props: {
+        //               urlObtain: "/lock/operate/authback/7/downpersonimage",
+        //               value: obj.personimage,
+        //               imgValue:
+        //                 obj.personsex == 0
+        //                   ? require("./../../../assets/image/n2.png")
+        //                   : require("./../../../assets/image/n1.png")
+        //             },
+        //             on: {
+        //               input: function(event) {}
+        //             }
+        //           })
+        //         ]
+        //       );
+        //     }
+        //   }
+        // }
+      ],
+      options: [],
+      value: [],
+      list: [],
+      loading: false,
+      checked: [],
+      param: {},
+      personnel: {}
+    };
+  },
+  computed: {
+    allBtnShow() {
+      return true;
+    }
+  },
+  mounted() {
+    if (this.checkedroom.iscardlock == 0) {
+      //判断房间是否支持指纹/密码/卡号,若不支持则隐藏
+      this.tableData[5].noShow = true;
+    } else {
+      this.tableData[5].noShow = false;
+    }
+    if (this.checkedroom.ispasslock == 0) {
+      this.tableData[6].noShow = true;
+    } else {
+      this.tableData[6].noShow = false;
+    }
+    if (this.checkedroom.isfingerlock == 0) {
+      this.tableData[7].noShow = true;
+    } else {
+      this.tableData[7].noShow = false;
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    checkp(data) {
+      //已入住人员选中事件
+      this.personnel = data;
+      this.loading = true;
+      this.$ajax(
+        "/lock/operate/authback/2/getroompersoninfo",
+        { personcode: data.personcode, roomid: this.checkedroom.roomid },
+        "1"
+      )
+        .then(res => {
+          let obj = {
+            dates: [res.result.personcomedate, res.result.personedate],
+            pEnd: res.result.personedate || "长期",
+            personlocation: res.result.personlocation,
+            personname: res.result.personname,
+            personcode: res.result.personcode,
+            personmobile: res.result.personmobile,
+            cardcode: res.result.cardcode,
+            fingercount: res.result.fingercount,
+            appcount: res.result.appcount,
+            passcount: res.result.passcount,
+            cardissend: res.result.cardissend,
+            fingerissend: res.result.fingerissend,
+            passissend: res.result.passissend,
+            idcardcode: res.result.idcardcode,
+            idcardissend: res.result.idcardissend,
+            issweep: res.result.issweep
+          };
+          this.defaultData = obj;
+          this.loading = false;
+        })
+        .catch(err => {
+          this.loading = false;
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    getchecked() {
+      let roomid = { roomid: this.checkedroom.roomid };
+      this.$ajax("/lock/operate/authback/1/getroomperson", roomid, "1")
+        .then(res => {
+          this.checked = res.result;
+        })
+        .catch(err => {
+          console.log(err);
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    Determine() {
+      //提交事件
+      if (this.personnel.personcode == undefined) {
+        this.$message.error("请先选择退宿人员!");
+        return;
+      }
+      this.$ajax(
+        "/lock/operate/authback/3/saveauthback",
+        {
+          roomid: this.checkedroom.roomid,
+          personcode: this.personnel.personcode
+        },
+        "1",
+        {},
+        true
+      )
+        .then(res => {
+          this.$emit("refresh");
+          this.personnel = {};
+          this.defaultData = { dates: [] };
+          this.$message({
+            message: "退房成功!",
+            type: "success"
+          });
+          this.key++;
+        })
+        .catch(err => {
+          console.log(err);
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    }
+  }
+};
+</script>

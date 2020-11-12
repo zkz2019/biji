@@ -1,0 +1,253 @@
+<!--  -->
+<template>
+  <div>
+    <person
+      :title="'已添加组织人员 - '+param.pushname + '（推送编号：'+param.pushid+'）'"
+      top="10vh"
+      treeUrl="/push/limit/5/getgrouptree"
+      tabelurl="/push/limit/6/getpushperson"
+      :dialogVisible="dialogVisible"
+      @handleClose="handleClose"
+      :param="paramObj"
+      :list="listOrgani"
+      :refresh="refresh"
+      @onSelection="onSelection"
+      @checkchange="checkchange"
+      @onClick="onClick"
+      :button="buts"
+    ></person>
+    <person
+      :title="'添加组织人员 - '+param.pushname + '（推送编号：'+param.pushid+'）'"
+      top="10vh"
+      treeUrl="/push/limit/5/getgrouptree"
+      tabelurl="/push/limit/7/getsavepushperson"
+      :dialogVisible="dialogOrganiAdd"
+      @handleClose="dialogOrganiAdd=false"
+      :param="addParam"
+      :list="listOrganiAdd"
+      :button="buttonAdds"
+      @onSelection="onSelectionAdd"
+      @checkchange="checkchangeAdd"
+      @onClick="onClick"
+    ></person>
+    <rightList :param="param" :dialogVisible="rightVisible" @beforeClose="rightVisible=false"></rightList>
+  </div>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import person from "./person";
+import rightList from "./rightList";
+export default {
+  components: {
+    person,
+    rightList
+  },
+  props: {
+    dialogVisible: Boolean,
+    param: Object,
+    buts: Array
+  },
+  data() {
+    return {
+      rightVisible: false,
+      addParam: {
+        pushid: this.param.pushid,
+        search: ""
+      },
+      refresh: 0,
+      buttonAdds: [{ type: "a1", name: "新增授权" }],
+      dialogOrganiAdd: false,
+      listOrganiAdd: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "归属组织",
+          prop: "personlocation"
+        }
+      ],
+      listOrgani: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "授权人",
+          prop: "pushid"
+        },
+        {
+          name: "授权时间",
+          prop: "date"
+        },
+        {
+          name: "归属组织",
+          prop: "personlocation"
+        }
+      ],
+      leftArrs: [],
+      arrs: [],
+      leftArrsAdd: [],
+      arrsAdd: []
+    };
+  },
+  computed: {
+    paramObj() {
+      return {
+        pushid: this.param.pushid
+      };
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    onRefresh() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.refresh = new Date().getTime();
+    },
+    handleClose() {
+      this.arrs = [];
+      this.leftArrs = [];
+      this.$emit("beforeClose");
+    },
+    onSelection(data) {
+      this.arrs = data;
+    },
+    onSelectionAdd(data) {
+      this.arrsAdd = data;
+    },
+    checkchange(data, Nodes) {
+      this.leftArrs = Nodes.checkedNodes;
+    },
+    checkchangeAdd(data, Nodes) {
+      this.leftArrsAdd = Nodes.checkedNodes;
+    },
+    inDeleteuserroom() {
+      this.$confirm("此操作将删除勾选的权限, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          let obj = {
+            grouplist: this.leftArrs ? this.leftArrs.map(o => o.pgid + "") : [],
+            personlist: this.arrs ? this.arrs.map(o => o.personcode) : []
+          };
+          this.$ajax(
+            "/push/limit/9/deletepushperson",
+            { pushid: this.param.pushid },
+            "1",
+            obj,
+            true,
+            30000
+          )
+            .then(res => {
+              this.onRefresh();
+              this.$message({
+                showClose: true,
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+
+    inSaveuserroom() {
+      let obj = {
+        grouplist: this.leftArrsAdd
+          ? this.leftArrsAdd.map(o => o.pgid + "")
+          : [],
+        personlist: this.arrsAdd ? this.arrsAdd.map(o => o.personcode) : []
+      };
+      this.$ajax(
+        "/push/limit/8/savepushperson",
+        { pushid: this.param.pushid },
+        "1",
+        obj,
+        true,
+        120000
+      )
+        .then(res => {
+          this.onRefresh();
+          this.$message({
+            showClose: true,
+            message: "添加成功",
+            type: "success"
+          });
+          this.dialogOrganiAdd = false;
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onClick(key) {
+      if (key == "759") {
+        this.arrsAdd = [];
+        this.leftArrsAdd = [];
+        this.addParam = {
+          pushid: this.param.pushid,
+          search: ""
+        };
+        this.dialogOrganiAdd = true;
+      } else if (key == "760") {
+        if (this.arrs.length > 0 || this.leftArrs.length > 0) {
+          this.inDeleteuserroom();
+        } else {
+          this.$message({
+            message: "请选择要删除的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "a1") {
+        if (this.arrsAdd.length > 0 || this.leftArrsAdd.length > 0) {
+          this.inSaveuserroom();
+        } else {
+          this.$message({
+            message: "请选择要添加的权限!",
+            type: "warning"
+          });
+        }
+      } else if (key == "761") {
+        this.rightVisible = true;
+      }
+    }
+  }
+};
+</script>

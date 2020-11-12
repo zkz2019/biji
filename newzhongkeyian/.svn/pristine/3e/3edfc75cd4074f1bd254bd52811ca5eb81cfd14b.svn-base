@@ -1,0 +1,971 @@
+@font-face {
+    font-family: qingyi;
+    src: url(fonts/iconfont.woff) format("woff"), url(fonts/iconfont.ttf) format("truetype");
+    font-weight: 400;
+    font-style: normal;
+}
+
+[class*=" ficon-"],
+[class^=ficon-] {
+    font-family: "qingyi" !important;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.ficon-quanping::before {
+    content: "\e615";
+}
+
+.ficon-quxiaoquanping::before {
+    content: "\eb10";
+}
+
+.ficon-piliangcaozuo::before {
+    // 批量操作
+    content: "\e66d";
+}
+
+.ficon-banshou::before {
+    content: "\e634";
+}
+
+.ficon-zhedie-up::before {
+    content: "\e680";
+}
+
+.ficon-zhedie-down::before {
+    content: "\eb15";
+}
+
+
+.ficon-suo::before {
+    content: "\e637";
+}
+
+.ficon-table::before {
+    content: "\e601";
+}
+
+.ficon-connect::before {
+    content: "\e619";
+}
+
+.ficon-wenjian2::before {
+    content: "\e6f5";
+}
+
+.ficon-quyu::before {
+    content: "\e629";
+}
+
+.ficon-jianzhus::before {
+    content: "\e66f";
+}
+
+.ficon-jianzhu::before {
+    content: "\e719";
+}
+
+.ficon-louceng::before {
+    content: "\e675";
+}
+
+//分组
+.ficon-classify::before {
+    content: "\e881";
+}
+
+.ficon-fangjian::before {
+    content: "\e68f";
+}
+
+.ficon-zuzhi::before {
+    content: "\e606";
+}
+
+.ficon-renyuan::before {
+    content: "\e691";
+}
+
+.ficon-onzuzhi::before {
+    content: "\e614";
+}
+
+
+.ficon-image302::before {
+    /*首页*/
+    // content: "\e603";
+    content: "\e65a";
+}
+
+.ficon-image38::before,
+.ficon-image448::before {
+    /*房间管理*/
+    content: "\e61c";
+}
+
+.ficon-image26::before {
+    /*人员组织*/
+    // content: "\e61d";
+    content: "\e661";
+}
+
+.ficon-image437::before,
+.ficon-image450::before {
+    /*人员管理*/
+    content: "\e63d";
+}
+
+.ficon-image2::before,
+.ficon-image449::before {
+    /*组织管理*/
+    content: "\e61b";
+}
+
+.ficon-image381::before {
+    /*身份信息*/
+    // content: "\e669";
+    content: "\e662";
+}
+
+.ficon-image382::before,
+.ficon-image451::before {
+    /*卡务中心*/
+    content: "\e656";
+}
+
+.ficon-image384::before {
+    /*卡片管理*/
+    content: "\e664";
+}
+
+
+.ficon-image386::before,
+.ficon-image472::before {
+    /*离线授权*/
+    content: "\eb11";
+}
+
+.ficon-image383::before,
+.ficon-image452::before {
+    /*指纹管理*/
+    content: "\e616";
+}
+
+.ficon-image402::before {
+    /*指纹详情*/
+    content: "\e645";
+}
+
+.ficon-batch::before,
+.ficon-image385::before,
+.ficon-image403::before,
+.ficon-image923::before,
+.ficon-image770::before {
+    /*批量授权*/
+    content: "\e9e9";
+}
+
+.ficon-image99::before {
+    /*统计查询*/
+    // content: "\e646";
+    content: "\e660";
+}
+
+.ficon-image92::before {
+    /*记录查询*/
+    content: "\e6de";
+}
+
+.ficon-image189::before {
+    /*晚归查询*/
+    content: "\e60f";
+}
+
+.ficon-image190::before {
+    /*未归查询*/
+    content: "\e60e";
+}
+
+.ficon-image204::before {
+    /*异动查询*/
+    content: "\e649";
+}
+
+.ficon-image137::before {
+    /*指令查询*/
+    content: "\e610";
+}
+
+.ficon-image162::before {
+    /*电池电量查询*/
+    content: "\e659";
+}
+
+.ficon-image163::before {
+    /*楼栋住宿统计*/
+    content: "\e669";
+}
+
+.ficon-image100::before {
+    /*刷卡开门统计*/
+    content: "\e60d";
+}
+
+.ficon-image252::before {
+    /*门虚掩报警统计*/
+    content: "\e658";
+}
+
+.ficon-image254::before {
+    /*常开/常闭统计*/
+    content: "\e6b4";
+}
+
+.ficon-image261::before {
+    /*低电量报警统计*/
+    content: "\e60b";
+}
+
+.ficon-image101::before {
+    /*人员区域分布统计*/
+    content: "\e604";
+}
+
+.ficon-image577::before {
+    /*试探开门统计*/
+    content: "\e631";
+}
+
+.ficon-image102::before {
+    /*系统配置*/
+    // content: "\e62d";
+    content: "\e62d";
+}
+
+.ficon-image27::before,
+.ficon-image453::before {
+    /*建筑管理*/
+    content: "\e628";
+}
+
+.ficon-image34::before,
+.ficon-image454::before {
+    /*设备管理*/
+    content: "\e7b6";
+}
+
+.ficon-image306::before {
+    /*服务器*/
+    content: "\e6d4";
+}
+
+.ficon-image307::before,
+.ficon-image699::before,
+.ficon-image780::before {
+    /*智能网关*/
+    content: "\e6df";
+}
+
+.ficon-image308::before,
+.ficon-image709::before {
+    /*无线网锁*/
+    content: "\e620";
+}
+
+.ficon-image476::before,
+.ficon-image790::before {
+    /*有线网锁*/
+    content: "\e61e";
+}
+
+.ficon-image361::before,
+.ficon-image674::before {
+    /*NBIOT锁*/
+    content: "\e605";
+}
+
+.ficon-image310::before {
+    /*录入机*/
+    content: "\e728";
+}
+
+.ficon-image107::before,
+.ficon-image455::before {
+    /*角色管理*/
+    content: "\e622";
+}
+
+.ficon-image103::before,
+.ficon-image456::before {
+    /*账户管理*/
+    content: "\e607";
+}
+
+.ficon-image203::before,
+.ficon-image457::before {
+    /*设备监控*/
+    content: "\e609";
+}
+
+.ficon-image443::before {
+    /*服务器*/
+    content: "\e6d4";
+}
+
+.ficon-image290::before {
+    /*NB平台推送*/
+    content: "\e62e";
+}
+
+.ficon-image571::before {
+    /*NB锁心跳统计*/
+    content: "\e63a";
+}
+
+
+.ficon-image314::before {
+    /*网关连接统计*/
+    content: "\e6fb";
+}
+
+.ficon-image312::before {
+    /*网关运行监控*/
+    content: "\e6df";
+}
+
+.ficon-image313::before {
+    /*NB锁运行监控*/
+    content: "\e605";
+}
+
+.ficon-image373::before {
+    /*无线网锁运行监控*/
+    content: "\e620";
+}
+
+.ficon-image477::before {
+    /*有线网锁运行监控*/
+    content: "\e61e";
+}
+
+.ficon-image279::before,
+.ficon-image458::before {
+    /*系统参数*/
+    content: "\e624";
+}
+
+.ficon-image418::before {
+    /*基础参数*/
+    content: "\e6fc";
+}
+
+.ficon-image419::before {
+    /*功能配置*/
+    content: "\e623";
+}
+
+.ficon-image420::before {
+    /*备份还原*/
+    content: "\e608";
+}
+
+.ficon-image421::before {
+    /*数据字典*/
+    content: "\e60c";
+}
+
+.ficon-image447::before {
+    /*系统日志*/
+    content: "\e617";
+}
+
+.ficon-image459::before {
+    /*登录登出*/
+    content: "\e62f";
+}
+
+/**更多功能*/
+.ficon-image579::before {
+    content: "\e667";
+
+}
+
+// 点点点
+.ficon-dian2::before {
+    content: "\e6f3";
+}
+
+/**团管理*/
+.ficon-image621::before {
+    content: "\e63e";
+}
+
+
+/**消息推送*/
+.ficon-image683::before {
+    content: "\eb13";
+}
+
+/**推送消息管理*/
+.ficon-image-100::before,
+.ficon-image684::before {
+    content: "\e639";
+}
+
+/**推送日志*/
+.ficon-image305::before,
+.ficon-image685::before {
+    content: "\e638";
+}
+
+.ficon-image299::before {
+    content: "\e666";
+}
+
+.ficon-image495::before {
+
+    /*快捷操作*/
+    content: "\e643";
+    // content: "\e600";
+}
+
+.ficon-add::before,
+.ficon-image3::before,
+.ficon-image438::before,
+.ficon-image404::before,
+.ficon-image387::before,
+.ficon-image28::before,
+.ficon-image35::before,
+.ficon-image264::before,
+.ficon-image108::before,
+.ficon-image104::before,
+.ficon-image184::before,
+.ficon-image293::before,
+.ficon-image414::before,
+.ficon-image852::before,
+.ficon-image300::before,
+.ficon-image494::before,
+.ficon-image581::before,
+.ficon-image589::before,
+.ficon-image675::before,
+.ficon-image426::before,
+.ficon-image638::before,
+.ficon-image749::before,
+.ficon-image4::before,
+.ficon-image606::before,
+.ficon-image29::before,
+.ficon-image747::before,
+.ficon-image610::before,
+.ficon-image547::before,
+.ficon-image545::before,
+.ficon-image686::before,
+.ficon-image622::before,
+.ficon-image759::before,
+.ficon-image911::before,
+.ficon-image907::before,
+.ficon-image909::before,
+.ficon-image461::before,
+.ficon-image811::before,
+.ficon-image845::before,
+.ficon-image854::before {
+    /*添加*/
+    content: "\e625";
+}
+
+.ficon-image197::before {
+    /*复制*/
+    content: "\e650";
+}
+
+.ficon-image409::before,
+.ficon-image396::before,
+.ficon-image30::before,
+.ficon-image879::before,
+.ficon-image773::before,
+.ficon-image972::before,
+.ficon-image968::before,
+.ficon-image979::before {
+    /*修改*/
+    content: "\e621";
+}
+
+.ficon-delete::before,
+.ficon-image7::before,
+.ficon-image391::before,
+.ficon-image407::before,
+.ficon-image32::before,
+.ficon-image639::before,
+.ficon-image33::before,
+.ficon-image611::before,
+.ficon-image748::before,
+.ficon-image588::before,
+.ficon-image548::before,
+.ficon-image395::before,
+.ficon-image440::before,
+.ficon-image607::before,
+.ficon-image750::before,
+.ficon-image8::before,
+.ficon-image408::before,
+.ficon-image546::before,
+.ficon-image106::before,
+.ficon-image760::before,
+.ficon-image462::before,
+.ficon-image694::before,
+.ficon-image875::before,
+.ficon-image880::before,
+.ficon-image913::before,
+.ficon-image908::before,
+.ficon-image910::before,
+.ficon-image772::before,
+.ficon-image969::before,
+.ficon-image973::before {
+    /*删除*/
+    content: "\e60a";
+}
+
+.ficon-image178::before,
+.ficon-image353::before,
+.ficon-image368::before,
+.ficon-image668::before,
+.ficon-image278::before,
+.ficon-image172::before,
+.ficon-image677::before,
+.ficon-image356::before,
+.ficon-image708::before,
+.ficon-image714::before,
+.ficon-image761::before,
+.ficon-image717::before,
+.ficon-image718::before,
+.ficon-image844::before,
+.ficon-image820::before,
+.ficon-image849::before,
+.ficon-image888::before,
+.ficon-image896::before,
+.ficon-image897::before,
+.ficon-image898::before,
+.ficon-image941::before,
+.ficon-image914::before,
+.ficon-image915::before,
+.ficon-image823::before {
+    /*查询*/
+    content: "\e677";
+}
+
+.ficon-image804::before,
+.ficon-image687::before,
+.ficon-image470::before {
+    /*管理员*/
+    content: "\e818";
+}
+
+.ficon-image441::before,
+.ficon-image465::before,
+.ficon-image-3::before,
+.ficon-image658::before,
+.ficon-image467::before,
+.ficon-image466::before,
+.ficon-image640::before,
+.ficon-image612::before,
+.ficon-image623::before {
+    /*导入导出*/
+    content: "\e699";
+}
+
+.ficon-image-1::before,
+.ficon-image514::before,
+.ficon-image389::before,
+.ficon-image405::before,
+.ficon-image874::before,
+.ficon-image692::before {
+    /*启用*/
+    content: "\e671";
+}
+
+.ficon-image-2::before,
+.ficon-image390::before,
+.ficon-image406::before,
+.ficon-image378::before,
+.ficon-image704::before,
+.ficon-image705::before,
+.ficon-image715::before,
+.ficon-image716::before,
+.ficon-image873::before,
+.ficon-image693::before {
+    /*停止*/
+    content: "\e61a";
+}
+
+.ficon-user::before {
+    /*账号*/
+    content: "\e612";
+}
+
+.ficon-pwd::before {
+    /*密码*/
+    content: "\e630";
+}
+
+.ficon-test::before {
+    /*验证码*/
+    content: "\e6dd";
+}
+
+.ficon-out::before {
+    /*退出*/
+    content: "\e64f";
+}
+
+.ficon-set::before,
+.ficon-image200::before,
+.ficon-image425::before {
+    /*设置*/
+    content: "\e62d";
+}
+
+.ficon-image304::before,
+.ficon-shangchuang::before {
+    /*上传*/
+    content: "\e635";
+}
+
+
+.ficon-image583::before,
+.ficon-export::before,
+.ficon-image341::before,
+.ficon-image342::before,
+.ficon-image343::before,
+.ficon-image803::before,
+.ficon-image945::before,
+.ficon-image939::before,
+.ficon-image938::before,
+.ficon-image977::before {
+    /*下载  导出*/
+    content: "\e636";
+}
+
+.ficon-image188::before,
+.ficon-image358::before,
+.ficon-image177::before {
+    /*更新*/
+    content: "\e647";
+}
+
+// .ficon-image588::before,
+.ficon-empty::before,
+.ficon-image-8::before {
+    /*清空*/
+    content: "\e6dc";
+}
+
+.ficon-image400::before {
+    /*读取*/
+    content: "\e67f";
+}
+
+.ficon-image401::before {
+    /*写入*/
+    content: "\e685";
+}
+
+.ficon-image446::before,
+.ficon-570::before,
+.ficon-image474::before,
+.ficon-image870::before,
+.ficon-heavy::before,
+.ficon-image943::before,
+.ficon-image863::before,
+.ficon-image860::before,
+.ficon-image936::before,
+.ficon-image967::before,
+.ficon-image971::before,
+.ficon-image980::before {
+    content: "\e648"; //重载
+}
+
+.ficon-image532::before {
+    content: "\e6b8"; //身份信息
+}
+
+
+
+.ficon-image475::before {
+    content: "\e62b"; //小程序 
+}
+
+.ficon-image515::before,
+.ficon-image582::before,
+.ficon-image901::before,
+.ficon-image902::before,
+.ficon-image900::before {
+    content: "\e62a"; //清除指令
+}
+
+.ficon-image533::before {
+    content: "\e62c"; //门锁类型
+}
+
+.ficon-image580::before {
+    //有线锁通讯质量
+    content: "\e611";
+}
+
+.ficon-image1::before {
+    //房态管理
+    // content: "\e633";
+    content: "\e668";
+}
+
+.ficon-image590::before,
+.ficon-image584::before,
+.ficon-image600::before,
+.ficon-image809::before,
+.ficon-image824::before,
+.ficon-image853::before,
+.ficon-image861::before,
+.ficon-image864::before,
+.ficon-image868::before,
+.ficon-image858::before,
+.ficon-image881::before {
+    //门禁
+    content: "\e632";
+}
+
+.ficon-image672::before {
+    content: "\e663"
+}
+
+.ficon-image551::before,
+.ficon-image912::before,
+.ficon-adjus40::before {
+    content: "\e63f"
+}
+
+.ficon-sahngxia::before {
+    content: "\e641"
+}
+
+.ficon-diandou::before,
+.ficon-image531::before {
+    content: "\e6d2"
+}
+
+.ficon-image444::before {
+    content: "\e6ee"
+        // 离校
+}
+
+.ficon-image445::before {
+    content: "\e640"
+        // 在校
+}
+
+.ficon-image876::before,
+.ficon-image744::before {
+    content: "\e642"
+        // 同步
+}
+
+.ficon-image641::before {
+    content: "\e665"
+        // 排房
+}
+
+.ficon-image653::before {
+    content: "\e64e"
+        // 退房&#xe64e;
+}
+
+.ficon-image642::before {
+    content: "\e76e"
+        // 主
+}
+
+.ficon-image643::before {
+    content: "\e893"
+        // 快速
+}
+
+.ficon-image568::before,
+.ficon-image565::before,
+.ficon-image563::before,
+.ficon-image-101::before,
+.ficon-image-7::before {
+
+    content: "\e7fb"; //配置
+}
+
+.ficon-image370::before,
+.ficon-image531::before,
+.ficon-image371::before,
+.ficon-image428::before,
+.ficon-image360::before,
+.ficon-image359::before {
+
+    content: "\e681"; //变更
+}
+
+.ficon-image369::before {
+
+    content: "\e64a"; //初始化
+}
+
+//  content: "\e647"; //更换
+
+.ficon-image412::before,
+.ficon-image397::before,
+.ficon-image869::before,
+.ficon-image934::before,
+.ficon-effect::before,
+.ficon-ficon-image397::before {
+    content: "\e6f1"; //生效
+}
+
+.ficon-remove::before {
+    content: "\e798"; //移除
+}
+
+.ficon-history::before,
+.ficon-image669::before,
+.ficon-image671::before,
+.ficon-image670::before,
+.ficon-image720::before,
+.ficon-image722::before,
+.ficon-image724::before,
+.ficon-image890::before,
+.ficon-image924::before,
+.ficon-image916::before,
+.ficon-image949::before,
+.ficon-image950::before,
+.ficon-image951::before,
+.ficon-image952::before,
+.ficon-image940::before,
+.ficon-image946::before,
+.ficon-image937::before,
+.ficon-image953::before,
+.ficon-image981::before,
+.ficon-image978::before {
+    //历史记录
+    content: "\e64b";
+}
+
+.ficon-image679::before,
+.ficon-image702::before,
+.ficon-image712::before {
+    content: "\e654"; //更新
+}
+
+.ficon-image680::before,
+.ficon-image703::before,
+.ficon-image713::before {
+    content: "\e657" //强制升级
+}
+
+.ficon-image673::before {
+    content: "\e651" //版本管理
+}
+
+.ficon-image719::before,
+.ficon-image721::before,
+.ficon-image723::before {
+    content: "\e6c6" //自动
+}
+
+.ficon-image678::before,
+.ficon-image676::before,
+.ficon-image706::before,
+.ficon-image700::before,
+.ficon-image701::before,
+.ficon-image707::before,
+.ficon-image710::before,
+.ficon-image711::before {
+    content: "\e6b9" //下载
+}
+
+.ficon-image745::before {
+    content: "\e6da" //生成
+}
+
+.ficon-image769::before,
+.ficon-image768::before {
+    content: "\e6b5" //蓝牙钥匙管理
+}
+
+.ficon-sykgm::before {
+    content: "\e65b"
+}
+
+.ficon-syryqyfb::before {
+    content: "\e65c"
+}
+
+.ficon-syldrz::before {
+    content: "\e65d"
+}
+
+.ficon-homeLogo::before {
+    content: "\e655"
+}
+
+.ficon-image866::before,
+.ficon-image867::before {
+    //人脸
+    content: "\e690"
+}
+
+.ficon-image871::before {
+    //录入 人脸
+    content: "\e66c"
+}
+
+.ficon-image899::before {
+    //复位
+    content: "\e670"
+}
+
+.ficon-image944::before {
+    //电量消耗
+    content: "\e673"
+}
+
+.ficon-image935::before {
+    //未下发
+    content: "\e674"
+}
+
+.ficon-image822::before,
+.ficon-image975::before {
+    //探测
+    content: "\e672"
+}
+
+.ficon-image976::before {
+    //即将到期授权查询
+    content: "\e686"
+}
+.ficon-right::before {
+    content: "\e67a"
+}
+
+.ficon-left::before {
+    content: "\e679"
+}
+
+
+/*********颜色*********/
+.Blue {
+    color: #409EFF;
+}
+
+.Success {
+    color: #67C23A;
+}
+
+.Danger {
+    color: #F56C6C;
+}
+
+.C333 {
+    color: #333333;
+}

@@ -1,0 +1,119 @@
+<template>
+  <el-dialog
+    title="读头详情"
+    width="70%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-main class="query_main">
+      <fel-table
+        class="tobleList rhd b-left_box_bottom_table"
+        :loading="loading"
+        :queryData="queryData"
+        :list="list"
+        @onRefresh="onRefresh"
+        @selection-change="select"
+      ></fel-table>
+    </el-main>
+  </el-dialog>
+</template>
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    param: {
+      type: Object,
+      default: () => {
+        return {};
+      },
+    },
+    paramObj: {
+      type: Object,
+      default: () => {
+        return {};
+      },
+    },
+  },
+  data: function () {
+    return {
+      loading: false,
+      queryData: [],
+      list: [
+        // {
+        //   name: "序号",
+        //   type: "$index",
+        //   width: "60px"
+        // },
+        {
+          name: "读头名称",
+          prop: "ahname",
+        },
+        {
+          name: "所属门",
+          prop: "ahdoors",
+        },
+        {
+          name: "读头位置",
+          prop: "ahlocation",
+        },
+        {
+          name: "读头支持授权",
+          minWidth: "100px",
+          prop: "ahauths",
+        },
+        {
+          name: "读头ID",
+          prop: "ahcode",
+        },
+        {
+          name: "读头软件版本",
+          minWidth: "100px",
+          prop: "ahver",
+        },
+        {
+          name: "当前状态",
+          prop: "ahstate",
+        },
+      ],
+      refresh: 0,
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.init();
+      }
+    },
+  },
+  created() {},
+  methods: {
+    init() {
+      this.loading = false;
+      let ahstate = this.param.ahstate,
+        amid = this.paramObj.amid;
+      this.$ajax("/access/v2.0/main/4/listAccessHead", { ahstate, amid }, "9")
+        .then((res) => {
+          this.loading = false;
+          this.queryData = res.result;
+        })
+        .catch((err) => {
+          console.log("err", err);
+        });
+    },
+    onRefresh() {
+      this.init();
+    },
+    select(data, arr) {},
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.rhd {
+  height: 400px;
+}
+</style>

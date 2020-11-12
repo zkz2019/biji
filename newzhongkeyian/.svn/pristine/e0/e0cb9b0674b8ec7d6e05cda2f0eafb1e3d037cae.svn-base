@@ -1,0 +1,406 @@
+<!-- 统计图表 -->
+<template>
+  <div class="tjcharts">
+    <div class="tjcharts_left">
+      <div>
+        当前电量
+        <el-input class="tjcharts_left_inp" disabled v-model="param.roomquantity" size="mini"></el-input>
+      </div>
+      <div class="tjcharts-datas">
+        <span>时间：</span>
+        <dateSelect1 ref="dates" class="qh_date" v-model="dates"></dateSelect1>
+      </div>
+      <div>
+        <el-button class="tjcharts_left_btn" size="mini" type="primary" @click="search">确定</el-button>
+      </div>
+    </div>
+    <div class="tjcharts_right" v-loading="loading">
+      <div id="dlchart"></div>
+      <div id="kmchart"></div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getDates } from "@/views/query/query.js";
+import echarts from "echarts";
+import { format } from "@/utils/utils.js";
+export default {
+  components: {},
+  props: {
+    param: Object,
+    refresh: Number
+  },
+  data() {
+    return {
+      dates: [],
+      value3: "",
+      value2: "",
+      value1: "",
+      number: {},
+      betdate: [],
+      bettery: [],
+      ukdate: [],
+      opencount: [],
+      myDltj: "",
+      myKmtj: "",
+      loading: false
+    };
+  },
+  created() {
+    let T = new Date();
+    let YM = format(T, "yyyy-MM");
+    this.dates = [`${YM}-01`, format(T, "yyyy-MM-dd")];
+    this.value1 = this.dates[0];
+    this.value3 = this.dates[1];
+  },
+  watch: {
+    refresh() {
+      let T = new Date();
+      let YM = format(T, "yyyy-MM");
+      this.dates = [`${YM}-01`, format(T, "yyyy-MM-dd")];
+      this.value1 = this.dates[0];
+      this.value3 = this.dates[1];
+      this.getunlock();
+    }
+  },
+  mounted() {
+    this.$nextTick(() => {
+      this.getunlock();
+    });
+  },
+  methods: {
+    onchange(val) {},
+    search() {
+      this.value1 = format(this.dates[0], "yyyy-MM-dd");
+      this.value3 = format(this.dates[1], "yyyy-MM-dd");
+      //查询事件
+      this.getunlock();
+    },
+    getunlock() {
+      this.ukdate = [];
+      this.opencount = [];
+      this.betdate = [];
+      this.bettery = [];
+      //获取图表数据
+      this.loading = true;
+      this.$ajax("/lock/operate/info/e/getunlockbetteryanalysis", {
+        roomid:  this.param.roomid,
+        sdate: this.value1,
+        edate: this.value3
+      })
+        .then(res => {
+          // Date.prototype.format = function(fmt) {
+          //   var o = {
+          //     "M+": this.getMonth() + 1,
+          //     "d+": this.getDate(),
+          //     "h+": this.getHours(),
+          //     "m+": this.getMinutes(),
+          //     "s+": this.getSeconds(),
+          //     "q+": Math.floor((this.getMonth() + 3) / 3),
+          //     S: this.getMilliseconds()
+          //   };
+          //   if (/(y+)/.test(fmt)) {
+          //     fmt = fmt.replace(
+          //       RegExp.$1,
+          //       (this.getFullYear() + "").substr(4 - RegExp.$1.length)
+          //     );
+          //   }
+          //   for (var k in o) {
+          //     if (new RegExp("(" + k + ")").test(fmt)) {
+          //       fmt = fmt.replace(
+          //         RegExp.$1,
+          //         RegExp.$1.length == 1
+          //           ? o[k]
+          //           : ("00" + o[k]).substr(("" + o[k]).length)
+          //       );
+          //     }
+          //   }
+          //   return fmt;
+          // };
+
+          // let date = new Date().format("yyyy-MM-dd");
+          // let date = format(new Date(),"yyyy-MM-dd")
+          res.result.uks.forEach(item => {
+            this.ukdate.push(item.ukdate);
+            this.opencount.push(item.opencount);
+          });
+
+          res.result.bets.forEach((item, key) => {
+            this.betdate.push(item.betdate);
+            this.bettery.push(item.bettery);
+            if (key == res.result.bets.length - 1) {
+              this.value2 = item.bettery;
+            }
+          });
+          this.initchart();
+        })
+        .catch(err => {
+          this.loading = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+      // this.initchart();
+    },
+    initchart() {
+      //判断dom是否已渲染
+      if (
+        document.getElementById("dlchart") &&
+        document.getElementById("kmchart")
+      ) {
+        this.loading = false;
+        let dom = document.getElementById("dlchart");
+        let dom1 = document.getElementById("kmchart");
+        this.setdltj(dom);
+        this.setkmtj(dom1);
+      } else {
+        setTimeout(() => {
+          this.initchart();
+        }, 100);
+      }
+    },
+    setdltj(dom, wid) {
+      // 基于准备好的dom，初始化echarts实例
+      this.myDltj = echarts.init(dom, "light");
+      // 绘制图表
+      var colorList = [
+        // "#ff2600",  //红
+        "#ffc000" //黄
+        // "#00ad4e",   //绿
+        // "#0073c2",      //深蓝
+        // "#165868",    //应该是紫色
+        // "#e76f00",      //橙
+        // "#316194",      //特别深的蓝
+        // "#723761",          //特别紫
+        // "#00b2f1" //蓝
+        // "#4d6022",          //老绿色
+        // "#4b83bf",          //不好看的蓝色
+        // "#f9c813",          //淡淡的黄
+        // "#0176c0"           //也是蓝色
+      ];
+
+      this.myDltj.setOption({
+        color: colorList,
+        title: {
+          text: "电量下降曲线图",
+          //   subtext: "纯属虚构",
+          x: "center",
+          y: "top",
+          textStyle: {
+            color: "#333",
+            fontSize: 16
+            // fontWeight: "bold"
+          }
+        },
+        // tooltip: {
+        //   trigger: "item",
+        //   formatter: "{a} <br/>{b} : {c} ({d}%)"
+        // },
+        xAxis: {
+          type: "category",
+          data: this.betdate,
+          boundaryGap: false,
+          axisLine: { lineStyle: { color: "#979797" } }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          type: "value",
+          // boundaryGap:['0','10%'],
+          axisLine: { lineStyle: { color: "#979797" } }
+          //   splitLine: {
+          //     show: false
+          // }
+          // axisTick:{
+          //   lineStyle:{
+          //     type:'dashed'
+          //   }
+          // }
+          // max:(value)=>{return value.max+20},
+        },
+
+        tooltip: {
+          trigger: "axis"
+          // formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        series: [
+          {
+            data: this.bettery,
+            type: "line",
+            smooth: true,
+            symbol: "circle",
+            symbolSize: 5,
+            showSymbol: false,
+            areaStyle: {
+              normal: {
+                color: new echarts.graphic.LinearGradient(
+                  0,
+                  0,
+                  0,
+                  1,
+                  [
+                    {
+                      offset: 0,
+                      color: "rgba(255,192,0, 0.3)"
+                    },
+                    {
+                      offset: 0.8,
+                      color: "rgba(255,192,0, 0)"
+                    }
+                  ],
+                  false
+                ),
+                shadowColor: "rgba(0, 0, 0, 0.1)",
+                shadowBlur: 10
+              }
+            }
+          }
+        ],
+        grid: {
+          top: "18%",
+          left: "5%",
+          //   right: "10%",
+          bottom: "5%",
+          height: "72%",
+          width: "89%"
+          //   containLabel: true
+        }
+        // dataZoom: [
+        //   {
+        //     show: true,
+        //     height: 20,
+        //     xAxisIndex: [0],
+        //     bottom: 0,
+        //     start: 0,
+        //     end: 50,
+        //     handleIcon:
+        //       "path://M306.1,413c0,2.2-1.8,4-4,4h-59.8c-2.2,0-4-1.8-4-4V200.8c0-2.2,1.8-4,4-4h59.8c2.2,0,4,1.8,4,4V413z",
+        //     handleSize: "110%",
+        //     handleStyle: {
+        //       color: "#d3dee5"
+        //     },
+        //     textStyle: {
+        //       color: "#fff"
+        //     },
+        //     borderColor: "#90979c"
+        //   },
+        //   // {
+        //   //   type: "inside",
+        //   //   show: true,
+        //   //   height: 10,
+        //   //   start: 1,
+        //   //   end: 35
+        //   // }
+        // ]
+      });
+    },
+    setkmtj(dom, wid) {
+      // 基于准备好的dom，初始化echarts实例
+      this.myKmtj = echarts.init(dom, "light");
+      // 绘制图表
+      var colorList = [
+        // "#ff2600",  //红
+        // "#ffc000", //黄
+        // "#00ad4e",   //绿
+        // "#0073c2",      //深蓝
+        // "#165868",    //应该是紫色
+        // "#e76f00",      //橙
+        // "#316194",      //特别深的蓝
+        // "#723761",          //特别紫
+        "#00b2f1" //蓝
+        // "#4d6022",          //老绿色
+        // "#4b83bf",          //不好看的蓝色
+        // "#f9c813",          //淡淡的黄
+        // "#0176c0"           //也是蓝色
+      ];
+
+      this.myKmtj.setOption({
+        color: colorList,
+        title: {
+          text: "每日开门次数曲线图",
+          //   subtext: "纯属虚构",
+          x: "center",
+          y: "top",
+          textStyle: {
+            color: "#333",
+            fontSize: 16
+            // fontWeight: 'bold'
+          }
+        },
+        tooltip: {
+          trigger: "axis"
+          // formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        xAxis: {
+          type: "category",
+          boundaryGap: false,
+          data: this.ukdate, // ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+          axisLine: { lineStyle: { color: "#979797" } }
+        },
+        yAxis: {
+          type: "value",
+          axisLine: { lineStyle: { color: "#979797" } }
+          // offset:0,
+          // boundaryGap: ["0", "10%"]
+          // max:(value)=>{return value.max+10},
+          // axisLine:{
+          // symbol:["none",'arrow'],
+          // symbolSize:[6,12],
+          // symbolOffset:[0,20]
+          // },
+        },
+        series: [
+          {
+            data: this.opencount,
+            type: "line",
+            smooth: true,
+            symbol: "circle",
+            symbolSize: 5,
+            showSymbol: false,
+            areaStyle: {
+              normal: {
+                color: new echarts.graphic.LinearGradient(
+                  0,
+                  0,
+                  0,
+                  1,
+                  [
+                    {
+                      offset: 0,
+                      color: "rgba(0,178,241, 0.3)"
+                    },
+                    {
+                      offset: 0.8,
+                      color: "rgba(0,178,241, 0)"
+                    }
+                  ],
+                  false
+                ),
+                shadowColor: "rgba(0, 0, 0, 0.1)",
+                shadowBlur: 10
+              }
+            }
+          }
+        ],
+        grid: {
+          top: "18%",
+          left: "5%",
+          //   right: "10%",
+          bottom: "10%",
+          height: "72%",
+          width: "89%"
+          //   containLabel: true
+        }
+      });
+    },
+
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+

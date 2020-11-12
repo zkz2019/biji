@@ -1,0 +1,746 @@
+<!-- 人员管理 -->
+<template>
+  <el-container>
+    <fel-left-tree leftTitle="人员组织列表">
+      <div slot="left" class="left-tree">
+        <fel-tree
+          interface="/person/1/getpersontree"
+          @handleNodeClick="handleNodeClick"
+          :refresh="treeRefresh"
+          :param="{fatherpgid: 0}"
+          :idArr="[0]"
+        ></fel-tree>
+      </div>
+      <el-container>
+        <el-header class="heig60 query_headbox">
+          <comTitle>
+            <span class="titlebox">{{getTitle}}</span>
+          </comTitle>
+          <retrieval class="query_head">
+            <inpbox :inpb="true">
+              <el-select v-model="param.type" class="wid200 qh_inp">
+                <el-option
+                  v-for="item in personnels"
+                  :key="item.value"
+                  :label="item.typename"
+                  :value="item.type"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-select v-model="param.state" class="wid200 qh_inp">
+                <el-option
+                  v-for="item in states"
+                  :key="item.value"
+                  :label="item.statename"
+                  :value="item.state"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                v-model="param.search"
+                clearable
+                class="wid300 qh_inp"
+                :placeholder="'请输入'+getNumber()+'|姓名|手机号进行搜索'"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            noInit
+            height="100%"
+            ref="paging-table"
+            :isAll="range == 2? true:false"
+            @sort-change="sortChange"
+            class="heig100"
+            interface="/person/2/getperson"
+            @onEjectChange="onEjectChange"
+            @onSelection="(d)=>{selecArr=d}"
+            :list="list"
+            :class="{'cover-up':range == 2}"
+            :param="param"
+            :refresh="refresh"
+          >
+            <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+              {{v.alias}}
+            </span>
+            <template v-if="choiceTypes.length > 0">
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <!-- <div class="cover-up" v-show="range == 2">
+                <el-checkbox disabled v-model="range" true-label="2" false-label="1"></el-checkbox>
+              </div>-->
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="selecArr"
+                :param="choiceTypes"
+                @onClick="onAction"
+              ></batch-but>
+            </template>
+          </paging-table>
+        </el-main>
+      </el-container>
+      <personnelList
+        class="personnel_list"
+        :buts="grantButs"
+        @beforeClose="dialogVisible=false"
+        :param="persParam"
+        @onRefresh="onRefresh"
+        :dialogVisible="dialogVisible"
+      ></personnelList>
+      <batchDlist
+        class="personnel_list"
+        @beforeClose="batchDlistvisible=false"
+        :dialogVisible="batchDlistvisible"
+      ></batchDlist>
+      <personnelAdd
+        @onRefresh="onRefresh"
+        :defaultData="defaultData"
+        :type="addType"
+        @beforeClose="dialogAdd=false"
+        :dialogVisible="dialogAdd"
+      ></personnelAdd>
+      <guideFile
+        :dialogVisible="dialogGuideFile"
+        :importButs="importButs"
+        :exportButs="exportButs"
+        @handleClose="dialogGuideFile=false"
+      ></guideFile>
+      <ochange
+        @onRefresh="onRefresh"
+        @beforeClose="dialogChange=false"
+        :dialogVisible="dialogChange"
+        :param="param"
+        :changearr="changearr"
+        :changetype="changetype"
+      />
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import batchDlist from "./batchDlist";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import ochange from "./ochange"; //组织变更弹框
+import personnelList from "./personnelList";
+import personnelAdd from "./personnelAdd";
+import guideFile from "@/views/common/guideFile.vue";
+export default {
+  name: "rygl437",
+  components: {
+    guideFile,
+    personnelList,
+    personnelAdd,
+    ochange,
+    batchDlist
+  },
+  created() {
+    this.inGetsonmenu();
+    this.inSelectType();
+  },
+  data() {
+    let $this = this;
+    return {
+      changetype: "1",
+      changearr: [],
+      dialogChange: false,
+      importButs: [],
+      exportButs: [],
+      batchDlistvisible: false,
+      dialogGuideFile: false,
+      grantButs: [],
+      choiceType: "",
+      choiceTypes: [],
+      range: "1",
+      ranges: [
+        {
+          value: "1",
+          label: "勾选范围"
+        },
+        {
+          value: "2",
+          label: "全部列表"
+        }
+      ],
+      defaultData: {
+        pgid: []
+      },
+      addType: 1,
+      dialogAdd: false,
+      personnels: [
+        {
+          typename: "显示全部人员",
+          type: ""
+        }
+      ],
+      selecArr: [],
+      persParam: {
+        personcode: ""
+      },
+      dialogVisible: false,
+      param: {
+        pgid: "",
+        state: "",
+        type: "",
+        search: "",
+        sequence: "",
+        sortby: ""
+      },
+      states: [
+        {
+          statename: "显示全部状态人员",
+          state: ""
+        }
+      ],
+      refresh: 0,
+      treeRefresh: 0,
+      fatheragid: {},
+      topButs: [],
+      listBut: [],
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "人员类型",
+          width: "90px",
+          sortable: "custom",
+          prop: "persontypename"
+        },
+        {
+          name: this.getNumber(),
+          width: "90px",
+          sortable: "custom",
+          prop: "personcode"
+        },
+        {
+          name: "姓名",
+          width: "90px",
+          sortable: "custom",
+          prop: "personname"
+        },
+        {
+          name: "性别",
+          width: "65px",
+          sortable: "custom",
+          prop: "personsexname"
+        },
+        {
+          name: "归属组织",
+          width: "110px",
+          sortable: "custom",
+          prop: "personlocation"
+        },
+        {
+          name: "手机号",
+          // width: "110px",
+          sortable: "custom",
+          prop: "personmobile"
+        },
+        {
+          name: "身份证号",
+          // width: "110px",
+          // sortable: "custom",
+          prop: "personcard"
+        },
+        {
+          name: "授权信息",
+          prop: "authcount",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              isNumber(num) {
+                if (num) {
+                  return /^[0-9]*$/.test(num) && num != 0;
+                }
+                return false;
+              },
+              onClick() {
+                if (this.scope.row.personcode) {
+                  $this.persParam.personcode = this.scope.row.personcode;
+                  $this.dialogVisible = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="isNumber(scope.row.authcount)"><a class="a-click" @click.stop="onClick">{{scope.row.authcount}}</a></span>
+              <span v-else>{{scope.row.authcount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "人员状态",
+          sortable: "custom",
+          prop: "personstatename",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.personstatename;
+                if (value == "入住") {
+                  return "puc-pg";
+                } else if (value == "退房") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.personstatename}}</span>`
+          }
+          // prop: "personstatename"
+        },
+        {
+          name: "辅导员",
+          // sortable: "custom",
+          prop: "instructor"
+        },
+        {
+          name: "辅导员电话",
+          // sortable: "custom",
+          prop: "instructormobile"
+        },
+        {
+          name: "操作",
+          width: "280px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                let list = $this.listBut;
+                let lists = [[], []]; //Array(4).fill([]);
+                list.forEach(item => {
+                  if (item.id == "P1" || item.id == "P2" || item.id == "P3") {
+                    lists[0].push(item);
+                  } else {
+                    lists[1].push(item);
+                  }
+                });
+                return lists;
+                return;
+              },
+              row() {
+                return this.scope.row;
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                if (key == 4) {
+                  $this.delete([this.scope.row.personcode]);
+                } else if (key == 0) {
+                  $this.modify(Object.assign({}, this.scope.row));
+                } else if (key == 5) {
+                  $this.onAction(key, obj, [Object.assign({}, this.scope.row)]);
+                } else if (key == "P1") {
+                  $this.toCard(obj, this.scope.row);
+                } else if (key == "P2") {
+                  $this.tofinger(obj, this.scope.row);
+                } else if (key == "P3") {
+                  $this.toBluetooth(obj, this.scope.row);
+                }
+              }
+            },
+            template: `<div class="operat-buts"> 
+            <template v-for="(item,ind) in listBut">
+              <div class="buts-div">
+               <el-button v-for="(v,i) of item" :key="i" type="text" size="small" @click.stop="onClick(v.type,scope.row)">{{v.name}}</el-button>
+              </div>
+            </template>
+            </div>`
+            //  `<div class="operat-buts">
+            //  <el-button v-for="(v,i) of listBut" v-show='row.personstatename!=v.name' :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+            // </div>`
+          }
+        }
+      ],
+      isSelectable: true,
+      sonmenu: 0
+    };
+  },
+  computed: {
+    getTitle() {
+      let t = "人员管理";
+      if (this.fatheragid.pgid && this.fatheragid.pgid != 0) {
+        t = this.fatheragid.pgname;
+        if (this.fatheragid.pgcode) {
+          t += "(组织编号" + this.fatheragid.pgcode + ")";
+        }
+      }
+      return t;
+    }
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    tofinger(data, obj) {
+      console.log('data,obj',data,obj);
+      this.$router.push({
+        name: "指纹管理", 
+        params: { ...obj, in: "renyuan", keys: new Date().getTime() }
+      });
+    },
+    toBluetooth(data, obj) {
+      this.$router.push({
+        name: "蓝牙钥匙",
+        params: { ...obj, in: "renyuan", keys: new Date().getTime() }
+      });
+    },
+    toCard(data, obj) {
+      this.$router.push({
+        name: "卡务中心",
+        params: { ...obj, in: "renyuan", keys: new Date().getTime() }
+      });
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "437" }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "438") {
+              this.topButs.push(value.entity);
+            } else if (id == "440") {
+              this.choiceTypes.push(value.entity);
+              this.listBut.push({
+                type: "4",
+                name: "删除"
+              });
+            } else if (id == "444") {
+              this.listBut.push({
+                type: "5",
+                name: "离校",
+                alias
+              });
+              this.choiceTypes.push(value.entity);
+            } else if (id == "445") {
+              this.listBut.push({
+                type: "6",
+                name: "在校",
+                alias
+              });
+              this.choiceTypes.push(value.entity);
+            } else if (id == "531") {
+              this.choiceTypes.push(value.entity);
+            } else if (id == "442") {
+              this.grantButs.push({
+                type: "g4",
+                name: alias
+              });
+            } else if (id == "439") {
+              this.listBut.push({
+                type: "0",
+                name: "修改"
+              });
+            } else if (id == "667") {
+              this.listBut.push({
+                type: "P1",
+                name: "卡片授权" // 批量授权 修改为 卡片授权 改 bug 150
+              });
+            } else if (id == "776") {
+              this.listBut.push({
+                type: "P2",
+                name: "指纹授权"
+              });
+            } else if (id == "777") {
+              this.listBut.push({
+                type: "P3",
+                name: "蓝牙钥匙"
+              });
+            } else if (id == "668") {
+              this.topButs.push(value.entity);
+            } else if (id == "441") {
+              let arr = value.childs;
+              if (arr && arr.length > 0) {
+                this.topButs.push(value.entity);
+                arr.forEach(obj => {
+                  let vid = obj.entity.id;
+                  let valias = obj.entity.alias;
+                  if (vid == "463") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "/person/upload/3/downmodel",
+                      url: "/person/upload/1/uploadperson",
+                      errUrl: "/person/upload/2/downperson"
+                    });
+                  } else if (vid == "464") {
+                    this.exportButs.push({
+                      name: valias,
+                      url: "/person/upload/4/downperson",
+                      data: this.param
+                    });
+                  } else if (vid == "542") {
+                    this.exportButs.push({
+                      name: valias,
+                      url: "/person/upload/3/downmodel",
+                      data: this.param
+                    });
+                  }
+                });
+              }
+            }
+          });
+          if (this.choiceTypes.length > 0) {
+            this.choiceType = this.choiceTypes[0].alias;
+          }
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        let sortby = obj.prop;
+        if (sortby == "personsexname") {
+          sortby = "personsex";
+        } else if (sortby == "personstatename") {
+          sortby = "personstate";
+        } else if (sortby == "persontype2name") {
+          sortby = "persontype2";
+        } else if (sortby == "persontypename") {
+          sortby = "persontype";
+        }
+        this.param.sortby = sortby;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "rygl437");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "rygl437");
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    //重置事件
+    onReset() {
+      this.param.state = "";
+      this.param.type = "";
+      this.param.search = "";
+      this.onRefresh();
+      this.isSelectable = true;
+      this.range = "1";
+    },
+    ...mapGetters(["getNumber"]),
+    inSelectType() {
+      let url = "/person/save/3/getpersonstateandtype";
+      this.$ajax(url, {}, "1")
+        .then(res => {
+          let result = res.result;
+          this.personnels.push(...result.type);
+          this.states.push(...result.state);
+        })
+        .catch(err => {});
+    },
+    onAction(id, obj, arrs) {
+      arrs = arrs || this.selecArr;
+      this.choiceType = obj.alias;
+      if (this.choiceType === "组织变更") {
+        //组织变更弹框及参数获取
+        if (this.range == 1) {
+          this.changetype = "1"; //勾选
+        } else if (this.range == 2) {
+          this.changetype = "2"; //全选
+        }
+        // if(this.selecArr && this.selecArr.length > 0){
+        this.changearr = arrs.map(o => o.personcode);
+        // }
+        this.dialogChange = true;
+        return;
+      }
+      if (this.range == 1) {
+        if (arrs && arrs.length > 0) {
+          this.$confirmCon(
+            "确定要" + this.choiceType + "当前选择的人员吗？",
+            () => {
+              let arr = arrs.map(o => o.personcode);
+              this.$ajax(
+                "/person/update/5/batchupdatepersons",
+                {
+                  actiontype: this.choiceType
+                  // personcodes :arr,
+                },
+                "1",
+                arr,
+                true
+              )
+                .then(res => {
+                  this.$message({
+                    message: this.choiceType + "成功",
+                    type: "success"
+                  });
+                  this.onRefresh();
+                })
+                .catch(err => {
+                  this.$message({
+                    showClose: true,
+                    message: `[${err.resultCode}] ` + err.resultMsg,
+                    type: "error"
+                  });
+                });
+            }
+          );
+        } else {
+          this.$message({
+            message: "请先选择人员",
+            type: "warning"
+          });
+        }
+      } else {
+        this.$confirmCon(
+          "确定要" + this.choiceType + "当前全部列表的人员吗？",
+          () => {
+            let obj = Object.assign(
+              {
+                actiontype: this.choiceType
+              },
+              this.param
+            );
+            this.$ajax("/person/update/4/updatepersonall", obj, "1", {}, true)
+              .then(res => {
+                this.onRefresh();
+                this.$message({
+                  message: this.choiceType + "成功",
+                  type: "success"
+                });
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error"
+                });
+              });
+          }
+        );
+      }
+    },
+    onClick(key, data) {
+      if (key == 4) {
+        if (this.selecArr && this.selecArr.length > 0) {
+          let arr = this.selecArr.map(o => o.personcode);
+          this.delete(arr);
+        } else {
+          this.$message({
+            message: "请先选择人员",
+            type: "warning"
+          });
+        }
+      } else if (key == 438) {
+        this.add();
+      } else if (key == 2) {
+        if (this.selecArr && this.selecArr.length == 1) {
+          this.modify(this.selecArr[0]);
+        } else {
+          this.$message({
+            message: "请先选择一位人员进行修改",
+            type: "warning"
+          });
+        }
+      } else if (key == "441") {
+        this.dialogGuideFile = true;
+      } else if (key == "668") {
+        this.batchDlistvisible = true;
+      }
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    handleNodeClick(val) {
+      this.fatheragid = val;
+      this.param.pgid = val.pgid;
+      this.onRefresh();
+    },
+    add() {
+      this.addType = 1;
+      this.defaultData = { pgid: [] };
+      this.dialogAdd = true;
+    },
+    modify(data) {
+      this.$ajax(
+        "/person/update/2/getpersoninfo",
+        { personcode: data.personcode },
+        "1"
+      )
+        .then(res => {
+          let result = res.result;
+          result.pgid = [result.pgid];
+          this.defaultData = result;
+          this.addType = 2;
+          this.dialogAdd = true;
+        })
+        .catch(err => {});
+    },
+    delete(arr) {
+      this.$confirm("确定要删除当前人员吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax("/person/delete/1/deleteperson", {}, "1", arr, true)
+            .then(res => {
+              this.onRefresh();
+              this.$message({
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    }
+  }
+};
+</script>
+

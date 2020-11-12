@@ -1,0 +1,107 @@
+<!-- 批量下发指令详情弹框 -->
+<template>
+  <el-dialog
+    title="列表详情"
+    width="70%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/lock/lotorder/info/getlotorderinfo"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+      >
+        <div class="query_head fjDialogtabel">
+          <inpbox :inpb="true">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp"
+              v-model="param.search"
+              :placeholder="'输入房间号'"
+            ></el-input>
+          </inpbox>
+
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="onRefresh">搜索</fel-button>
+            <!-- <fel-button class="qh_btn" @click="onReset">刷新</fel-button> -->
+          </inpbox>
+        </div>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  components: {},
+  props: {
+    buss: null,
+    param: Object,
+    defaultData: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      list: [
+        { prop: "roomlocation", name: "房间位置" },
+        { prop: "roomname", name: "房间号" },
+        { prop: "gatewayip", name: "网关" },
+        {
+          prop: "itstate",
+          name: "下发结果",
+          template: {
+            props: ["scope"],
+            methods: {},
+            template: `<div :class="scope.row.itstate=='下发成功'?'puc-pg':'puc-px'">{{scope.row.itstate}}</div>`
+          }
+        },
+        { prop: "failtype", name: "结果备注" }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible() {
+      if (this.dialogVisible) {
+        this.onRefresh();
+      }
+    }
+  },
+  created() {
+    this.inGetfingertype();
+  },
+  methods: {
+    beforeCloseInner() {
+      this.innerVisible = false;
+    },
+    inGetfingertype() {},
+    submitForm() {},
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onClick(key, data) {},
+    onSuccess() {
+      this.dialogAdd = false;
+      // this.onRefresh();
+    }
+  }
+};
+</script>

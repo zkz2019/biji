@@ -1,0 +1,687 @@
+<!-- 无线联网锁 -->
+<template>
+  <el-container>
+    <fel-left-tree leftTitle="建筑列表" class="msgl308">
+      <template slot="left">
+        <el-tabs
+          v-if="getIsClassify()"
+          class="top-switch"
+          stretch
+          v-model="type"
+          type="border-card"
+        >
+          <el-tab-pane label="按位置显示" name="0"></el-tab-pane>
+          <el-tab-pane label="按分组显示" name="1"></el-tab-pane>
+        </el-tabs>
+        <template v-if="type != 1">
+          <div slot="left" class="left-tree">
+            <fel-tree1
+              :showCheckbox="false"
+              class="tree1"
+              key="position"
+              :idArr="[0]"
+              interface="/system/device/devicelock/1/getbuildtree"
+              @handleNodeClick="handleNodeClick"
+            ></fel-tree1>
+          </div>
+        </template>
+        <template v-else>
+          <div class="left-tree">
+            <fel-tree5
+              key="group"
+              :showCheckbox="false"
+              class="tree1"
+              interface="/arearoom/public/1/listAreaTree"
+              @handleNodeClick="checkchangeGroup"
+              ajaxType="9"
+              nodeKey="areaid"
+              :param="{areafatherid:''}"
+              paramKey="areafatherid"
+              :defaultProps="{
+                    children: 'children',
+                    label: 'areaname',
+                    isLeaf: 'isLeaf'
+                  }"
+              :idArr="[0]"
+            ></fel-tree5>
+          </div>
+        </template>
+      </template>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{toParam.alias}}</com-title>
+          <retrieval class="query_head">
+            <inpbox :inpb="true">
+              <el-select v-model="param.lockstate" class="con-select qh_inp">
+                <el-option
+                  v-for="item in lockstates"
+                  :key="item.lockstate"
+                  :label="item.statename"
+                  :value="item.lockstate"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.search"
+                placeholder="输入门锁唯一ID/房间名称/通讯ID进行检索"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            :isAll="range == 2? true:false"
+            :class="{'cover-up':range == 2}"
+            interface="/system/device/devicelock/2/getdevicelock"
+            :list="list"
+            @sort-change="sortChange"
+            @onSelection="onSelection"
+            :refresh="refresh"
+            :param="param"
+            :paramObj="paramObj"
+            @onEjectChange="onEjectChange"
+          >
+            <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+              {{v.alias}}
+            </span>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <!-- <el-select class="wid150" v-model="queryParam.gotype">
+                <el-option
+                  v-for="item in ranges"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                ></el-option>
+              </el-select>-->
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <!-- <div class="cover-up" v-show="range == 2">
+                <el-checkbox disabled v-model="range" true-label="2" false-label="1"></el-checkbox>
+              </div>-->
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+              <!-- <el-select v-model="queryParam.gotype2">
+                <el-option
+                  v-for="item in quantitytypes"
+                  :key="item.alias"
+                  :label="item.alias"
+                  :value="item.alias"
+                ></el-option>
+              </el-select>
+              <fel-button @click="inSavegatewayorder" type="primary">开始</fel-button>-->
+            </template>
+          </paging-table>
+        </el-main>
+        <historyNetLock
+          @beforeClose="dialogHistory=false"
+          :dialogVisible="dialogHistory"
+          :paramObj="paramObj"
+        ></historyNetLock>
+        <queryNetLock
+          :param="queryParam"
+          @beforeClose="dialogQuery=false"
+          :dialogVisible="dialogQuery"
+        ></queryNetLock>
+        <modifyNetLock
+          @onRefresh="onRefresh"
+          :param="modifyParam"
+          :paramObj="modifyParamObj"
+          @beforeClose="dialogModify=false"
+          :dialogVisible="dialogModify"
+        ></modifyNetLock>
+        <replaceNetLock
+          @onRefresh="onRefresh"
+          :param="replaceParam"
+          @beforeClose="dialogReplace=false"
+          :dialogVisible="dialogReplace"
+        ></replaceNetLock>
+        <infoNetLock :param="infoParam" @beforeClose="dialogInfo=false" :dialogVisible="dialogInfo"></infoNetLock>
+        <guideFile
+          title="无线联网锁"
+          historyUrl="/system/device/devicelock/upload/8/downhistory"
+          :importHistory="importHistory"
+          :dialogVisible="dialogGuideFile"
+          :importButs="importButs"
+          :exportButs="exportButs"
+          @handleClose="dialogGuideFile=false"
+          @showHistory="showHistory"
+        ></guideFile>
+      </el-container>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import Storages from "../../../utils/Storage.js"; //缓存工具
+import queryNetLock from "./queryNetLock";
+import historyNetLock from "./historyNetLock";
+import modifyNetLock from "./modifyNetLock";
+import replaceNetLock from "./replaceNetLock";
+import infoNetLock from "./infoNetLock";
+import guideFile from "@/views/personnel/guideFile.vue";
+export default {
+  components: {
+    historyNetLock,
+    queryNetLock,
+    modifyNetLock,
+    replaceNetLock,
+    infoNetLock,
+    guideFile,
+  },
+  props: {
+    toParam: Object,
+    toRoute: Object,
+  },
+  data() {
+    let $this = this;
+    return {
+      // isGroup: true,
+      type: "0",
+      importHistory: false,
+      lockstates: [{ lockstate: "", statename: "所有状态门锁" }],
+      dialogHistory: false,
+      dialogReplace: false,
+      replaceParam: {},
+      modifyParamObj: [],
+      dialogInfo: false,
+      infoParam: {},
+      importButs: [],
+      exportButs: [],
+      topButs: [],
+      addParam: {},
+      dialogGuideFile: false,
+      modifyParam: {},
+      dialogQuery: false,
+      dialogModify: false,
+      range: "1",
+      ranges: [
+        {
+          value: "勾选范围",
+          label: "勾选范围",
+        },
+        {
+          value: "区域范围",
+          label: "全部列表",
+        },
+      ],
+      queryParam: {
+        gotype: "勾选范围",
+        gotype2: "",
+        type: "1",
+      },
+      quantitytypes: [],
+      refresh: 0,
+      param: {
+        buildid: "",
+        search: "",
+        lockstate: "",
+        sequence: "",
+        sortby: "",
+        type: "1",
+      },
+      paramObj: {
+        build: {},
+        areaid: "",
+        type: "",
+      },
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "门锁位置",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "roomlocation",
+        },
+        {
+          name: "门锁型号",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "roommodel",
+        },
+        {
+          name: "门锁唯一ID",
+          minWidth: "110px",
+          sortable: "custom",
+          prop: "roomcode2",
+        },
+        {
+          name: "门锁通讯ID",
+          minWidth: "110px",
+          sortable: "custom",
+          prop: "roomcode",
+        },
+        {
+          name: "网关型号",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "gatewaytype",
+        },
+        {
+          name: "网关通讯ID",
+          minWidth: "110px",
+          sortable: "custom",
+          prop: "gatewaycode",
+        },
+        {
+          name: "网关唯一ID",
+          minWidth: "110px",
+          sortable: "custom",
+          prop: "gatewaycode2",
+        },
+        {
+          name: "通讯状态",
+          minWidth: "90px",
+          prop: "roomstate",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.roomstate;
+                if (value == "在线") {
+                  return "puc-pg";
+                } else if (value == "离线") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.roomstate}}</span>`,
+          },
+        },
+        {
+          name: "操作",
+          width: "170px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            methods: {
+              onClick(key) {
+                if (key == 2) {
+                  $this.modify(this.scope.row);
+                } else if (key == 4) {
+                  $this.delete([this.scope.row.roomid]);
+                } else if (key == 5) {
+                  $this.onReplace(this.scope.row);
+                } else if (key == 9) {
+                  $this.onInfo(this.scope.row);
+                }
+              },
+              // getClass() {
+              //   if (this.scope.row.roomstate === "未安装") {
+              //     return "cz666";
+              //   }
+              // }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button :disabled="scope.row.roomstate=='未安装'&&v.name!='更换'" v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+      listBut: [],
+      listArr: [],
+      sonmenu: 0,
+    };
+  },
+  watch: {
+    toRoute(val) {
+      if (val && val.roomcode2) {
+        this.param.search = val.roomcode2;
+      }
+      this.onRefresh();
+    },
+    type(val) {
+      if (val == 0) {
+        this.param.type = "1";
+        this.queryParam.type = "1";
+      } else {
+        this.param.type = "2";
+        this.queryParam.type = "2";
+      }
+    },
+  },
+  created() {
+    this.inGetsonmenu();
+    this.inGetlockstate();
+  },
+  mounted() {
+    if (this.toRoute) {
+      this.param.search = this.toRoute.roomcode2;
+      this.onRefresh();
+    }
+    this.getEject();
+  },
+  methods: {
+    ...mapGetters(["getIsClassify"]),
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        // let sortby = obj.prop;
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    //信息
+    onInfo(data) {
+      this.infoParam = data;
+      this.dialogInfo = true;
+    },
+    // 更改
+    onReplace(data) {
+      this.replaceParam = data;
+      this.dialogReplace = true;
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    showHistory() {
+      this.dialogHistory = true;
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        if (key != "buildid") {
+          this.param[key] = "";
+        }
+      });
+      this.param.type = "1";
+      this.onRefresh();
+      this.isSelectable = true;
+      this.range = "1";
+    },
+    inGetlockstate() {
+      this.$ajax("/system/device/devicelock/3/getlockstate", {}, "1")
+        .then((res) => {
+          this.lockstates.push(...res.result);
+        })
+        .catch((err) => {});
+    },
+    onSelection(data) {
+      this.listArr = data;
+    },
+    onClick(key, data) {
+      if (key == 466) {
+        this.dialogGuideFile = true;
+      } else if (key == 353) {
+        this.dialogQuery = true;
+      } else if (key == 357) {
+        // this.dialogHistory = true;
+      }
+    },
+    inSavegatewayorder(id, obj) {
+      this.queryParam.gotype = this.range == 2 ? "区域范围" : "勾选范围";
+      this.queryParam.gotype2 = obj.alias;
+      if (id == "563") {
+        this.modify(false, true);
+      } else if (!this.queryParam.gotype2) {
+        this.$message({
+          message: "请先选择指令类型",
+          type: "warning",
+        });
+      } else if (
+        this.queryParam.gotype == "勾选范围" &&
+        (!this.listArr || this.listArr.length == 0)
+      ) {
+        this.$message({
+          message: "请先选择要发指令的门锁",
+          type: "warning",
+        });
+      } else {
+        this.queryParam.buildid = this.paramObj.build.buildid;
+        let obj = this.queryParam;
+        if (this.queryParam.gotype != "勾选范围") {
+          obj = Object.assign({}, this.param, this.queryParam);
+        }
+        this.$ajax(
+          "/system/device/devicelock/order/1/savelockorder",
+          obj,
+          "1",
+          this.listArr.map((o) => o.roomid),
+          true
+        )
+          .then((res) => {
+            this.$message({
+              message: this.queryParam.gotype2 + "指令下发成功",
+              type: "success",
+            });
+            this.onRefresh();
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      }
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == 466) {
+              let arr = value.childs;
+              if (arr && arr.length > 0) {
+                this.topButs.push(value.entity);
+                arr.forEach((obj) => {
+                  let vid = obj.entity.id;
+                  let valias = obj.entity.alias;
+                  if (vid == "354") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "",
+                      url:
+                        "/system/device/devicelock/upload/2/uploaddevicelock",
+                      errUrl:
+                        "/system/device/devicelock/upload/6/downfaildevicelock",
+                    });
+                  } else if (vid == "355") {
+                    this.exportButs.push({
+                      id: vid,
+                      name: valias,
+                      url: "/system/device/devicelock/upload/7/downdevicelocks",
+                      data: this.param,
+                    });
+                  } else if (vid == "357") {
+                    this.importHistory = true;
+                    // this.exportButs.push({ name: valias });
+                  }
+                });
+              }
+            } else if (id == "351") {
+              this.listBut.push({
+                type: "4",
+                name: "删除",
+              });
+            } else if (id == "553") {
+              this.listBut.push({
+                type: "2",
+                name: "配置",
+              });
+            } else if (id == "350") {
+              this.listBut.push({
+                type: "5",
+                name: "更换",
+              });
+            } else if (id == "564") {
+              this.listBut.push({
+                type: "9",
+                name: "信息",
+              });
+            } else if (id == "353") {
+              this.topButs.push(value.entity);
+            } else if (id == "357") {
+              // this.exportButs.push(value.entity);
+            } else if (id == "352") {
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  if (
+                    item.entity.id == "356" ||
+                    item.entity.id == "358" ||
+                    item.entity.id == "359" ||
+                    item.entity.id == "360" ||
+                    item.entity.id == "563"
+                  ) {
+                    this.quantitytypes.push(item.entity);
+                  }
+                });
+              }
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    delete(arr) {
+      this.$confirm("此操作将删除当前门锁, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          this.$ajax(
+            "/system/device/devicelock/delete/1/deletedevicelock",
+            {},
+            "1",
+            arr,
+            true
+          )
+            .then((res) => {
+              this.$message({
+                message: "删除成功",
+                type: "success",
+              });
+              this.onRefresh();
+            })
+            .catch((err) => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error",
+              });
+            });
+        })
+        .catch((err) => {});
+    },
+    modify(data, bool = false) {
+      if (bool) {
+        if (this.range == 2) {
+          this.modifyParamObj = [];
+          this.modifyParam = Object.assign({ gotype: "区域范围" }, this.param);
+        } else {
+          // if (data) {
+          //   this.modifyParamObj = [data.roomid];
+          // } else {
+          this.modifyParamObj = this.listArr.map((o) => o.roomid);
+          // }
+          this.modifyParam = Object.assign({ gotype: "勾选范围" }, this.param);
+        }
+      } else {
+        // if (data) {
+        this.modifyParamObj = [data.roomid];
+        // } else {
+        //   this.modifyParamObj = this.listArr.map(o => o.roomid);
+        // }
+        this.modifyParam = Object.assign({ gotype: "勾选范围" }, this.param);
+      }
+      this.modifyParam.type = this.type == 0 ? "1" : "2";
+      this.dialogModify = true;
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    handleNodeClick(data) {
+      this.paramObj.build = data;
+      this.param.buildid = data.buildid;
+      this.paramObj.areaid = "";
+      this.paramObj.type = "1";
+      this.onTableReset();
+    },
+    checkchangeGroup(data) {
+      this.param.buildid = data.areaid;
+      this.paramObj.build = {};
+      this.paramObj.areaid = data.areaid;
+      this.paramObj.type = "2";
+      this.onTableReset();
+    },
+    onTableReset() {
+      this.isSelectable = true;
+      this.$refs["paging-table"].clearSelection();
+      this.range = "1";
+      this.onRefresh();
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "msgl308");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "msgl308");
+    },
+  },
+};
+</script>

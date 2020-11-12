@@ -1,0 +1,1104 @@
+<!-- 门禁信息 -->
+<template>
+  <el-dialog
+    class="configureInfo"
+    top="5%"
+    title="设备详情"
+    width="70%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-tabs v-model="activeName" @tab-click="handleClick">
+      <el-tab-pane label="基础信息" name="first">
+        <form-table
+          v-loading="loading"
+          thwidth="18%"
+          tdwidth="32%"
+          :column="2"
+          :param="defaultData"
+          :list="formData"
+        ></form-table>
+      </el-tab-pane>
+      <el-tab-pane label="功能配置" name="second">
+        <fel-form
+          ref="felForm"
+          class="single-row quick-ruleForm"
+          :selects="selects"
+          @submitForm="submitForm"
+          @closeForm="beforeClose"
+          width="140px"
+          dynamic
+          :defaultData="defaultDataGNPZ"
+          :formData="formData1"
+        ></fel-form>
+        <div class="config_second_text">同步模式、消防报警将应用到门禁下所有门锁，请按需配置</div>
+      </el-tab-pane>
+      <el-tab-pane label="自动开关门时段" name="third">
+        <div v-if="autoData.length === 0" class="config_null">暂无数据</div>
+        <div v-else id="autoScroll" class="config_box">
+          <template v-for="obj in autoData">
+            <div class="config_box_top">
+              <span class="config_text">{{ obj.name }}</span>
+              <fel-button :disabled="obj.start" @click="onReturn('1', obj)" type="text">启用</fel-button>
+              <fel-button :disabled="obj.stop" @click="onReturn('0', obj)" type="text">停用</fel-button>
+              <fel-button type="text" @click="onReturn('-1', obj)">删除</fel-button>
+            </div>
+            <el-form
+              :rules="rules"
+              ref="autoForm"
+              :model="obj.form"
+              label-width="130px"
+              size="mini"
+            >
+              <el-form-item label="自动开关门时段" prop="dates">
+                <!-- <fel-date v-model="obj.form.dates"></fel-date> -->
+                <el-time-picker
+                  is-range
+                  v-model="obj.form.dates"
+                  range-separator="至"
+                  format="HH:mm"
+                  class="config_sel"
+                  start-placeholder="开始时间"
+                  end-placeholder="结束时间"
+                  placeholder="选择时间范围"
+                ></el-time-picker>
+              </el-form-item>
+              <el-form-item label="每周运行日期" prop="week">
+                <el-select multiple class="config_sel" v-model="obj.form.week" placeholder="请选择">
+                  <el-option
+                    v-for="item in defaultDataKGM.weeks"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="常开后控制" prop="control">
+                <el-select class="config_sel" v-model="obj.form.control" placeholder="请选择">
+                  <el-option
+                    v-for="item in defaultDataKGM.attypes"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="联动门" prop="linkage">
+                <el-select multiple class="config_sel" v-model="obj.form.linkage" placeholder="请选择">
+                  <el-option
+                    v-for="item in defaultDataKGM.doors"
+                    :key="item.adid"
+                    :label="item.adname"
+                    :value="item.adid"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </template>
+        </div>
+        <div>同一个门禁最多设置12个时段</div>
+        <div class="config_bottom">
+          <fel-button class="qh_btn com-but-small" @click="onAdd">新增时段</fel-button>
+          <fel-button class="qh_btn com-but-small" @click="beforeClose">取消</fel-button>
+          <fel-button class="qh_btn com-but-small" type="primary" @click="onSubmit">确定</fel-button>
+        </div>
+      </el-tab-pane>
+      <el-tab-pane label="门锁配置" name="fouth">
+        <fel-form
+          ref="felForm"
+          class="single-row quick-ruleForm"
+          :selects="selects"
+          @submitForm="submitForm2"
+          @closeForm="beforeClose"
+          width="140px"
+          dynamic
+          :defaultData="defaultDataMS"
+          :formData="formDataSingle"
+        ></fel-form>
+      </el-tab-pane>
+      <el-tab-pane label="门备注" name="fifth">
+        <h3 class="beizhuTitle">备注信息</h3>
+        <el-input class="beizhuText" type="textarea" v-model="beizhu"></el-input>
+        <div class="config_bottom">
+          <fel-button class="qh_btn com-but-small" @click="beforeClose">取消</fel-button>
+          <fel-button class="qh_btn com-but-small" type="primary" @click="onSubmit1">确定</fel-button>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
+  </el-dialog>
+</template>
+
+<script>
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    param: Object,
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      autoData: [],
+      beizhu: "",
+      loading: false,
+      isSync: true,
+      activeName: "first",
+      selects: {
+        amwarns: [],
+        doors: [],
+        amsyncs: [],
+        adcontactswiths: [],
+        adforcelocks: [],
+        adheads: [],
+        adtypes: [],
+        adworkmodes: [],
+        amsyncauths: [],
+        amsyncdels: [
+          { name: "是", id: 1 },
+          { name: "否", id: 0 }
+        ]
+      },
+      door: [],
+      heads: [],
+      defaultData: {},
+      defaultDataGNPZ: {},
+      defaultDataMS: {},
+      rules: {
+        linkage: [{ required: true, message: "请选择联动门", trigger: "blur" }],
+        control: [
+          { required: true, message: "请选择常开后控制模式", trigger: "change" }
+        ],
+        week: [
+          { required: true, message: "请选择每周运行日期", trigger: "change" }
+        ],
+        dates: [
+          { required: true, message: "请选择自动开关门时段", trigger: "change" }
+        ]
+      },
+      formData1: [
+        // {
+        //   css: "type-title",
+        //   name: "门禁配置",
+        //   type: "div"
+        // },
+        {
+          noShow: false,
+          value: "amsync",
+          name: "同步模式",
+          type: "select",
+          select: "amsyncs",
+          slabel: "name",
+          svalue: "id",
+          onChange: this.onChangeSync
+        },
+        {
+          noShow: true,
+          value: "amsyncauths",
+          name: "同步授权类型",
+          type: "template",
+          template: {
+            computed: {
+              options() {
+                return $this.selects["amsyncauths"];
+              },
+              amsyncauths: {
+                get() {
+                  return $this.defaultDataGNPZ.amsyncauths;
+                },
+                set(val) {
+                  $this.defaultDataGNPZ.amsyncauths = val;
+                }
+              }
+            },
+            template: `<el-select size="small" v-model="amsyncauths" :multiple="true" placeholder="请选择">
+              <el-option
+                v-for="item in options"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id">
+              </el-option>
+            </el-select>`
+          }
+        },
+        {
+          noShow: true,
+          value: "amsyncdel",
+          name: "是否删除同步授权",
+          type: "select",
+          select: "amsyncdels",
+          slabel: "name",
+          svalue: "id"
+        },
+        {
+          noShow: false,
+          value: "amwarn",
+          name: "消防报警",
+          type: "select",
+          select: "amwarns",
+          slabel: "name",
+          svalue: "id",
+          onChange: this.onChangeWarn
+          // rules: [
+          //   {
+          //     required: true,
+          //     message: "请选择下发指令",
+          //     trigger: "change"
+          //   }
+          // ]
+        },
+        {
+          value: "door",
+          name: "消防联动门",
+          type: "template",
+          template: {
+            computed: {
+              options() {
+                return $this.selects["doors"];
+              },
+              door: {
+                get() {
+                  return $this.door;
+                },
+                set(val) {
+                  $this.door = val;
+                }
+              }
+            },
+            template: `<el-select size="small" v-model="door" :multiple="true" placeholder="请选择">
+              <el-option
+                v-for="item in options"
+                :key="item.adid"
+                :label="item.adname"
+                :value="item.adid">
+              </el-option>
+            </el-select>`
+          }
+        }
+      ],
+      formDataSingle: [
+        // {
+        //   noShow: false,
+        //   value: "adname",
+        //   name: "门锁名称",
+        //   type: "text"
+        // },
+        // {
+        //   noShow: false,
+        //   value: "adtype",
+        //   name: "门锁类型",
+        //   type: "select",
+        //   select: "adtypes",
+        //   slabel: "name",
+        //   svalue: "id"
+        // },
+        {
+          noShow: false,
+          value: "adtype",
+          name: "门类型",
+          type: "select",
+          select: "adtypes",
+          slabel: "name",
+          svalue: "id",
+          disabled: true
+        },
+        {
+          noShow: false,
+          value: "adworkmode",
+          name: "工作模式",
+          type: "select",
+          select: "adworkmodes",
+          slabel: "name",
+          svalue: "id"
+        },
+
+        {
+          noShow: false,
+          value: "adforcelock",
+          name: "强制锁门",
+          type: "select",
+          select: "adforcelocks",
+          slabel: "name",
+          svalue: "id"
+        }
+
+        // {
+        //   noShow: false,
+        //   value: "adcontactswith",
+        //   name: "门磁开关",
+        //   type: "select",
+        //   select: "adcontactswiths",
+        //   slabel: "name",
+        //   svalue: "id"
+        // },
+
+        // {
+        //   value: "heads",
+        //   name: "联动读头",
+        //   type: "template",
+        //   template: {
+        //     computed: {
+        //       options() {
+        //         return $this.selects["adheads"];
+        //       },
+        //       heads: {
+        //         get() {
+        //           return $this.heads;
+        //         },
+        //         set(val) {
+        //           $this.heads = val;
+        //         }
+        //       }
+        //     },
+        //     template: `<el-select size="small" v-model="heads" :multiple="true" placeholder="请选择">
+        //       <el-option
+        //         v-for="item in options"
+        //         :key="item.ahid"
+        //         :label="item.ahname"
+        //         :value="item.ahid">
+        //       </el-option>
+        //     </el-select>`
+        //   }
+        // }
+      ],
+      formData: []
+      // formDataSource: [
+      //   {
+      //     value: "adname",
+      //     name: "门名称"
+      //   },
+      //   {
+      //     value: "adtype",
+      //     name: "门类型"
+      //   },
+      //   {
+      //     value: "adisopen",
+      //     name: "开关门状态"
+      //   },
+      //   {
+      //     value: "",
+      //     name: ""
+      //   },
+      //   {
+      //     value: "amname",
+      //     name: "门禁名称"
+      //   },
+      //   {
+      //     value: "amcode",
+      //     name: "门禁唯一ID"
+      //   },
+      //   {
+      //     value: "amtype",
+      //     name: "门禁类型"
+      //   },
+      //   {
+      //     value: "amver",
+      //     name: "门禁软件版本号"
+      //   },
+      //   {
+      //     // value: "amstate",
+      //     name: "门禁状态",
+      //     render(obj,add){
+      //       console.log('obj',obj);
+      //       return add("div",{}, "2")
+      //     }
+      //   },
+      //   {
+      //     value: "",
+      //     name: ""
+      //   },
+      //   {
+      //     value: "ambdcards",
+      //     name: "卡片授权数量"
+      //   },
+      //   {
+      //     value: "ambdpasss",
+      //     name: "密码授权数量"
+      //   },
+      //   {
+      //     value: "",
+      //     name: "蓝牙授权数量"
+      //   }
+      //   // {
+      //   //   value: "",
+      //   //   name: "1号读头指纹授权数量"
+      //   // },
+      //   // {
+      //   //   value: "",
+      //   //   name: "2号读头人脸授权数量"
+      //   // },
+      //   // {
+      //   //   value: "",
+      //   //   name: ""
+      //   // }
+      // ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.inGetupdategatewayinfo();
+      } else {
+        this.activeName = "first";
+      }
+    }
+  },
+  created() {
+    // this.formData = this.formDataSource;
+  },
+  methods: {
+    // 同步模式
+    onChangeSync(val, obj) {
+      if (val == 1) {
+        this.isSync = true;
+        this.formData1[1].noShow = false;
+        this.formData1[2].noShow = true;
+      } else {
+        this.isSync = false;
+        this.formData1[1].noShow = true;
+        this.formData1[2].noShow = false;
+      }
+    },
+    // 消防报警
+    onChangeWarn(val, obj) {
+      if (val == 1) {
+        this.formData1[4].noShow = false;
+      } else {
+        this.formData1[4].noShow = true;
+      }
+    },
+    //获取功能配置
+    getAccessMainDeploy() {
+      this.$ajax(
+        "/access/v2.0/main/9/getAccessMainDeploy",
+        { amid: this.param.amid },
+        "9"
+      )
+        .then(res => {
+          this.selects.amwarns = res.result.amwarns;
+          if (res.result.amwarn != "0" && res.result.amwarn != "1") {
+            res.result.amwarn = "";
+          }
+          this.selects.doors = res.result.doors;
+          this.selects.amsyncs = res.result.amsyncs;
+          this.selects.amsyncauths = res.result.amsyncauths;
+          this.defaultDataGNPZ = res.result;
+          this.door = this.defaultDataGNPZ.door.map(item => {
+            return item.adid;
+          });
+          this.defaultDataGNPZ.amsyncauths = this.defaultDataGNPZ.amsyncauths.map(
+            item => {
+              return item.id;
+            }
+          );
+          if (this.defaultDataGNPZ.amsync == 1) {
+            this.onChangeSync(1);
+          } else {
+            this.onChangeSync(0);
+          }
+          if (this.defaultDataGNPZ.amwarn == 1) {
+            this.onChangeWarn(1);
+          } else {
+            this.onChangeWarn(0);
+          }
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    // 获取门锁配置
+    getAccessDoorDeploy() {
+      this.$ajax(
+        "/access/v2.0/door/d/getAccessDoorDeploy",
+        { adid: this.param.adid },
+        "9"
+      )
+        .then(res => {
+          this.selects.adcontactswiths = res.result.adcontactswiths;
+          this.selects.adforcelocks = res.result.adforcelocks;
+          this.selects.adheads = res.result.adheads;
+          this.selects.adtypes = res.result.adtypes;
+          this.selects.adworkmodes = res.result.adworkmodes;
+          this.defaultDataMS = res.result;
+          this.heads = res.result.adheads.map(item => {
+            return item.ahid;
+          });
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    // 获取自动开关门时段
+    getAccessMainTime() {
+      this.$ajax(
+        "/access/v2.0/main/b/getAccessMainTime",
+        { amid: this.param.amid },
+        "9"
+      )
+        .then(res => {
+          this.defaultDataKGM = res.result;
+          let num = 0;
+          this.autoData = res.result.times.map((item, index) => {
+            // state: item.atstatus,
+            num++;
+            return {
+              id: new Date().getTime(), //this.autoData.length,
+              name: "自动开门时段" + num, //(this.autoData.length + 1),
+              start: item.atstatus == 0 ? false : true,
+              stop: item.atstatus == 1 ? false : true,
+              form: {
+                control: item.attype,
+                dates: [
+                  new Date(
+                    0,
+                    0,
+                    0,
+                    item.atstime.slice(0, 2),
+                    item.atstime.slice(3, 5)
+                  ),
+                  new Date(
+                    0,
+                    0,
+                    0,
+                    item.atetime.slice(0, 2),
+                    item.atetime.slice(3, 5)
+                  )
+                ],
+                atid: item.atid,
+                linkage: item.door.map(obj => {
+                  return obj.adid;
+                }),
+                week: item.week.map(obj => {
+                  return obj.id;
+                })
+              }
+            };
+          });
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    inGetupdategatewayinfo() {
+      if (true) {
+        this.loading = true;
+        this.$ajax(
+          "/access/v2.0/door/6/getAccessDoorInfo",
+          { adid: this.param.adid },
+          "9"
+        )
+          .then(res => {
+            let data = res.result;
+            let cd = data.heads.length;
+            console.log("data.heads", data.heads);
+            this.formData = [
+              {
+                value: "adname",
+                name: "门名称"
+              },
+              {
+                value: "adtype",
+                name: "门类型"
+              },
+              {
+                value: "adisopen",
+                name: "开关门状态"
+              },
+              {
+                value: "amisfirewarn",
+                name: "消防报警状态"
+              },
+              {
+                value: "amname",
+                name: "门禁名称"
+              },
+              {
+                value: "amcode",
+                name: "门禁唯一ID"
+              },
+              {
+                value: "amtype",
+                name: "门禁类型"
+              },
+              {
+                value: "amver",
+                name: "门禁软件版本号"
+              },
+              {
+                // value: "amstate",
+                name: "门禁状态",
+                render(obj, add) {
+                  if (obj.amstate == "在线") {
+                    return add("div", { class: "puc-pg" }, obj.amstate);
+                  } else {
+                    return add("div", { class: "puc-px" }, obj.amstate);
+                  }
+                }
+              },
+              {
+                value: "amwarn",
+                name: "消防报警功能状态"
+              },
+              // {
+              //   value: "",
+              //   name: ""
+              // },
+              {
+                value: "ambdcards",
+                name: "卡片授权数量"
+              },
+              {
+                value: "ambdpasss",
+                name: "密码授权数量"
+              },
+              {
+                value: "adbdapp",
+                name: "蓝牙授权数量"
+              }
+              // {
+              //   value: "",
+              //   name: "1号读头指纹授权数量"
+              // },
+              // {
+              //   value: "",
+              //   name: "2号读头人脸授权数量"
+              // },
+              // {
+              //   value: "",
+              //   name: ""
+              // }
+            ];
+            for (let i = 1; i <= cd; i++) {
+              let is = false;
+              this.formData.push({
+                funct(obj) {
+                  if (obj.heads && obj.heads[i - 1]) {
+                    return obj.heads[i - 1].ahcode;
+                  } else {
+                    return "";
+                  }
+                },
+                name: i + "号读头ID"
+              });
+              this.formData.push({
+                funct(obj) {
+                  if (obj.heads && obj.heads[i - 1]) {
+                    return obj.heads[i - 1].ahlocation;
+                  } else {
+                    return "";
+                  }
+                },
+                name: i + "号读头位置"
+              });
+              this.formData.push({
+                funct(obj) {
+                  if (obj.heads && obj.heads[i - 1]) {
+                    return obj.heads[i - 1].ahauths;
+                  } else {
+                    return "";
+                  }
+                },
+                name: i + "号读头支持授权"
+              });
+              this.formData.push({
+                funct(obj) {
+                  if (obj.heads && obj.heads[i - 1]) {
+                    return obj.heads[i - 1].ahver;
+                  } else {
+                    return "";
+                  }
+                },
+                name: i + "号读头软件版本"
+              });
+              this.formData.push({
+                render(obj, add) {
+                  if (obj.heads && obj.heads[i - 1]) {
+                    // return obj.heads[i - 1].ahstate;
+                    if (obj.heads[i - 1].ahstate == "正常") {
+                      return add(
+                        "div",
+                        { class: "puc-pg" },
+                        obj.heads[i - 1].ahstate
+                      );
+                    } else {
+                      return add(
+                        "div",
+                        { class: "puc-px" },
+                        obj.heads[i - 1].ahstate
+                      );
+                    }
+                  } else {
+                    return "";
+                  }
+                },
+                name: i + "号读头状态"
+              });
+              if (data.heads[i - 1].ahauths.indexOf("指纹") >= 0) {
+                is = !is;
+                this.formData.push({
+                  funct(obj) {
+                    if (obj.heads && obj.heads[i - 1]) {
+                      return (
+                        obj.heads[i - 1].ahbdfinger +
+                        "/" +
+                        obj.heads[i - 1].ahmaxfinger
+                      );
+                    } else {
+                      return "";
+                    }
+                  },
+                  name: i + "号读头指纹授权数量"
+                });
+              }
+              if (data.heads[i - 1].ahauths.indexOf("人脸") >= 0) {
+                is = !is;
+                this.formData.push({
+                  funct(obj) {
+                    if (obj.heads && obj.heads[i - 1]) {
+                      return (
+                        obj.heads[i - 1].ahbdface +
+                        "/" +
+                        obj.heads[i - 1].ahmaxface
+                      );
+                    } else {
+                      return "";
+                    }
+                  },
+                  name: i + "号读头人脸授权数量"
+                });
+              }
+              if (is) {
+                this.formData.push({
+                  value: "",
+                  name: ""
+                });
+              }
+            }
+            this.defaultData = data;
+            this.defaultData.ambdcards = data.ambdcard + "/" + data.ammaxcard;
+            this.defaultData.ambdpasss = data.ambdpass + "/" + data.ammaxpass;
+            this.loading = false;
+          })
+          .catch(err => {
+            this.loading = false;
+            console.log("err", err);
+          });
+      }
+    },
+    handleClick(data, obj) {
+      if (data.name == "first") {
+        this.inGetupdategatewayinfo();
+      } else if (data.name == "second") {
+        this.getAccessMainDeploy();
+      } else if (data.name == "third") {
+        this.getAccessMainTime();
+      } else if (data.name == "fouth") {
+        this.getAccessDoorDeploy();
+      } else if (data.name == "fifth") {
+        this.beizhu = "";
+      }
+    },
+    onReturn(str, obj) {
+      console.log("str,obj", str, obj);
+      let url = "/access/v2.0/main/c/updateAccessMainTimeStatus";
+      let data = { amid: this.param.amid, atid: obj.form.atid, atstatus: str };
+      this.$ajax(url, data, "9")
+        .then(res => {
+          if (str === "1") {
+          } else if (str === "0") {
+          } else if (str === "-1") {
+            let index = this.autoData.findIndex((item, ind) => {
+              return item.id == obj.id;
+            });
+            this.autoData.splice(index, 1);
+            this.autoData.forEach((item, index) => {
+              item.name = "自动开门时段" + (index + 1);
+            });
+          }
+          this.$message({
+            type: "success",
+            message:
+              (str == "0" ? "停用" : str == "1" ? "启用" : "删除") + "成功!"
+          });
+          this.getAccessMainTime();
+        })
+        .catch(err => {
+          this.$message({
+            type: "error",
+            message:
+              `[${err.resultCode}] ` + err.resultMsg ||
+              (str == "0" ? "停用" : str == "1" ? "启用" : "删除") + "成功!"
+          });
+          console.log("err", err);
+        });
+    },
+    onAdd() {
+      if (this.autoData.length + 1 > 12) {
+        return;
+      }
+      this.autoData.push({
+        form: {},
+        id: this.autoData.length,
+        name: "自动开门时段" + (this.autoData.length + 1),
+        start: true,
+        stop: true
+      });
+      let dom = document.getElementById("autoScroll");
+      let H = dom.scrollHeight;
+      setTimeout(() => {
+        dom.scrollTo(0, H);
+      });
+    },
+    onSubmit() {
+      let next = true;
+      this.$refs.autoForm.map(item => {
+        item.validate(valid => {
+          if (!valid) {
+            console.log("error ", valid);
+            next = false;
+          }
+        });
+      });
+      if (!next) {
+        return;
+      }
+      let data = this.autoData.map((item, ind) => {
+        let obj = {};
+        obj.attype = String(item.form.control) ? item.form.control : "";
+        obj.atstime =
+          item.form.dates && item.form.dates.length > 0
+            ? format(item.form.dates[0], "HH:mm")
+            : "";
+        obj.atetime =
+          item.form.dates && item.form.dates.length > 0
+            ? format(item.form.dates[1], "HH:mm")
+            : "";
+        obj.atid = item.form.atid ? item.form.atid : 0;
+        obj.door = item.form.linkage
+          ? this.objMaps(item.form.linkage, this.defaultDataKGM.doors, "adid")
+          : [];
+        obj.week = item.form.week
+          ? this.objMaps(item.form.week, this.defaultDataKGM.weeks, "id")
+          : [];
+        return obj;
+      });
+      this.onPut(
+        "/access/v2.0/main/d/updateAccessMainTime",
+        { times: data },
+        "3"
+      );
+    },
+    onSubmit1() {
+      this.$ajax(
+        "/access/v2.0/door/q/updateAccessDoorRemark",
+        { adid: this.param.adid, adremark: this.beizhu },
+        "9"
+      )
+        .then(res => {
+          this.$message({
+            type: "success",
+            message: "修改备注成功!"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            type: "error",
+            message: `[${err.resultCode}] ` + err.resultMsg || "修改备注失败!"
+          });
+        });
+    },
+
+    onPut(url, data, str) {
+      this.$ajax(url, data, "9", { amid: this.param.amid }, true)
+        .then(res => {
+          this.$message({
+            type: "success",
+            message: "更新自动开关门时段成功!"
+          });
+          setTimeout(() => {
+            if (str == "1") {
+              // this.getAccessDoor();
+            } else if (str == "2") {
+              this.getAccessHead();
+            } else {
+              this.getAccessMainTime();
+            }
+          }, 500);
+        })
+        .catch(err => {
+          this.$message({
+            type: "error",
+            message:
+              `[${err.resultCode}] ` + err.resultMsg ||
+              "更新自动开关门时段失败!"
+          });
+          console.log("err", err);
+        });
+    },
+    // 参数循环处理方法
+    objMaps(data, obj, id) {
+      let arr = [];
+      data.forEach(val => {
+        obj.forEach(item => {
+          if (item[id] == val) {
+            arr.push(item);
+          }
+        });
+      });
+      return arr;
+    },
+    submitForm(data) {
+      let door = [];
+      let amsyncauths = [];
+      this.door.forEach(val => {
+        this.selects.doors.forEach(item => {
+          if (item.adid == val) {
+            door.push(item);
+          }
+        });
+      });
+      this.defaultDataGNPZ.amsyncauths.forEach(val => {
+        this.selects.amsyncauths.forEach(item => {
+          if (item.id == val) {
+            amsyncauths.push(item);
+          }
+        });
+      });
+      let obj = {
+        amid: this.param.amid,
+        amsync: data.amsync,
+        amwarn: data.amwarn,
+        amsyncdel: this.isSync ? "" : data.amsyncdel,
+        door,
+        amsyncauths: this.isSync ? amsyncauths : []
+      };
+
+      this.$ajax(
+        "/access/v2.0/main/a/updateAccessMainDeploy",
+        obj,
+        "9",
+        {},
+        true
+      )
+        .then(res => {
+          this.$message({
+            type: "success",
+            message: "修改配置成功!"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            type: "error",
+            message: `[${err.resultCode}] ` + err.resultMsg || "修改配置失败!"
+          });
+        });
+    },
+    submitForm2(data) {
+      let adheads = [];
+      this.heads.forEach(val => {
+        this.selects.adheads.forEach(item => {
+          if (item.ahid == val) {
+            adheads.push(item);
+          }
+        });
+      });
+      let obj1 = {
+        adid: this.param.adid,
+        adcontactswith: data.adcontactswith,
+        adforcelock: data.adforcelock,
+        adname: data.adname,
+        // adtype: data.adtype,
+        adworkmode: data.adworkmode,
+        adheads
+      };
+      this.$ajax(
+        "/access/v2.0/door/e/updateAccessDoorDeploy",
+        obj1,
+        "9",
+        {},
+        true
+      )
+        .then(res => {
+          this.$message({
+            type: "success",
+            message: "修改配置成功!"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            type: "error",
+            message:
+              `[${mj.err.resultCode}] ` + mj.err.resultMsg || "修改配置失败!"
+          });
+        });
+    },
+    beforeClose() {
+      if (this.$refs.felForm) {
+        this.$refs.felForm.resetForm();
+      }
+      this.autoData = [];
+      this.defaultDataGNPZ = {};
+      this.defaultDataMS = {};
+      this.defaultData = {};
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+.configureInfo {
+  .beizhuTitle {
+    display: inline-block;
+    padding: 30px 20px 0 140px;
+    width: 230px;
+    vertical-align: top;
+  }
+  .beizhuText {
+    width: 600px;
+    textarea {
+      min-height: 150px !important;
+      margin: 25px 0;
+    }
+  }
+  .config_second_text {
+    position: absolute;
+    bottom: 60px;
+  }
+  .form-content {
+    padding: 20px 0 20px;
+  }
+  .config_null {
+    width: 100%;
+    height: 450px;
+    padding-top: 225px;
+    text-align: center;
+  }
+  .config_box {
+    // width: 600px;
+    height: 450px;
+    // margin: 0 auto;
+    padding-left: 20%;
+    overflow-y: auto;
+    .config_box_top {
+      margin-top: 15px;
+      .config_text {
+        margin-right: 30px;
+      }
+    }
+    .config_sel {
+      width: 400px;
+    }
+  }
+  .config_bottom {
+    padding: 10px 20px 0;
+    margin-top: 10px;
+    border-top: 1px solid #ccc;
+    text-align: right;
+    // .qh_btn {
+    //   width: 64px;
+    //   height: 27px;
+    // }
+  }
+}
+</style>

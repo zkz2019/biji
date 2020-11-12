@@ -1,0 +1,194 @@
+<!-- 添加卡片 修改卡片授权 -->
+<template>
+  <el-dialog
+    title="修改授权"
+    width="60%"
+    :close-on-click-modal="false"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      class="grantAdd"
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import { format } from "@/utils/utils.js";
+export default {
+  components: {},
+
+  props: {
+    param: Object,
+    defaultData: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      selects: {
+        cardcode: []
+      },
+      value: "",
+      formData: [
+        {
+          width: "50%",
+          value: "empsdate",
+          name: "授权开始日期",
+          type: "date",
+          date: "datetime",
+          placeholder: "长期",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "empedate",
+          name: "授权结束日期",
+          type: "date",
+          date: "datetime",
+          placeholder: "长期",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "openstime",
+          name: "每日授权开始时间",
+          type: "time",
+          format: "HH:mm",
+          placeholder: "全天"
+          // rules: [
+          //   {
+          //     required: true,
+          //     message: "请选择每日授权开始时间",
+          //     trigger: "blur"
+          //   }
+          // ]
+        },
+        {
+          width: "50%",
+          value: "openetime",
+          name: "每日授权结束时间",
+          type: "time",
+          format: "HH:mm",
+          placeholder: "全天"
+          // rules: [
+          //   {
+          //     required: true,
+          //     message: "请选择每日授权结束时间",
+          //     trigger: "blur"
+          //   }
+          // ]
+        },
+        {
+          width: "50%",
+          value: "opencount",
+          name: "开门使用次数",
+          maxlength: 4,
+          placeholder: "不限",
+          type: "text",
+          rules: [
+            {
+              validator: (rule, value, callback) => {
+                if (value) {
+                  if (/^[0-9]+$/.test(value)) {
+                    if (value < 0 || value > 254) {
+                      callback(new Error("输入的值在1~254之间"));
+                    } else {
+                      callback();
+                    }
+                  } else {
+                    callback(new Error("使用次数必须是正整数"));
+                  }
+                } else {
+                  callback();
+                }
+              },
+              trigger: "blur"
+            }
+          ]
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+      }
+    }
+  },
+  created() {},
+  computed: {},
+  methods: {
+    ...mapGetters(["getNumber"]),
+    onChangePwd(val, obj) {
+      if (val[0] == 0) {
+        this.formData[9].noShow = true;
+        this.formData[10].noShow = true;
+      } else {
+        this.formData[9].noShow = false;
+        this.formData[10].noShow = false;
+      }
+    },
+    submitForm(obj) {
+      // if (!obj.personcode) {
+      //   this.$message.error("请先选择人员!");
+      //   return;
+      // }
+      let data = {
+        // adid: this.param.adid,
+        ...this.param,
+        cardcodes: obj.cardcodes || [],
+        empedate: obj.empedate || null,
+        empsdate: obj.empsdate || null,
+        opencount: obj.opencount,
+        openetime: obj.openetime,
+        openstime: obj.openstime,
+        password: obj.password,
+        personcode: obj.personcode
+      };
+      this.$ajax("/access/v2.0/door/j/updateAccessAuth", data, "9", {}, true)
+        .then(res => {
+          this.$message({
+            message: "修改成功!",
+            type: "success"
+          });
+          this.$emit("onRefresh");
+          this.beforeClose();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg || "修改失败",
+            type: "error"
+          });
+          console.log("err", err);
+        });
+    },
+    beforeClose() {
+      if (this.$refs.felForm) {
+        this.$refs.felForm.resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+<style lang="scss">
+// .grantAdd {
+// }
+</style>

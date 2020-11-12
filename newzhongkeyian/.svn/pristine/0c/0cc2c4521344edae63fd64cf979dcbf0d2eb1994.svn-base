@@ -1,0 +1,785 @@
+<!-- 门禁主控板升级 -->
+<template>
+  <el-container>
+    <fel-left-tree leftTitle="建筑列表" class="nblots361">
+      <div slot="left" class="left-tree">
+        <fel-tree1
+          ref="fel-tree1"
+          :showCheckbox="false"
+          class="tree1"
+          :idArr="[0]"
+          :refresh="refreshTree"
+          interface="/system/onlineup/accessmain/1/listAreaTree"
+          ajaxType="9"
+          nodeKey="agid"
+          iconName="agtype"
+          :param="{agfatherid:''}"
+          paramKey="agfatherid"
+          :defaultProps="{
+          children: 'children',
+          label: 'agname',
+          isLeaf: 'isLeaf'}"
+          @handleNodeClick="handleNodeClick"
+        ></fel-tree1>
+      </div>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{ toParam.alias }}</com-title>
+          <retrieval class="query_head">
+            <inpbox :inpb="true">
+              <el-select v-model="param.statustype" class="con-select qh_inp">
+                <el-option
+                  v-for="item in nustates"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.search"
+                placeholder="输入主控板名称/ID查询"
+              ></el-input>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-select
+                class="con-select qh_inp"
+                v-model="param.versiontype"
+                filterable
+                placeholder="请选择"
+              >
+                <el-option
+                  v-for="item in options"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.version"
+                placeholder="输入版本号查询"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh(false)">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            ajaxType="9"
+            :paging="6"
+            :sizes="[6, 10, 20, 30, 50]"
+            :isAll="range == 2 ? true : false"
+            :class="{ 'cover-up': range == 2 }"
+            interface="/system/onlineup/accessmain/2/listAccessMainVersion"
+            :list="list"
+            @onSelection="onSelection"
+            @sort-change="sortChange"
+            :refresh="refresh"
+            :refreshTable="refreshTable"
+            :param="param"
+            @onEjectChange="onEjectChange"
+          >
+            <span v-for="(v, k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-' + v.icon"></i>
+              {{ v.alias }}
+            </span>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+            </template>
+            <span v-if="!upDownShow" @click="onUpDown('up')" title="高级操作" class="sli refresh">
+              <i class="ficon-zhedie-up"></i>
+            </span>
+            <span v-else @click="onUpDown('down')" title="高级操作" class="sli refresh">
+              <i class="ficon-zhedie-down"></i>
+            </span>
+          </paging-table>
+        </el-main>
+      </el-container>
+    </fel-left-tree>
+    <el-dialog
+      title="选择上传版本"
+      width="40%"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="versionVisible"
+    >
+      <fel-form
+        ref="felForm"
+        class="single-row"
+        :selects="selects"
+        @submitForm="submitForm"
+        @closeForm="beforeClose"
+        width="140px"
+        dynamic
+        :defaultData="defaultData"
+        :formData="formData"
+      ></fel-form>
+    </el-dialog>
+    <mjVup :dialogVisible="dialogVisible" @beforeClose="dialogVisible = false"></mjVup>
+    <mjAutoup :dialogVisible="autoupVisible" @beforeClose="autoupVisible = false"></mjAutoup>
+    <history :dialogVisible="histVisible" :amid="amid" @beforeClose="histVisible = false"></history>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../../utils/Storage.js"; //缓存工具
+import mjVup from "./mjVup";
+import history from "./history";
+import mjAutoup from "./mjAutoup";
+export default {
+  components: { mjVup, history, mjAutoup },
+  props: {
+    toParam: Object,
+    toRoute: Object,
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogVisible: false,
+      histVisible: false,
+      versionVisible: false,
+      autoupVisible: false,
+      upDownShow: true,
+      amid: "",
+      nustates: [{ id: "", name: "全部状态" }],
+      refreshTree: 0,
+      options: [{ id: "", name: "全部版本" }],
+      topButs: [],
+      selects: { versionTypes: [] },
+      defaultData: { times: ["00:00", "23:59"] },
+      formData: [
+        {
+          noShow: false,
+          value: "dvid",
+          name: "请选择上传版本",
+          type: "select",
+          select: "versionTypes",
+          // onChange: this.onChange,
+          slabel: "deviceversion",
+          svalue: "dvid",
+          rules: [
+            {
+              required: true,
+              message: "请选择上传版本",
+            },
+          ],
+        },
+        {
+          noShow: true,
+          value: "dates",
+          name: "预订时间段",
+          type: "date",
+          date: "datetimerange",
+          popperClass: "wid480 miniDate",
+          dTime: ["00:00:00", "23:59:59"],
+          options: {
+            disabledDate(time) {
+              return time.getTime() < new Date().getTime() - 86400000;
+            },
+          },
+          format: "yyyy-MM-dd HH:mm:ss",
+          rules: [
+            {
+              required: true,
+              message: "请选择预订时间段",
+            },
+          ],
+        },
+        {
+          noShow: true,
+          close: "type1",
+          value: "times",
+          name: "开始结束时间",
+          type: "time",
+          format: "HH:mm",
+          date: "ftime",
+        },
+      ],
+      dvid: "",
+      upType: "",
+      roomObj: {},
+      range: "1",
+      // ranges: [
+      //   {
+      //     value: "勾选范围",
+      //     label: "勾选范围"
+      //   },
+      //   {
+      //     value: "跨页全选",
+      //     label: "全部列表"
+      //   }
+      // ],
+      quantitytypes: [],
+      refresh: 0,
+      refreshTable: 0,
+      param: {
+        agid: "0",
+        statustype: "",
+        search: "",
+        versiontype: "",
+        version: "",
+        sequence: "",
+        sortby: "",
+      },
+      timeArr: [],
+      dateArr: [],
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          width: "40px",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px",
+        },
+        {
+          name: "门禁位置",
+          sortable: "custom",
+          minWidth: "150px",
+          prop: "amlocation",
+        },
+        {
+          name: "主控板唯一ID",
+          sortable: "custom",
+          minWidth: "120px",
+          prop: "amwcode",
+        },
+        {
+          name: "当前/本地储存/后台上传版本号",
+          minWidth: "150px",
+          template: {
+            props: ["scope"],
+            computed: {
+              row() {
+                return this.scope.row;
+              },
+              lists() {
+                let list = [];
+                list.push("当前:" + this.row.amver);
+                list.push("存储:" + this.row.amcachever);
+                list.push("后台:" + this.row.deviceversion);
+                return list;
+              },
+            },
+            template: `<ul><li v-for="item in lists" :key="item">{{item}}</li></ul>`,
+          },
+        },
+        {
+          name: "历史记录",
+          sortable: "custom",
+          minWidth: "100px",
+          prop: "deviceversion",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(obj) {
+                $this.onClick("T1", obj);
+              },
+            },
+            template: `<ul @click="onClick(scope.row)" style="cursor:poInter;color:#3a8e"><li>{{scope.row.deviceversion}}</li><li>{{scope.row.avusdate?scope.row.avusdate.substr(0,10):""}}</li></ul>`,
+          },
+        },
+        {
+          name: "门禁下载进度",
+          sortable: "custom",
+          minWidth: "125px",
+          prop: "avurate",
+        },
+        {
+          name: "升级状态",
+          sortable: "custom",
+          width: "90px",
+          prop: "avustatename",
+          template: {
+            props: ["scope"],
+            computed: {
+              state() {
+                let stateList = [];
+                if (
+                  this.scope.row.avustatename &&
+                  this.scope.row.avustatename.length > 3
+                ) {
+                  stateList.push(this.scope.row.avustatename.substring(0, 3));
+                  stateList.push(this.scope.row.avustatename.substring(4));
+                } else {
+                  stateList.push(this.scope.row.avustatename);
+                }
+                return stateList;
+              },
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.avustatename;
+                if (value == "已同步") {
+                  return "puc-pg";
+                } else if (value == "下载中") {
+                  return "";
+                } else if (value == "待升级") {
+                  return "puc-pw";
+                } else {
+                  return "puc-px";
+                }
+              },
+            },
+            template: `<ul><li :class='getClass()' v-for="item in state">{{item}}</li></ul>`,
+          },
+        },
+        {
+          name: "操作",
+          width: "220px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                let list = $this.listBut;
+                let lists = [[], [], []]; //Array(4).fill([]);
+                // let show = this.scope.row.issupportup == "1" ? false : true;
+                list.forEach((item) => {
+                  // item.show = show;
+                  if (
+                    item.id == "882" ||
+                    item.id == "883" ||
+                    item.id == "886"
+                  ) {
+                    lists[0].push(item);
+                  } else if (item.id == "884" || item.id == "885") {
+                    lists[1].push(item);
+                  } else if (item.id == "889" || item.id == "887") {
+                    lists[2].push(item);
+                  }
+                });
+                return lists;
+              },
+            },
+            methods: {
+              onClick(key, row) {
+                if (key == "1" || key == "6") {
+                  $this.upType = key == "1" ? "1" : "6";
+                  $this.onVup(key, row);
+                } else {
+                  $this.onStartnblockup(key, row);
+                }
+              },
+              showBtn(key) {
+                if ((key == 0 || key == 1) && $this.upDownShow) {
+                  return false;
+                } else {
+                  return true;
+                }
+              },
+            },
+            template: `
+            <div class="operat-buts"> 
+            <template v-for="(item,ind) in listBut">
+              <div v-if="showBtn(ind)">
+               <el-button v-for="(v,i) of item" :key="i" type="text" size="small" @click.stop="onClick(v.type,scope.row)">{{v.name}}</el-button>
+              </div>
+            </template>
+            </div>`,
+          },
+        },
+      ],
+      listBut: [],
+      listArr: [],
+      sonmenu: 0,
+    };
+  },
+  watch: {
+    toRoute(val) {
+      if (val && val.roomcode2) {
+        this.param.search = val.roomcode2;
+      }
+      this.onRefresh();
+    },
+    versionVisible(val) {
+      if (val) {
+        if (this.upType == "6") {
+          this.formData[1].noShow = false;
+          this.formData[2].noShow = false;
+        } else {
+          this.formData[1].noShow = true;
+          this.formData[2].noShow = true;
+        }
+      } else {
+        this.upType == "";
+      }
+    },
+  },
+  created() {
+    this.inGetsonmenu(this.toParam.id);
+    this.getNbversion();
+    this.getType();
+  },
+  mounted() {
+    if (this.toRoute && this.toRoute.roomcode2) {
+      console.log("this.toRoute", this.toRoute);
+      this.param.search = this.toRoute.roomcode2;
+      this.onRefresh();
+    }
+    this.getEject();
+  },
+  methods: {
+    onUpDown(str) {
+      this.upDownShow = !this.upDownShow;
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    getType() {
+      this.$ajax("/system/onlineup/accessmain/5/getSearchType", {}, "9").then(
+        (res) => {
+          this.nustates = [...this.nustates, ...res.result.statustype];
+          this.options = [...this.options, ...res.result.versiontype];
+        }
+      );
+    },
+    onVup(key, row) {
+      this.dvid = "";
+      if (row) {
+        this.roomObj = row;
+        this.roomObj._types = "1";
+      } else {
+        this.roomObj._types = "2";
+      }
+      this.versionVisible = true;
+    },
+    submitForm(data) {
+      console.log("data", data);
+      if (this.upType == "6") {
+        this.dateArr = data.dates
+          ? data.dates.map((item) => {
+              let str = item.substring(0, 17);
+              return str + "00";
+            })
+          : [];
+        this.timeArr = data.times ? data.times : [];
+      }
+      this.dvid = data.dvid;
+      if (this.roomObj._types == "2") {
+        this.onStartnblockup(this.upType);
+      } else {
+        this.onStartnblockup(this.upType, this.roomObj);
+      }
+      this.beforeClose();
+    },
+    onStartnblockup(type, row = null) {
+      if ((type == "1" || type == "6") && this.dvid == "") {
+        this.$message.error("请先选择上传版本!");
+        return;
+      }
+      let url = "";
+      let text = "";
+      switch (type) {
+        case "1":
+          text = "全新下载";
+          url = "/system/onlineup/accessmain/saveversionup/2/startAccessMainUp"; //版本传输
+          break;
+        case "2":
+          text = "续传下载";
+          url =
+            "/system/onlineup/accessmain/saveversionup/4/restartAccessMainup"; // 版本续传
+          break;
+        case "3":
+          text = "更新升级";
+          url =
+            "/system/onlineup/accessmain/saveversionup/3/accessMainToUpVersion"; //更新升级
+          break;
+        case "4":
+          text = "强制升级";
+          url =
+            "/system/onlineup/accessmain/saveversionup/5/accessMainForceVersion"; //强制升级
+          break;
+        case "5":
+          text = "停止下载";
+          url =
+            "/system/onlineup/accessmain/saveversionup/6/deleteAccessMainUp"; //强制升级
+          break;
+        case "6":
+          text = "自动升级";
+          url =
+            "/system/onlineup/accessmain/saveversionup/7/saveAutoAccessMainUp"; //自动升级
+          break;
+        case "7":
+          text = "状态查询";
+          url =
+            "/system/onlineup/accessmain/saveversionup/9/searchAccessMainStatus"; //自动升级
+          break;
+      }
+      let data = {
+        actiontype: this.range == "1" ? "勾选范围" : "跨页全选",
+        agid: this.param.agid,
+        statustype: this.param.statustype || "",
+        search: this.param.search || "",
+        version: this.param.version || "",
+        versiontype: this.param.versiontype || "",
+        amids: this.listArr.map((item) => {
+          return item.amid;
+        }),
+      };
+      let autoData = {
+        autostartdate: this.dateArr[0],
+        autostarttime: this.timeArr[0],
+        autoenddate: this.dateArr[1],
+        autoendtime: this.timeArr[1],
+      };
+      if (row) {
+        data.amids = [row.amid];
+      }
+      if (type == "6") {
+        data = { ...data, ...autoData };
+      }
+      if (type == "1" || type == "6") {
+        data.dvid = this.dvid;
+      }
+      console.log("row,autoData", row, autoData);
+      // return;
+      this.$confirm("确定要进行" + text + "吗?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        this.$ajax(url, data, "9", {}, true)
+          .then(() => {
+            this.$message({
+              type: "success",
+              message: text + "成功!",
+            });
+            this.onRefresh(true);
+          })
+          .catch((err) => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error",
+            });
+          });
+      });
+    },
+    handleNodeClick(data) {
+      console.log("data", data);
+      this.param.agid = data.agid;
+      console.log("this.param.", this.param);
+      this.onRefresh();
+    },
+    inSavegatewayorder(id /*obj*/) {
+      if (id == "882") {
+        this.upType = "1";
+        this.onVup();
+      } else if (id == "883") {
+        this.onStartnblockup("2");
+      } else if (id == "884") {
+        this.onStartnblockup("3");
+      } else if (id == "885") {
+        this.onStartnblockup("4");
+      } else if (id == "886") {
+        this.onStartnblockup("5");
+      } else if (id == "887") {
+        this.onStartnblockup("7");
+      } else if (id == "889") {
+        this.upType = "6";
+        this.onVup("6");
+      }
+    },
+    inGetsonmenu(id) {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: id }, "1")
+        .then((res) => {
+          res.result.forEach((item) => {
+            let entity = item.entity;
+            if (entity.id == "882") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "1",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "890") {
+              this.topButs.push(entity);
+            } else if (entity.id == "883") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "2",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "884") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "3",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "885") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "4",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "886") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "5",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "889") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "6",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "887") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "7",
+                id: entity.id,
+                name: entity.alias,
+              });
+            } else if (entity.id == "888") {
+              this.topButs.push(entity);
+            }
+          });
+        })
+        .catch((err) => {
+          console.log("err", err);
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    getNbversion() {
+      this.$ajax(
+        "/system/onlineup/accessmain/saveversionup/1/listVersion",
+        {},
+        "9"
+      )
+        .then((res) => {
+          this.selects.versionTypes = res.result;
+        })
+        .catch((err) => {
+          console.log("err", err);
+        });
+    },
+    onClick(key, obj) {
+      if (key == "888") {
+        this.dialogVisible = true;
+      } else if (key == "890") {
+        this.autoupVisible = true;
+      } else if (key == "T1") {
+        this.histVisible = true;
+        this.amid = obj.amid;
+      }
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    onRefresh(bool) {
+      this.isSelectable = true;
+      this.range = "1";
+      if (this.$refs["paging-table"]) {
+        this.$refs["paging-table"].clearSelection();
+      }
+      if (bool) {
+        this.refreshTable = new Date().getTime();
+      } else {
+        this.refresh = new Date().getTime();
+      }
+    },
+    onReset() {
+      Object.keys(this.param).forEach((key) => {
+        if (key == "agid") {
+          // this.param[key] = "0";
+        } else {
+          this.param[key] = "";
+        }
+      });
+      this.onRefresh();
+    },
+    // sortChange(){},
+    onSelection(data) {
+      this.listArr = data;
+    },
+    beforeClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.versionVisible = false;
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "nbssj674");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "nbssj674");
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.checkUpVersion {
+  padding: 10px 50px;
+  .selBox {
+    width: 100%;
+    // margin: 10px 150px;
+  }
+  .butBox {
+    // border-top: 1px solid #ccc;
+    // margin: 10px 150px;
+    height: 50px;
+    button {
+      float: right;
+      margin-left: 10px;
+    }
+  }
+}
+</style>

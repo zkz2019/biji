@@ -1,0 +1,297 @@
+@media screen and (max-height: 700px) {
+
+    .con-select {
+        width: 170px;
+    }
+
+    .con-popover {
+        width: 210px;
+    }
+
+    .con-search {
+        width: 260px;
+    }
+
+
+    .con-date {
+        .el-input__inner {
+            width: 370px;
+        }
+    }
+
+    .con-num {
+        width: 140px;
+    }
+
+    //com-title
+    .com-title {
+        margin: 0 0 8px 0;
+        padding: 9px 0 0 32px;
+        height: 46px;
+
+        span.navig {
+            font-size: 17px;
+        }
+
+        .ti_text {
+            height: 25px;
+            font-size: 18px;
+        }
+    }
+
+    .iconLogo {
+        width: 24px;
+        height: 52px;
+        margin-right: 10px;
+        fill: currentColor;
+        overflow: hidden;
+    }
+
+    .miniDateM {
+        width: 220px;
+        height: 165px;
+
+        .el-month-table td {
+            .cell {
+                width: 40px;
+                height: 30px;
+                line-height: 30px;
+            }
+
+
+            div {
+                height: 35px;
+            }
+        }
+
+        .el-picker-panel__content {
+            width: 210px;
+            margin: 4px;
+        }
+    }
+
+    .Home_submenu {
+        .el-menu-item {
+            font-size: 15px;
+            padding-left: 16px !important;
+        }
+    }
+
+
+    .login {
+
+        .loginbox {
+            margin-top: -200px;
+            width: 370px;
+            height: 400px;
+            padding: 20px;
+
+            .login-container {
+                .el-form-item {
+                    height: 42px;
+                    line-height: 42px;
+
+                    .el-form-item__label {
+                        height: 42px;
+                        line-height: 42px;
+                    }
+
+                    .el-form-item__content {
+                        line-height: 42px;
+
+                        input {
+                            height: 42px;
+                            line-height: 42px;
+                        }
+                    }
+                }
+
+                .top {
+                    margin-top: 8px;
+                    font-size: 22px;
+                    margin-bottom: 25px;
+                }
+
+                .checkboxa {
+                    margin-bottom: 25px;
+                }
+
+                .form-test {
+
+                    .el-form-item__content {
+
+                        .login-img {
+                            margin-left: 9px;
+                            width: 90px;
+                            height: 42px;
+
+                            .el-image {
+                                height: 42px;
+                            }
+
+                        }
+                    }
+                }
+
+                .login_but {
+                    padding: 0;
+                    height: 42px;
+                    line-height: 40px;
+                }
+            }
+        }
+    }
+
+    .check-login-dialog {
+        width: 348px;
+
+        .check-login-content {
+            width: 300px;
+            padding: 10px 20px;
+
+            .check-login-top {
+                padding: 0 40px;
+                margin-bottom: 10px;
+
+                i {
+                    width: 56px;
+                    height: 56px;
+                    background-size: 56px 56px;
+                }
+
+                span {
+                    font-size: 14px;
+                }
+            }
+
+            .check-login-pwd {
+                padding: 3px;
+
+                .el-form {
+                    .el-input {
+                        font-size: 15px;
+
+                        input {
+                            height: 36px;
+                        }
+                    }
+
+                }
+            }
+
+            .check-login-buts {
+                .el-button {
+                    width: 96px;
+                }
+            }
+
+        }
+    }
+
+    .home {
+        .header {
+            height: 52px;
+            line-height: 52px;
+
+            .header-left {
+                .logo {
+                    height: 36px;
+                    max-width: 175px;
+                }
+            }
+
+            .header-content {
+                .header-menu {
+                    .el-submenu {
+
+                        .el-submenu__title {
+                            font-size: 14px;
+                            padding: 0 14px;
+
+                            i {
+                                font-size: 14px;
+                                margin-right: 8px;
+                            }
+                        }
+                    }
+
+                    .el-menu--horizontal>.el-menu-item {
+                        padding: 0 14px;
+                        height: 52px;
+                        line-height: 52px;
+                        font-size: 14px;
+
+                        i {
+                            font-size: 14px;
+                            margin-right: 8px;
+                        }
+                    }
+
+                    .el-menu--horizontal>.el-submenu .el-submenu__title {
+                        height: 52px;
+                        line-height: 52px;
+                    }
+                }
+            }
+
+            .quick {
+                height: 52px;
+                line-height: 52px;
+                font-size: 14px;
+            }
+
+            .header-right {
+                .el-dropdown {
+                    height: 52px;
+                }
+
+                .userinfo-inner {
+                    img {
+                        margin: 10px;
+                        height: 26px;
+                        width: 26px;
+                    }
+                }
+
+                .full-screen {
+                    top: 3px;
+                }
+            }
+        }
+    }
+
+    .query_head {
+        margin: 6px 12px;
+        padding: 7px 20px;
+    }
+
+    .query_main {
+        margin: 6px 12px 12px;
+        padding: 0 20px;
+
+        .paging-fy {
+            padding: 12px 3px 12px;
+            // padding-right: 150px;
+        }
+    }
+
+    .fel-tables .el-table td {
+        padding: 3px 0;
+    }
+
+    .el-table {
+        font-size: 13px;
+    }
+
+    .fel-tables .top {
+        height: 32px;
+    }
+
+    .el-pagination button,
+    .el-pager li,
+    .el-pagination__jump input,
+    .el-pagination__sizes .el-input .el-input__inner,
+    .el-pagination span:not([class*=suffix]) {
+        font-size: 13px;
+    }
+}

@@ -1,0 +1,174 @@
+<template>
+  <el-dialog
+    title="重载授权详情"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        interface="/analysis/failauth/8/listNotsendAuthReloadDetails"
+        :list="listInfo"
+        ajaxType="9"
+        :param="param"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input
+            clearable
+            class="search"
+            v-model="param.search"
+            :placeholder="'输入'+getNumber()+'查询'"
+          ></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    dialogVisible: Boolean,
+    narid: String | Number,
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { narid: "", search: "" },
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "创建时间",
+          prop: "nardcdate",
+        },
+
+        {
+          name: "处理时间",
+          prop: "nardedate",
+        },
+        {
+          name: "卡号/指纹号/人脸号",
+          minWidth:"130px",
+          prop: "nardcode",
+        },
+        {
+          name: "位置",
+          prop: "nardlocation",
+        },
+        {
+          name: "人员编号",
+          prop: "personcode",
+        },
+        {
+          name: "人员姓名",
+          prop: "personname",
+        },
+        {
+          name: "处理状态",
+          minWidth:"80px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.nardstatus == "0") {
+                  return "正在处理";
+                } else if (this.scope.row.nardstatus == "-1") {
+                  return "处理失败";
+                } else {
+                  return "处理成功";
+                }
+              },
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.nardstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`,
+          },
+        },
+        {
+          name: "下发状态",
+          minWidth:"80px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.sendstatus == "0") {
+                  return "正在下发";
+                } else if (this.scope.row.sendstatus == "-1") {
+                  return "下发失败";
+                } else if (this.scope.row.sendstatus == "") {
+                  return "";
+                } else {
+                  return "下发成功";
+                }
+              },
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.sendstatus;
+                if (value == "0") {
+                  return "";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "puc-pg";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`,
+          },
+        },
+        {
+          name: "失败原因",
+          prop: "nardremark",
+        },
+      ],
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.narid = this.narid;
+        this.onRefresh();
+      } else {
+        this.param.narid = "";
+      }
+    },
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+  },
+};
+</script>

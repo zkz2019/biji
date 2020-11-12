@@ -1,0 +1,109 @@
+<template>
+  <div>
+    <div v-if="true" class="groupMain_top">
+      <div class="groupMain_top_top">下级分组</div>
+      <div class="groupMain_top_bottom">
+        <group v-for="(item,ind) of buildList" :data="item" :key="ind"></group>
+      </div>
+    </div>
+    <div class="groupMain_bottom">
+      <div class="groupMain_bottom_top">
+        <p>本组房间</p>
+        <div class="groupMain_bottom_top_iconBox">
+          <div class="icon1"></div>
+          <div>通讯正常</div>
+          <div class="icon2"></div>
+          <div>通讯异常</div>
+          <div class="icon3"></div>
+          <div>未安装</div>
+        </div>
+      </div>
+      <div class="groupMain_bottom_bottom">
+        <door
+          v-for="(item,ind) of roomlist"
+          @changeSelection="changeSelection"
+          :data="item"
+          :btnAll="btnAll"
+          :selection="selection"
+          :key="ind"
+        ></door>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import group from "./group";
+import door from "./door";
+export default {
+  props: {
+    btnAll: Object,
+    paramTree: Object,
+    roomTree: Object,
+    refresh: Number || String
+  },
+  components: {
+    group,
+    door
+  },
+  data: () => {
+    return {
+      buildList: [],
+      roomlist: [],
+      selection: ""
+    };
+  },
+  created() {
+    console.log("this.param", this.paramTree);
+    // this.getList();
+    this.getRoom();
+  },
+  watch: {
+    refresh() {
+      this.getList();
+    }
+  },
+  methods: {
+    changeSelection(val) {
+      this.selection = val;
+    },
+    getRoom() {
+      this.$ajax("/lock/3/getbuildroom", {}, "1", {
+        agfatherid: "9",
+        agid: "12",
+        agname: "无线",
+        agtype: 2,
+        agtype2: 3,
+        isLeaf: true,
+        isnext: 0
+      })
+        .then(res => {
+          this.roomlist = res.result[0].roomllist;
+          console.log("res.result", this.roomlist, res.result);
+        })
+        .catch(err => {});
+    },
+    getList() {
+      this.$ajax("/lock/9/getbuildanalysisbylevel", { rows: 3, page: 1 }, "1", {
+        agfatherid: "0",
+        agid: "9",
+        agname: "研发测试",
+        agtype: 1,
+        agtype2: 3,
+        isLeaf: false,
+        isnext: 1
+      })
+        .then(res => {
+          this.buildList = res.result.data;
+          console.log("res", res, this.buildList);
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+</style>

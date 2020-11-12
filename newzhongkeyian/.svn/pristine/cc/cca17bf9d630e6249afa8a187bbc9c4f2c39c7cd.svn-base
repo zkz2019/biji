@@ -1,0 +1,199 @@
+<template>
+  <el-header class="checkIn_right_top query_head">
+    <el-select
+      class="con-search qh_inp"
+      ref="select"
+      v-model="searchValue"
+      :loading-text="loadText"
+      filterable
+      remote
+      reserve-keyword
+      :placeholder="'输入姓名|身份证'"
+      :remote-method="remoteMethod"
+      :loading="loading"
+      @change="onChange"
+      @clear="onClear"
+      no-data-text="点击查询进行查询"
+      no-match-text="无数据"
+    >
+      <el-option
+        v-for="item in options"
+        :key="item.personcode"
+        :label="item.personname"
+        :value="item.personcode"
+      >
+        <span
+          style="display:inline-block;width:45%;overflow:hidden;margin-right:10px"
+        >{{item.personname}}</span>
+        <span style="display:inline-block;width:45%;overflow:hidden">{{item.personcode}}</span>
+      </el-option>
+    </el-select>
+    <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <!-- <fel-button class="qh_btn" @click="onReset">重置</fel-button> -->
+    <!-- <fel-button class="qh_btn" type="primary" @click="searchID">查询身份证</fel-button> -->
+    <fel-button class="qh_btn" type="primary" @click="readIDCard">读取卡号</fel-button>
+    <fel-button class="qh_btn" type="primary" @click="searchIDCard">读取身份证</fel-button>
+    <template v-if="isCardReader">
+      <span class="is-card-reader maR10" @click="onClickCardReader" title="读卡机驱动下载">
+        <!-- <i class="el-icon-download"></i> -->
+        <el-button type="text" size="mini">读卡机驱动</el-button>
+      </span>
+    </template>
+    <template v-if="isCardReader&&isCardReaderIDCard">
+      <span>|</span>
+    </template>
+    <template v-if="isCardReaderIDCard">
+      <span class="is-card-reader" @click="onClickCardReaderIDCard" title="身份证驱动下载">
+        <!-- <i class="el-icon-download"></i> -->
+        <el-button type="text" size="mini">身份证驱动</el-button>
+      </span>
+    </template>
+    <cardReading
+      ref="cardReading"
+      :close="dialogReading"
+      @onInstall="onInstall"
+      @resultdata="resultdata"
+    />
+  </el-header>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import IDCard from "@/utils/IDCard.js";
+import cardReading from "./../../../kwgl/cardReading";
+export default {
+  props: {
+    checkedroom: Object,
+    reset: Number | String
+  },
+  components: { cardReading },
+  data() {
+    return {
+      searchValue: "",
+      options: [],
+      isCardReader: false,
+      isCardReaderIDCard: false,
+      dialogReading: false,
+      loading: false,
+      loadText: ""
+    };
+  },
+  created() {
+    this.dialogReading = true;
+    IDCard.inspect(
+      () => {
+        this.isCardReaderIDCard = false;
+      },
+      () => {
+        this.isCardReaderIDCard = true;
+      }
+    );
+  },
+  mounted() {
+    this.inpDom = document.querySelector(".el-input__inner");
+    this.inpDom.oninput = () => {
+      this.searchValue = this.inpDom.value;
+    };
+  },
+  beforeDestroy() {
+    this.dialogReading = false;
+  },
+  watch: {
+    reset(val) {
+      if (val) {
+        this.onEmpty();
+      }
+    }
+  },
+  computed: {},
+  methods: {
+    ...mapGetters(["getNumber"]),
+    remoteMethod(query) {
+      this.searchValue = query;
+      this.loading = false;
+    },
+    onChange(val) {
+      //查询事件
+      if (this.searchValue == "") {
+        return;
+      }
+      this.list = this.options.filter(item => {
+        return item.personcode.toLowerCase() == this.searchValue.toLowerCase();
+      });
+      //点击查询隐藏添加及删除按钮
+      this.$emit("onChange", this.list[0]);
+    },
+    onClear() {
+      this.searchValue = "";
+    },
+    search() {
+      this.loading = true;
+      this.loadText = "加载中...";
+      this.$refs.select.focus();
+      //查询事件
+      this.$ajax(
+        "/lock/operate/hotel/9/getsearchperson",
+        { search: this.searchValue },
+        "1"
+      )
+        .then(res => {
+          this.loading = false;
+          this.options = res.result; //下拉框的全部人员
+          this.$refs.select.focus();
+          if (this.options.length == 0) {
+            this.loading = true;
+            this.loadText = "无匹配数据";
+          }
+        })
+        .catch(err => {
+          this.loading = true;
+          this.loadText = err.resultMsg;
+          console.log("err",err);
+        });
+      this.searchValue = "";
+    },
+    readIDCard() {
+      //读卡号
+      this.$refs["cardReading"].readIDCard();
+    },
+    onClickCardReader() {
+      this.$refs["cardReading"].download();
+    },
+    searchIDCard() {
+      //读身份证
+      IDCard.readIDCard(
+        data => {
+          this.$emit("searchIDCard", data);
+        },
+        err => {
+          this.$message.error(err.retext || "读取身份证信息失败");
+        }
+      );
+    },
+    onClickCardReaderIDCard() {
+      IDCard.download(() => {
+        this.isCardReaderIDCard = false;
+      });
+    },
+    onInstall(is) {
+      //身份证读卡器驱动下载
+      this.isCardReader = !is;
+    },
+    resultdata(data) {
+      //读卡
+      this.$emit("readIDCard", data);
+    },
+    searchID() {
+      this.$emit("searchID", this.searchValue);
+
+    },
+    onEmpty() {
+      this.options = [];
+      this.searchValue = "";
+    },
+    onReset(){
+      this.$emit("onReset");
+    }
+  }
+};
+</script>

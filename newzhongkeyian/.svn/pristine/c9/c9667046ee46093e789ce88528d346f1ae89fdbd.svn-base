@@ -1,0 +1,94 @@
+<template>
+  <fel-dialog
+    title="备注"
+    width="50%"
+    append-to-body
+    minWidth="700px"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+    class="remarks"
+  >
+    <h3 class="beizhuTitle">备注信息</h3>
+    <el-input class="beizhuText" placeholder="请输入授权备注,如为何授权,授权目的等" type="textarea" v-model="beizhu"></el-input>
+    <div class="config_bottom">
+      <fel-button class="qh_btn com-but-small" @click="beforeClose">取消</fel-button>
+      <fel-button class="qh_btn com-but-small" type="primary" @click="onSubmit">确定</fel-button>
+    </div>
+  </fel-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    row: Object,
+  },
+  data() {
+    return {
+      beizhu: "",
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.beizhu = this.row.remark;
+      }
+    },
+  },
+  methods: {
+    onSubmit() {
+      this.$ajax(
+        "/lock/operate/info/q/addRemark",
+        { remarks: this.beizhu, authid: this.row.authid },
+        "1"
+      )
+        .then((res) => {
+          this.$message({
+            type: "success",
+            message: "修改备注成功!",
+          });
+          this.beforeClose("1");
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    beforeClose(str) {
+      if (str == "1") {
+        this.$emit("beforeClose", true);
+      } else {
+        this.$emit("beforeClose", false);
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.remarks {
+  .beizhuTitle {
+    display: inline-block;
+    padding: 25px 20px 0 80px;
+    width: 180px;
+    vertical-align: top;
+  }
+
+  .beizhuText {
+    width: 400px;
+    textarea {
+      min-height: 150px !important;
+      margin: 25px 0;
+    }
+  }
+  .config_bottom {
+    padding: 10px 20px 0;
+    margin-top: 10px;
+    border-top: 1px solid #ccc;
+    text-align: right;
+  }
+}
+</style>

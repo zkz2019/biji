@@ -1,0 +1,97 @@
+<template>
+  <el-popover
+    class="disIB"
+    @show="onShowPopover"
+    @hide="onHidePopover"
+    placement="bottom-start"
+    trigger="click"
+  >
+    <fel-tree
+      :showCheckbox="showCheckbox"
+      ref="tree"
+      class="query tree1"
+      :interface="interfaceUrl"
+      @handleNodeClick="handleNodeClick"
+      @checkchange="checkchange"
+    ></fel-tree>
+    <div slot="reference" class="tree-select" @mouseout="onmouseout" @mouseover="onmouseover">
+      <el-tooltip :disabled="disabled" class="item" effect="dark" :content="value" placement="top">
+        <el-input :suffix-icon="suffixIcon" readonly v-model="value" placeholder="请选择组织">
+          <i
+            @click.stop="onClear"
+            v-show="isClear"
+            slot="suffix"
+            class="el-input__icon el-icon-circle-close el-input__clear"
+          ></i>
+        </el-input>
+      </el-tooltip>
+    </div>
+  </el-popover>
+</template>
+
+<script>
+export default {
+  props: {
+    showCheckbox: {
+      type: Boolean,
+      default: true
+    },
+    interface: String
+  },
+  data() {
+    return { value: "", suffixIcon: "el-icon-arrow-down", isClear: false };
+  },
+  computed: {
+    disabled() {
+      return this.byteLength(this.value) < 28;
+    },
+    interfaceUrl() {
+      return this.interface;
+    }
+  },
+  methods: {
+    byteLength(val) {
+      var count = 0;
+      for (var i = 0, l = val.length; i < l; i++) {
+        count += val.charCodeAt(i) <= 128 ? 1 : 2;
+      }
+      return count;
+    },
+    onmouseout() {
+      if (this.isClear) {
+        this.isClear = false;
+      }
+    },
+    onmouseover() {
+      if (this.value) {
+        this.isClear = true;
+      }
+    },
+    onShowPopover() {
+      this.suffixIcon = "el-icon-arrow-up";
+    },
+    onHidePopover() {
+      this.suffixIcon = "el-icon-arrow-down";
+    },
+    onClear() {
+      this.value = "";
+      if (this.$refs.tree) {
+        this.$refs.tree.resetChecked();
+      }
+      this.$emit("onSelection", {});
+      this.$emit("onChoice", []);
+    },
+    handleNodeClick(data) {
+      if (!this.showCheckbox) {
+        this.value = data.pgname;
+        this.$emit("onSelection", data);
+      }
+    },
+    checkchange(data, obj) {
+      let arr = obj.checkedNodes;
+      this.value = arr.map(o => o.pgname).join(",");
+      this.$emit("onChoice", arr);
+    }
+  }
+};
+</script>

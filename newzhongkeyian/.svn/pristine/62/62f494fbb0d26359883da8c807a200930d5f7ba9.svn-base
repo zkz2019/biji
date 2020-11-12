@@ -1,0 +1,146 @@
+<!-- 门虚掩报警统计 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inptext="'请选择时间'">
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+          <!-- <fel-date class="maR10 qh_date" v-model="dates"></fel-date> -->
+        </inpbox>
+        <inpbox :inptext="'选择位置'">
+          <queryPosition
+            ref="queryPosition"
+            class="maR10 qh_inp wid250"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/lockckanalysis/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/analysis/lockxyanalysis/2/getlockxyanalysis"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="paramObj"
+        @onEjectChange="onEjectChange"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+// import dateSelect from "./date-select";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { format } from "@/utils/utils.js";
+import queryPosition from "./queryPosition";
+export default {
+  name: "mxybjtj252",
+  components: {
+    queryPosition
+    // dateSelect
+  },
+  data() {
+    return {
+      paramObj: [],
+      dates: [],
+      param: { sdate: this.getparam(true), edate: this.getparam() },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间类型",
+          prop: "roomtype"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "时间",
+          prop: "unlockingdate"
+        },
+        {
+          name: "报警类型",
+          prop: "unlockingtype"
+        }
+      ],
+      refresh: 0
+    };
+  },
+  watch: {
+    // dates(val) {
+    //   if (val && val.length == 2) {
+    //     this.param.sdate = format(val[0], "yyyy-MM-dd HH:mm:ss");
+    //     this.param.edate = format(val[1], "yyyy-MM-dd HH:mm:ss");
+    //   } else {
+    //     let T = new Date();
+    //     let YM = format(T, "yyyy-MM");
+    //     let time = format(T, "dd HH:mm:ss");
+    //     let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+    //     this.param.sdate = tValue[0];
+    //     this.param.edate = tValue[1];
+    //   }
+    // }
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    getparam(val = false) {
+      let T = new Date();
+      let YM = format(T, "yyyy-MM");
+      let time = format(T, "dd HH:mm:ss");
+      let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+      if (val) {
+        return tValue[0];
+      } else {
+        return tValue[1];
+      }
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      this.$refs.dates.value2 = new Date();
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.$refs.queryPosition.onClear();
+      this.search();
+    },
+    onChoiceWZ(data) {
+      this.paramObj = data;
+    },
+    search() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd") + " 00:00:00";
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd") + " 23:59:59";
+      } else {
+        let T = new Date();
+        let YM = format(T, "yyyy-MM");
+        let time = format(T, "dd HH:mm:ss");
+        let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+        this.param.sdate = tValue[0];
+        this.param.edate = tValue[1];
+      }
+      this.refresh = new Date().getTime();
+    },
+     onEjectChange() {
+      this.$common.onEjectChange(this.list, "mxybjtj252");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "mxybjtj252");
+    }
+  }
+};
+</script>

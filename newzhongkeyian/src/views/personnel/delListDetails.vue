@@ -1,0 +1,115 @@
+<template>
+  <el-dialog
+    title="批量删除详情"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        interface="/person/8/getpersonauthdeldetails"
+        :list="listInfo"
+        :param="param"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input clearable class="search" v-model="param.search" placeholder="输入账号查询"></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    padid: String | Number
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { padid: "", search: "" },
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "时间",
+          prop: "padddate"
+        },
+
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "状态",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.paddstatus == "0") {
+                  return "正在删除";
+                } else if (this.scope.row.paddstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.paddstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "paddremark"
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.padid = this.padid;
+        this.onRefresh();
+      } else {
+        this.param.padid = "";
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

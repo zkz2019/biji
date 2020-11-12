@@ -1,0 +1,270 @@
+<template>
+  <div class="fel-tables">
+    <div class="top" v-if="!noOpera">
+      <slot></slot>
+      <span v-if="!noRefresh" @click="onRefresh" title="刷新" class="sli refresh">
+        <i class="el-icon-refresh"></i>
+      </span>
+      <el-popover :open-delay="200" class="sli operation" placement="bottom-end" trigger="hover">
+        <div class="eject">
+          <template v-for="(itrm, key) in list">
+            <div v-if="!itrm.noClose" class="li" :key="key">
+              <span class="name">{{itrm | filterName}}</span>
+              <el-switch
+                class="switch"
+                @change="onEjectChange"
+                v-model="itrm.show"
+                inactive-color="#13ce66"
+                active-color="#dcdfe6"
+              ></el-switch>
+            </div>
+          </template>
+        </div>
+        <span title="表格操作" class="but" slot="reference">
+          <i class="ficon-table"></i>
+        </span>
+      </el-popover>
+    </div>
+    <div class="div-table">
+      <el-table
+        :key="getKey"
+        :height="height"
+        v-on="$listeners"
+        ref="multipleTable"
+        v-loading="loading"
+        highlight-current-row
+        border
+        class="fel-table"
+        @current-change="currentChange"
+        @selection-change="selectionChange"
+        @row-click="clickRow"
+        :data="queryData"
+      >
+        <div class="div-empty" slot="empty">
+          <slot name="empty">
+            <span class="el-table__empty-text">暂无数据</span>
+          </slot>
+        </div>
+        <template v-if="expands && expands.length > 0">
+          <el-table-column type="expand">
+            <template slot-scope="props">
+              <el-form label-position="left" inline class="demo-table-expand">
+                <el-form-item v-for="(value, key) in expands" :key="key" :label="value.name">
+                  <template v-if="value.formatter">
+                    <span>{{ value.formatter(props.row, props.row[value.prop])}}</span>
+                  </template>
+                  <template v-else>
+                    <span>{{ props.row[value.prop]}}</span>
+                  </template>
+                </el-form-item>
+              </el-form>
+            </template>
+          </el-table-column>
+        </template>
+        <template v-for="(value, key) of list">
+          <template v-if="value.template && !value.show">
+            <el-table-column
+              :key="key"
+              :sortable="value.sortable"
+              :value="value"
+              :label="value.name"
+              :prop="value.prop"
+              :width="value.width"
+              :min-width="value.minWidth"
+              :render-header="value.render"
+            >
+              <template slot-scope="scope">
+                <component
+                  :key="key"
+                  v-on="$listeners"
+                  :scope="scope"
+                  :is="value.template | filterExtend"
+                ></component>
+              </template>
+            </el-table-column>
+          </template>
+          <template v-else-if="!value.show">
+            <el-table-column
+              :key="key"
+              :value="value"
+              :show-overflow-tooltip="typeof(value.tooltip) == 'undefined' ? true : value.tooltip"
+              :type="value.type"
+              :index="value.index"
+              :sortable="value.sortable"
+              :selectable="value.selectable"
+              :prop="value.prop"
+              :width="value.width"
+              :min-width="value.minWidth"
+              :label="value.name"
+              :formatter="value.formatter"
+              :render-header="value.render"
+            ></el-table-column>
+          </template>
+        </template>
+      </el-table>
+    </div>
+  </div>
+</template>
+
+<script>
+/***
+ * element-ui中teble组件的再次封装
+ * expands 展开行 (数组)
+ *  {
+ *    name: "列名",
+      width: "列宽",
+      prop: "列值",
+      formatter: "方法 数据过滤" (row)
+ *  }
+ * queryData 要展示的数据列表
+ * list 要展示数据了列 （数组）
+    {
+        type: "索引", index 单页
+        name: "列名",
+        width: "列宽",
+        prop: "列值",
+        noClose:"是否不可以关闭"
+        formatter: "方法 数据过滤" (row, column, 当前的值, index)
+        template:  // 组件
+            {
+                name: "", // 组件名称
+                props:["scope"], // 父类传的值 scope 
+                template: "" // 组件体
+            }
+    }
+ * height 表格的高度
+ * noOpera 去掉表格头上面的操作
+ * @onSelect 选中的事件 （currentRow）选中行的数据
+ */
+import Vue from "vue";
+export default {
+  name: "fel-table",
+  props: {
+    noRefresh: Boolean,
+    noClickRow: Boolean,
+    noOpera: Boolean,
+    queryData: Array,
+    expands: Array,
+    list: Array,
+    height: {
+      type: String,
+      default: "100%"
+    },
+    loading: Boolean,
+    defaultSelect: null
+    // showHeader:Boolean,
+  },
+  data() {
+    return {
+      times: null,
+      times1: null
+    };
+  },
+  computed: {
+    getKey() {
+      return new Date().getTime();
+    }
+  },
+  created() {
+    // window.addEventListener("resize", this.adjustWidth);
+  },
+  activated() {
+    // this.adjustWidth();
+  },
+  beforeDestroy() {
+    // window.removeEventListener("resize", this.adjustWidth);
+    // clearTimeout(this.times);
+    // clearTimeout(this.times1);
+  },
+  deactivated() {
+    // window.removeEventListener("resize", this.adjustWidth);
+    // clearTimeout(this.times);
+    // clearTimeout(this.times1);
+  },
+  methods: {
+    adjustWidth() {
+      let dom = this.$refs.multipleTable.$el; // document.getElementById("fel-tables");
+      if (dom) {
+        let w = this.$parent.$el.offsetWidth;
+        clearTimeout(this.times);
+        dom.style.width = w - 1 + "px";
+        setTimeout(() => {
+          dom.style.width = w + "px";
+        }, 100);
+      } else {
+        this.times = setTimeout(() => {
+          this.adjustWidth();
+        }, 100);
+      }
+    },
+    onRefresh() {
+      this.$emit("onRefresh");
+    },
+    currentChange: function(currentRow) {
+      if (currentRow) {
+        this.$emit("onSelect", currentRow);
+      }
+    },
+    selectionChange: function(data) {
+      this.$emit("onSelection", data);
+    },
+    onEjectChange(...arr) {
+      this.$emit("onEjectChange", ...arr);
+    },
+    clickRow(row) {
+      if (!this.noClickRow) {
+        this.toggleRowSelection(row);
+      }
+    },
+    setCurrent(row) {
+      this.$refs.multipleTable.setCurrentRow(row);
+    },
+    toggleAllSelection() {
+      this.$refs.multipleTable.toggleAllSelection();
+    },
+    toggleRowSelection(row) {
+      this.$refs.multipleTable.toggleRowSelection(row);
+    },
+    clearSelection() {
+      this.$refs.multipleTable.clearSelection();
+    }
+  },
+  watch: {
+    queryData: function() {
+      // this.adjustWidth();
+      // this.$refs.multipleTable.setCurrentRow(
+      //   this.queryData[this.defaultSelect]
+      // );
+    }
+  },
+  filters: {
+    filterName(itrm) {
+      if (itrm.name) {
+        return itrm.name;
+      } else if (itrm.type == "selection") {
+        return "多选框";
+      }
+    },
+    filterExtend(value) {
+      return Vue.extend(value);
+    }
+  },
+  // computed: {
+  //   getHeight() {
+  //     if (this.noOpera) {
+  //       return this.height;
+  //     } else {
+  //       if (this.height.indexOf("calc") != -1) {
+  //         let h = this.height;
+  //         h = h.replace("calc(", "");
+  //         h = h.replace(/\)\s*$/, "");
+  //         return `calc(${h} - 30px)`;
+  //       } else {
+  //         return `calc(${this.height} - 30px)`;
+  //       }
+  //     }
+  //   }
+  // },
+  components: {}
+};
+</script>

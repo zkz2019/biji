@@ -1,0 +1,208 @@
+<!-- 预约信息 -->
+<template>
+  <el-container class="reserveInfo">
+    <el-header class="heig30 query_headbox">
+      <retrieval class="query_head marpadbor0">
+        <inpbox :inpb="true">
+          <el-date-picker
+            v-model="param.sdate"
+            popper-class="formDate"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            type="datetime"
+            size="mini"
+            placeholder="选择日期时间"
+          ></el-date-picker>
+        </inpbox>
+        <inpbox inptext>
+          <el-input
+            clearable
+            class="search qh_w270 qh_inp"
+            v-model="param.search"
+            :placeholder="'输入姓名/进行检索'"
+          ></el-input>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-button class="qh_btn" type="primary" @click="onRefresh">确定</el-button>
+        </inpbox>
+        <!-- <inpbox inptext="" style="margin-right:10px;">
+          <el-button class="qh_btn" type="primary" @click="onAdd">新增预约</el-button>
+        </inpbox>-->
+        <inpbox inptext>
+          <el-button class="qh_btn" type="primary" @click="onDel">批量删除</el-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="pad0-10 query_main reserveInfo_table">
+      <paging-table
+        height="100%"
+        interface="/lock/operate/publicroom/5/getroomreservation"
+        class="heig100"
+        @onSelection="onSelection"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :noOpera="true"
+      ></paging-table>
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+export default {
+  props: {
+    checkedroom: Object
+  },
+  name: "history",
+  components: {},
+  data() {
+    let $this = this;
+    return {
+      rrids: [],
+      options: [],
+      value: "",
+      refresh: 0,
+      param: {
+        search: "",
+        sdate: "",
+        roomid: ""
+      },
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "时间",
+          prop: "rrsdate"
+        },
+        {
+          name: "预约人",
+          prop: "personname"
+        },
+        {
+          name: "组织",
+          prop: "personlocation"
+        },
+        {
+          name: "预约人电话",
+          prop: "personmobile"
+        },
+        {
+          name: "事由",
+          prop: "rrbei"
+        },
+        {
+          name: "备用开门人员",
+          prop: ""
+        },
+        {
+          name: "与会通知人员",
+          prop: "rrpersons"
+        },
+        {
+          name: "状态",
+          prop: "rrstate"
+        },
+        {
+          name: "操作",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                this.$confirm("确定要删除预约信息吗？", "提示", {
+                  confirmButtonText: "确定",
+                  cancelButtonText: "取消",
+                  type: "warning"
+                }).then(() => {
+                  this.$ajax(
+                  "/lock/operate/publicroom/8/deleteroomreservation",
+                  { roomid: $this.param.roomid },
+                  "1",
+                  [this.scope.row.rrid + ""]
+                )
+                  .then(res => {
+                    this.$message({
+                      message: "删除预约信息成功",
+                      type: "success"
+                    });
+                  })
+                  .catch(err => {
+                    this.$message({
+                      message: `[${err.resultCode}] `+err.resultMsg ,
+                      type: "error"
+                    });
+                  });
+                });
+                
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button  type="text" size="small" @click.stop="onClick">删除</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  computed: {
+    roomid() {
+      //   this.param.roomid = this.$store.state.fj38.checkedroom.roomid + "";
+      return this.checkedroom.roomid + "";
+    }
+  },
+  watch: {
+    roomid() {}
+  },
+  created() {
+    this.param.roomid = this.checkedroom.roomid;
+    this.$ajax("/lock/operate/info/d/getunlockingtype", {}, "1").then(res => {
+      this.options = res.result;
+    });
+  },
+  methods: {
+    onAdd() {},
+    onDel() {
+      if (this.rrids.length !== 0) {
+        this.$ajax(
+          "/lock/operate/publicroom/8/deleteroomreservation",
+          { roomid: this.param.roomid },
+          "1",
+          this.rrids
+        )
+          .then(res => {
+            this.$message({
+              message: "删除预约信息成功",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+              message: `[${err.resultCode}] `+err.resultMsg ,
+              type: "error"
+            });
+          });
+      } else {
+        this.$message({
+          message: "请选择需要删除的预约信息",
+          type: "error"
+        });
+      }
+    },
+    onRefresh() {
+      //刷新表格
+      this.refresh = new Date().getTime();
+    },
+    onSelection(data) {
+      this.rrids = [];
+      data.forEach(item => {
+        this.rrids.push(item.rrid + "");
+      });
+    }
+  }
+};
+</script>

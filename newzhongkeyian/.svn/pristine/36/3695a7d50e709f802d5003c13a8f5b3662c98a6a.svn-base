@@ -1,0 +1,626 @@
+<!-- 添加卡片 修改卡片 -->
+<!-- 友我 -->
+<template>
+  <el-dialog
+    class="cardAdd"
+    :title="title"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+    v-loading="loading"
+    append-to-body
+    :element-loading-text="'正在读取卡号'"
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.8)"
+  >
+    <fel-form
+      ref="felForm"
+      @submitForm="onClick"
+      @closeForm="beforeClose"
+      :selects="selects"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    />
+    <personnel
+      :param="personParam"
+      @onSelect="onSelect"
+      @beforeClose="personDialog=false"
+      :dialogVisible="personDialog"
+    ></personnel>
+    <cardReading
+      ref="cardReading"
+      :close="dialogVisible"
+      @onInstall="onInstall"
+      @resultdata="resultdata"
+    />
+  </el-dialog>
+</template>
+
+<script>
+// import { mapState, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
+import personnel from "./personnel";
+import { format } from "@/utils/utils.js";
+import cardReading from "./cardReading";
+export default {
+  components: {
+    cardReading,
+    personnel
+  },
+  props: {
+    type: String,
+    defaultData: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    // let checkAge = (rule, value, callback) => {
+    //   if (!value) {
+    //     callback(new Error("请选择录入机"));
+    //   } else {
+    //     if (this.isConnect) {
+    //       callback();
+    //     } else {
+    //       this.inSavefingerprintready(value, callback);
+    //     }
+    //   }
+    // };
+    return {
+      isConnect: false,
+      isIdCard: false,
+      personParam: {
+        search: ""
+      },
+      selects: {
+        cardtype: [],
+        fpcode: []
+      },
+      personDialog: false,
+      title: "添加卡片",
+      button: [
+        {
+          type: "2",
+          name: "确认"
+        }
+      ],
+      formData: [
+        {
+          width: "50%",
+          value: "cardtype",
+          name: "卡片类型",
+          type: "select",
+          disabled: false,
+          select: "cardtype",
+          slabel: "cardtypename",
+          svalue: "cardtype",
+          onChange: this.cardtypeChange,
+          rules: [
+            {
+              required: true,
+              message: "请选择卡片类型",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "cardcode",
+          name: "卡号",
+          type: "text",
+          disabled: false,
+          rules: [{ required: true, message: "请输入卡号", trigger: "blur" }],
+          buts: [
+            {
+              show: true,
+              class: "but-connect",
+              title: "读取身份证的卡号",
+              icon: "el-icon-thumb",
+              onClick: this.readIDCard
+            },
+            {
+              show: true,
+              class: "but-connect",
+              title: "读卡器软件下载",
+              icon: "el-icon-download",
+              onClick: this.onClickCardReader
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personname",
+          name: "使用人",
+          type: "text",
+          buts: [
+            {
+              class: "but-connect",
+              title: "搜索人员信息",
+              icon: "el-icon-search",
+              onClick: this.personClick
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personcode",
+          name: this.getNumber(),
+          type: "text"
+        },
+        // {
+        //   width: "50%",
+        //   value: "cardstate",
+        //   name: "状态",
+        //   type: "select",
+        //   select: [
+        //     {
+        //       value: "0",
+        //       label: "停用"
+        //     },
+        //     {
+        //       value: "1",
+        //       label: "启用"
+        //     }
+        //   ],
+        //   rules: [
+        //     {
+        //       required: true,
+        //       message: "请选择状态",
+        //       trigger: "change"
+        //     }
+        //   ]
+        // },
+
+        {
+          width: "50%",
+          value: "cardedate",
+          name: "卡片结束日期",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "openstime",
+          name: "每日授权开始时间",
+          type: "time",
+          format: "HH:mm"
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "openetime",
+          name: "每日授权结束时间",
+          type: "time",
+          format: "HH:mm"
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "opencount",
+          name: "可用次数",
+          placeholder: "不限次数",
+          type: "text"
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "day",
+          placeholder: "不限天数",
+          name: "授权卡授权天数",
+          type: "text"
+        }
+        // {
+        //   // noShow: false,
+        //   width:"50%",
+        //   value: "fpcode",
+        //   name: "录入机",
+        //   type: "select",
+        //   select: "fpcode",
+        //   ref: "fpcode",
+        //   slabel: "fpname",
+        //   svalue: "fpcode",
+        //   rules: [
+        //     {
+        //       required: true,
+        //       validator: checkAge,
+        //       trigger: "change"
+        //     }
+        //   ],
+        //   buts: [
+        //     {
+        //       class: "but-connect",
+        //       title: "重新连接",
+        //       icon: "ficon-connect",
+        //       onClick: this.onButClick
+        //     }
+        //   ]
+        // },
+      ],
+      personData: {},
+      count: 60,
+      setvals: null,
+      card: "",
+      card2: "",
+      loading: false
+    };
+  },
+  created() {
+    this.inGetcardtype();
+    // this.getfingerprint();
+  },
+  watch: {
+    type() {
+      if (this.type == "1") {
+        this.title = "修改卡片";
+        this.formData[0].type = "text";
+        this.formData[0].disabled = true;
+        this.formData[1].disabled = true;
+        this.formData[1].buts[1].show = true;
+      } else {
+        this.title = "添加卡片";
+        this.formData[0].type = "select";
+        this.formData[0].disabled = false;
+        this.formData[1].disabled = false;
+      }
+    },
+    defaultData(val) {
+      if (val.cardtype2 == 5) {
+        this.formData.forEach(obj => {
+          if (obj.hasOwnProperty("noShow")) {
+            obj.noShow = false;
+          }
+        });
+      } else {
+        this.formData.forEach(obj => {
+          if (obj.hasOwnProperty("noShow")) {
+            obj.noShow = true;
+          }
+        });
+      }
+    }
+  },
+  methods: {
+    onInstall(is) {
+      if (this.type == "1") {
+        this.formData[1].buts[1].show = true;
+      } else {
+        if (is) {
+          this.formData[1].buts[1].show = true;
+        } else {
+          this.formData[1].buts[1].show = false;
+        }
+      }
+    },
+    onClickCardReader() {
+      this.$refs["cardReading"].download();
+    },
+    // onButClick() {
+    //       this.isConnect = false;
+    //       if (this.$refs.felForm) {
+    //         this.$refs.felForm.validateField("fpcode");
+    //       }
+    //     },
+    // inSavefingerprintready(fpcode, callback) {  //查询指纹机状态
+    //       this.isConnect = false;
+    //       if (fpcode) {
+    //         this.loading = true;
+    //         this.$ajax(
+    //           "/auth/cardcenter/card/savecard/2/savefingerprintready",
+    //           {
+    //             fpcode: fpcode
+    //           },
+    //           "1"
+    //         )
+    //           .then(res => {
+    //             this.count = 60;
+    //             this.setvals = setInterval(() => {
+    //               if (this.count > 0) {
+    //                 this.count--;
+    //               } else {
+    //                 this.clearInter();
+    //                 callback(new Error("连接超时！"));
+    //               }
+    //             }, 1000);
+    //             this.getfingerprintreadyresult(res.result, callback,fpcode);
+    //           })
+    //           .catch(err => {
+    //             this.loading = false;
+    //             this.count = 60;
+    //             callback(new Error(err.resultMsg || "连接失败！"));
+    //           });
+    //       } else {
+    //         callback(new Error("数据有误，请重新选择其他指纹录入机器！"));
+    //       }
+    //     },
+
+    //     //获取读卡/指纹机状态结果 每2秒调用一次   60秒超时
+    //     getfingerprintreadyresult(readyid, callback,fpcode) {
+    //       this.$ajax(
+    //         "/auth/cardcenter/card/savecard/3/getfingerprintreadyresult",
+    //         {
+    //           readyid: readyid
+    //         },
+    //         "1"
+    //       )
+    //         .then(res => {
+    //           if (res.result.resultstate == 0) {
+    //             if (this.loading) {
+    //               setTimeout(() => {
+    //                 this.getfingerprintreadyresult(readyid, callback,fpcode);
+    //               }, 1000);
+    //             }
+    //           } else if (res.result.resultstate == 1) {
+    //             if (this.$refs.felForm) {
+    //               this.isConnect = this.$refs.felForm.ruleForm.fpcode;
+    //             } else {
+    //               this.isConnect = true;
+    //             }
+    //             this.inGetfingercode(fpcode);
+    //             this.clearInter();
+    //             callback();
+    //           } else {
+    //             this.clearInter();
+    //             callback(new Error(res.result.resultmsg || "连接失败！"));
+    //           }
+    //         })
+    //         .catch(err => {
+    //           this.clearInter();
+    //           callback(new Error(err.resultMsg || "连接失败！"));
+    //         });
+    //     },
+    //     //清空历史卡号
+    //     inDeletefingercode(data) {
+    //       this.count = 120;
+    //       this.loading = true;
+    //       this.$ajax(
+    //         "/auth/cardcenter/card/savecard/4/deletecardcode",
+    //         {
+    //           fpcode: data
+    //         },
+    //         "1"
+    //       )
+    //         .then(res => {
+    //           this.setvals = setInterval(() => {
+    //             if (this.count > 0) {
+    //               this.count--;
+    //             } else {
+    //               this.clearInter();
+    //               this.$message({
+    //                 showClose: true,
+    //                 message: "连接超时!",
+    //                 type: "error"
+    //               });
+    //             }
+    //           }, 1000);
+
+    //           this.$message("请录入卡号");
+    //         })
+    //         .catch(err => {
+    //               this.$message({
+    //                 showClose: true,
+    //                 message: `[${err.resultCode}] `+err.resultMsg ,
+    //                 type: "error"
+    //               });
+    //             });
+    //     },
+    //     clearInter() {
+    //       if (this.setvals) {
+    //         clearInterval(this.setvals);
+    //         this.setvals = null;
+    //       }
+    //       this.count = 60;
+    //       this.loading = false;
+    //     },
+    //     //读取卡号
+    //     inGetfingercode(data) {
+    //       this.$ajax(
+    //         "/auth/cardcenter/card/savecard/5/getcardcode",
+    //         {
+    //           fpcode: data
+    //         },
+    //         "1"
+    //       )
+    //         .then(res => {
+    //           if (res.resultCode == "0") {
+    //             if (res.result) {
+    //               this.clearInter();
+    //                 this.$message({
+    //                   showClose: true,
+    //                   message: "卡号读取成功！",
+    //                   type: "success"
+    //                 });
+    //                 this.cardcode = res.result; //第一次指纹存储
+    //                 this.count = 120;
+    //                 this.loading = true;
+    //                 this.setvals = setInterval(() => {
+    //                   if (this.count > 0) {
+    //                     this.count--;
+    //                   } else {
+    //                     this.clearInter();
+    //                     this.$message({
+    //                       showClose: true,
+    //                       message: "连接超时！",
+    //                       type: "error"
+    //                     });
+    //                   }
+    //                 }, 1000);
+    //           }}
+    //         })
+    //         .catch(err => {
+    //           if (this.loading) {
+    //             window.setTimeout(() => {
+    //               this.inGetfingercode(data);
+    //             }, 1000);
+    //           }
+    //         });
+    //     },
+    //添加指纹
+    // setsavefinger(data) {
+    //   this.$ajax(
+    //     this.interfaceUrl,
+    //     {
+    //       fgseq: data.fgseq, //手指ID
+    //       fingercontent: this.fingercontent, //第一次录入的指纹特征码
+    //       fingercontent2: this.fingercontent2, //第二次录入的指纹特征码
+    //       personcode: data.personcode
+    //     },
+    //     "1"
+    //   )
+    //     .then(res => {
+    //       this.clearInter();
+    //       // if (!this.disabled) {
+    //       //   this.getyourfingers(data.personcode);
+    //       // }
+    //       this.$message({
+    //         showClose: true,
+    //         message: "添加成功!",
+    //         type: "success"
+    //       });
+    //       this.$emit("success");
+    //     })
+    //     .catch(err => {
+    //       this.clearInter();
+    //       this.$message({
+    //         showClose: true,
+    //         message: `[${err.resultCode}] `+err.resultMsg ,
+    //         type: "error"
+    //       });
+    //     });
+    // },
+    //获取读卡机器列表
+    // getfingerprint() {
+    //   this.$ajax(
+    //     "/auth/cardcenter/card/savecard/1/getfingerprint",
+    //     {},
+    //     "1"
+    //   )
+    //     .then(res => {
+    //       this.selects.fpcode = res.result;
+    //     })
+    //     .catch(err => {
+    //           this.$message({
+    //             showClose: true,
+    //             message: `[${err.resultCode}] `+err.resultMsg ,
+    //             type: "error"
+    //           });
+    //         });
+    // },
+    readIDCard() {
+      this.$refs["cardReading"].readIDCard();
+    },
+    ...mapGetters(["getNumber"]),
+    cardtypeChange(arr, data) {
+      console.log("arr,data", arr, data);
+      data.personname = "";
+      data.personcode = "";
+      if (arr[0] == "5") {
+        this.formData.forEach(obj => {
+          if (obj.hasOwnProperty("noShow")) {
+            obj.noShow = false;
+          }
+        });
+        this.formData[1].buts[0].show = true;
+      } else {
+        if (arr[0] == "7") {
+          this.isIdCard = true;
+          this.formData[1].buts[0].show = false;
+        } else {
+          this.isIdCard = false;
+          this.formData[1].buts[0].show = true;
+        }
+        this.formData.forEach(obj => {
+          if (obj.hasOwnProperty("noShow")) {
+            obj.noShow = true;
+          }
+        });
+      }
+    },
+    //获取卡片类型
+    inGetcardtype() {
+      this.$ajax("/auth/cardcenter/card/2/getcardtype", {}, "1")
+        .then(res => {
+          this.selects.cardtype = res.result.cardtypes;
+        })
+        .catch(err => {});
+    },
+    resultdata(data) {
+      console.log("身份证data", data, this);
+      if (data.err == 0 || data.CardNo) {
+        if (this.isIdCard) {
+          if (data.Result > 0 && data.types === "2") {
+            //&&(data.types==="0"||data.types==="2")
+            if (this.type != "1") {
+              this.$refs.felForm.setData("cardcode", data.CardNo);
+            }
+          }
+        } else {
+          if (
+            data.Result > 0 &&
+            (data.FunctionID == 0 || data.FunctionID == 3)
+          ) {
+            //&&(data.types==="0"||data.types==="2")
+            if (this.type != "1") {
+              this.$refs.felForm.setData("cardcode", data.CardNo);
+            }
+          }
+        }
+      }
+    },
+    personClick(arr, value) {
+      if (value.cardtype) {
+        this.personDialog = true;
+        if (this.type == "1") {
+          this.personParam.cardtype = this.defaultData.cardtype2;
+        } else {
+          this.personParam.cardtype =
+            value.cardtype || this.defaultData.cardtype2;
+        }
+        this.personData = value;
+      } else {
+        this.$message({
+          message: "请先选择卡片类型",
+          type: "warning"
+        });
+      }
+    },
+    onSelect(data) {
+      this.personData.personname = data.personname;
+      this.personData.personcode = data.personcode;
+      this.personDialog = false;
+    },
+    beforeClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    },
+    onClick(data) {
+      // let obj = {
+      //   cardedate: format(data.cardedate, "yyyy-MM-dd HH:mm:ss"),
+      //   openstime: format(data.openstime, "HH:mm"),
+      //   openetime: format(data.openetime, "HH:mm"),
+      //   cardcode: data.cardcode, //string卡号
+      //   cardstate: data.cardstate, //string 卡片状态（0停用，1启用）
+      //   cardtype: data.cardtype, //string 1（学生卡）/2（职工卡）/3（管理卡）/4（巡更卡）/5（授权卡）/6（临时卡）/7（身份证）
+      //   day: data.day, //string 授权卡授权天数（卡片类型为授权卡时有效）
+      //   opencount: data.opencount, //string 授权卡授全每日可开门结束时间（卡片类型为授权卡时有效）
+      //   personcode: data.personcode //string 归属人员学/工号
+      // };
+      this.$emit("confirm", data);
+      // this.inDeletefingercode(data);
+    }
+  }
+};
+</script>
+
+<style lang='scss' scoped>
+</style>

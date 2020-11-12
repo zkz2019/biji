@@ -1,0 +1,91 @@
+@media screen and (max-width: 1500px) {
+    .con-select {
+        width: 190px;
+    }
+
+    .con-popover {
+        width: 230px;
+    }
+
+    .con-search {
+        width: 280px;
+    }
+
+}
+
+
+@media screen and (max-height: 760px) {
+    .login {
+
+        .loginbox {
+            margin-top: -210px;
+            width: 380px;
+            height: 420px;
+            padding: 24px;
+
+            .login-container {
+                .el-form-item {
+                    height: 44px;
+                    line-height: 44px;
+
+                    .el-form-item__label {
+                        height: 44px;
+                        line-height: 44px;
+                    }
+
+                    .el-form-item__content {
+                        line-height: 44px;
+
+                        input {
+                            height: 44px;
+                            line-height: 44px;
+                        }
+                    }
+                }
+
+                .form-test {
+
+                    .el-form-item__content {
+
+                        .login-img {
+                            height: 44px;
+
+                            .el-image {
+                                height: 44px;
+                            }
+
+                        }
+                    }
+                }
+
+                .login_but {
+                    height: 44px;
+                    line-height: 42px;
+                }
+            }
+        }
+    }
+
+    .com-title {
+        padding: 11px 0 0 32px;
+        height: 50px;
+    }
+
+    .query_head {
+        margin: 6px 14px;
+        padding: 7px 22px;
+    }
+
+    .query_main {
+        margin: 6px 14px 14px;
+        padding: 0 22px;
+
+        .paging-fy {
+            padding: 16px 3px 12px;
+        }
+    }
+
+    .fel-tables .el-table td {
+        padding: 5px 0;
+    }
+}

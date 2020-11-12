@@ -1,0 +1,129 @@
+<!-- 常开/常闭统计 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inptext="'选择位置'">
+          <queryPosition
+            ref="queryPosition"
+            class="qh_inp qh_w270"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/lockckanalysis/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox :inptext="'状态'">
+          <el-select class="wid100p qh_inp" v-model="param.status">
+            <el-option v-for="item in statuss" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wid100 heig100"
+        height="100%"
+        interface="/analysis/lockckanalysis/2/getlockckanalysis"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="paramObj"
+        @onEjectChange="onEjectChange"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import queryPosition from "./queryPosition";
+export default {
+  name: "ckcbtj254",
+  components: {
+    queryPosition
+  },
+  data() {
+    return {
+      paramObj: [],
+      statuss: [
+        {
+          id: "",
+          name: "全部"
+        },
+        {
+          id: "1",
+          name: "常闭"
+        },
+        {
+          id: "2",
+          name: "常开"
+        },
+        {
+          id: "3",
+          name: "未知"
+        }
+      ],
+      param: { search: "", status: "" },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间类型",
+          prop: "roomtype"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "常开/常闭",
+          prop: "cktype"
+        }
+      ],
+      refresh: 0
+    };
+  },
+    mounted() {
+    this.getEject();
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.$refs.queryPosition.onClear();
+      this.search();
+    },
+    onChoiceWZ(data) {
+      this.paramObj = data;
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      //将用户隐藏表格的信息存到localStorage
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("ckcbtj254.eject", arr);
+    },
+    getEject() {
+      //从localStorage获取用户隐藏表格的信息
+      let arr = Storages.getlocalStorage("ckcbtj254.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        obj.show = arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    }
+  }
+};
+</script>

@@ -1,0 +1,680 @@
+<!-- 添加指纹 -->
+<template>
+  <el-dialog
+    :title="title"
+    :visible.sync="dialogVisible"
+    :before-close="beforeClose"
+    v-loading="loading"
+    append-to-body
+    :element-loading-text="loadingtext"
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.8)"
+    width="730px"
+  >
+    <fel-form
+      ref="felForm"
+      class="single-row"
+      :selects="selects"
+      :button="buttons"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+    <personnel
+      @onSelect="openDetails"
+      interface="/auth/fingercenter/finger/savefinger/6/getfingerperson"
+      @beforeClose="personDialog=false"
+      :dialogVisible="personDialog"
+    ></personnel>
+    <cardReading
+      ref="cardReading"
+      :close="dialogReading"
+      types="1"
+      :next="true"
+      :MustLocal="true"
+      @onInstall="onInstall"
+      @resultdata="resultdata"
+    />
+  </el-dialog>
+</template>
+
+<script>
+import cardReading from "./../kwgl/cardReading";
+import personnel from "../kwgl/personnel";
+export default {
+  components: {
+    personnel,
+    cardReading
+  },
+  props: { 
+    interfaceUrl: {
+      type: String,
+      default: "/auth/fingercenter/finger/savefinger/8/savefinger"
+    },
+    param: Object,
+    dialogVisible: Boolean
+  },
+  data() {
+    let checkAge = (rule, value, callback) => {
+      if (!value) {
+        callback(new Error("请选择录入指纹机器"));
+      } else {
+        if (this.isConnect) {
+          callback();
+        } else {
+          this.inSavefingerprintready(value, callback);
+        }
+      }
+    };
+    return {
+      dialogReading: false,
+      disabled: false,
+      buttons: [
+        {
+          type: "1",
+          name: "关闭"
+        },
+        {
+          type: "2",
+          name: "开始录入"
+        }
+      ],
+      isConnect: false,
+      selects: {
+        fpcode: [],
+        fgseq: []
+      },
+      formData: [
+        {
+          value: "islocal",
+          name: "使用本地录入机",
+          type: "select",
+          select: [
+            { type: "是", id: "1" },
+            { type: "否", id: "0" }
+          ],
+          slabel: "type",
+          svalue: "id",
+          onChange: this.onLocal,
+          buts: [
+            {
+              show: true,
+              class: "but-connect",
+              title: "录入机软件下载",
+              icon: "el-icon-download",
+              onClick: this.onClickCardReader
+            }
+          ]
+        },
+        {
+          noShow: false,
+          value: "fpcode",
+          name: "录入指纹机器",
+          type: "select",
+          select: "fpcode",
+          ref: "fpcode",
+          slabel: "fpname",
+          svalue: "fpcode",
+          rules: [
+            {
+              required: true,
+              validator: checkAge,
+              trigger: "change"
+            }
+          ],
+          buts: [
+            {
+              class: "but-connect",
+              title: "重新连接",
+              icon: "ficon-connect",
+              onClick: this.onButClick
+            }
+            // {
+            //   class: "but-B",
+            //   name:"本地录入机",
+            //   onClick: this.onDetails
+            // }
+          ]
+        },
+        {
+          value: "personcode",
+          name: "录入人员编号",
+          type: "text",
+          rules: [
+            {
+              required: true,
+              validator(rule, value, callback) {
+                setTimeout(() => {
+                  if (!value) {
+                    callback(new Error("请输入录入人员编号"));
+                  } else {
+                    callback();
+                  }
+                }, 100);
+              },
+              trigger: "blur"
+            }
+          ],
+          disabled: false,
+          onBlur: this.onPersoncodeBlur,
+          buts: [
+            {
+              class: "but-connect ",//这个地方是故意留一个空格
+              title: "搜索人员信息",
+              icon: "el-icon-search",
+              onClick: this.onSearchClick
+            }
+          ]
+        },
+        {
+          value: "fgseq",
+          name: "录入指纹手指",
+          type: "select",
+          select: "fgseq",
+          slabel: "name",
+          svalue: "id",
+          disabled: false,
+          rules: [
+            {
+              required: true,
+              message: "请先选择录入指纹手指",
+              trigger: "change"
+            }
+          ]
+        }
+      ],
+      defaultData: {
+        fgseq: 1
+      },
+      personDialog: false,
+      fingercontent: "",
+      fingercontent2: "",
+      title: "添加指纹",
+      is_zw: "0", //判断是指纹机读取还是指纹录入  0 指纹机读取  1第一次指纹录入   2第二次指纹录入
+      loading: false,
+      setvals: null, //获取指纹机定时器
+      count: 60, //倒计时
+      isLocal: false,
+      next: { drive: 1, machine: 1 },
+      datas: {}
+    };
+  },
+  created() {},
+  methods: {
+    // ------本地指纹机方法开始
+    onClickCardReader() {
+      this.$refs["cardReading"].download();
+    },
+    onInstall(data) {
+      console.log("data", data);
+      if (data) {
+        this.next.drive = 1;
+        this.formData[0].buts[0].show = true;
+      } else {
+        this.next.drive = -1;
+        this.formData[0].buts[0].show = false;
+      }
+    },
+    resultdata(data) {
+      if (this.isLocal === "0") {
+        return;
+      }
+
+      if (data.err === 1) {
+        this.next.machine = -1;
+        return;
+      } else if (data.err === 2) {
+        this.next.machine = 1;
+        return;
+      } else {
+        this.next.machine = 1;
+      }
+      console.log("dataddddd", data, this.is_zw, this.next);
+      if (this.is_zw === "1") {
+        this.is_zw = "2";
+        this.fingercontent = data.CardNo;
+        this.entry();
+      } else if (this.is_zw === "2") {
+        this.fingercontent2 = data.CardNo;
+        this.loading = false;
+        this.is_zw = "0";
+        this.clearInter();
+        this.saveFingerprint();
+        // this.$message({
+        //   type: "success",
+        //   message: "录入完成!"
+        // });
+        // this.$set(this.defaultData, "fpcode", "已录入");
+        console.log("data", this.defaultData);
+      }
+    },
+    entry() {
+      this.clearInter();
+      this.count = 60;
+      console.log("进入entry", this.loading);
+      this.setvals = setInterval(() => {
+        this.count -= 1;
+        if (this.count < 1) {
+          console.log("进入entryaaaaa", this.loading);
+          this.is_zw = "0";
+          this.loading = false;
+          this.clearInter();
+          this.$message({
+            message: "未成功录入指纹,请重试!"
+          });
+        }
+      }, 1000);
+    },
+    saveFingerprint() {
+      let data = this.datas;
+      this.$ajax(
+        this.interfaceUrl,
+        {
+          fgseq: data.fgseq, //手指ID
+          fingercontent: this.fingercontent, //第一次录入的指纹特征码
+          fingercontent2: this.fingercontent2, //第二次录入的指纹特征码
+          personcode: data.personcode
+        },
+        "1"
+      )
+        .then(res => {
+          if (!this.disabled) {
+            this.getyourfingers(data.personcode);
+          }
+          this.$message({
+            showClose: true,
+            message: this.title+"成功!",
+            type: "success"
+          });
+          // this.beforeClose();
+          this.$emit("success");
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    // ------本地指纹机方法结束
+
+    onLocal(val) {
+      this.isLocal = val[0];
+      if (val[0] === "1") {
+        this.formData[1].noShow = true;
+      } else {
+        this.formData[1].noShow = false;
+      }
+      console.log("val", val, this.formData);
+    },
+    onButClick() {
+      this.isConnect = false;
+      if (this.$refs.felForm) {
+        this.$refs.felForm.validateField("fpcode");
+      }
+    },
+    onSearchClick() {
+      this.personDialog = true;
+    },
+    submitForm(data) {
+      console.log("data,this.isLocal", data, this.isLocal);
+      if (this.isLocal == "1") {
+        // 如果选中本地录入机就执行本地录入机的方法
+        if (this.next.drive === 1) {
+          //判断是否已安装驱动
+          if (this.next.machine === 1) {
+            //判断是否已接入设备
+            this.datas = data;
+            this.loading = true;
+            this.is_zw = "1";
+            this.entry();
+          } else if (this.next.machine === -1) {
+            this.$message({
+              type: "error",
+              message: "未找到录入机设备信息！"
+            });
+          }
+        } else if (this.next.drive === -1) {
+          this.$message({
+            type: "error",
+            message: "未找到录入机驱动！"
+          });
+        }
+      } else {
+        console.log("4");
+        this.fingercontent = "";
+        this.fingercontent2 = "";
+        this.inDeletefingercode(data);
+      }
+    },
+    inSavefingerprintready(fpcode, callback) {
+      this.isConnect = false;
+      if (fpcode) {
+        this.loading = true;
+        this.$ajax(
+          "/auth/fingercenter/finger/savefinger/2/savefingerprintready",
+          {
+            fpcode: fpcode
+          },
+          "1"
+        )
+          .then(res => {
+            this.count = 60;
+            this.setvals = setInterval(() => {
+              if (this.count > 0) {
+                this.count--;
+              } else {
+                this.clearInter();
+                callback(new Error("连接超时！"));
+              }
+            }, 1000);
+            this.getfingerprintreadyresult(res.result, callback);
+          })
+          .catch(err => {
+            this.loading = false;
+            this.count = 60;
+            callback(new Error(err.resultMsg || "连接失败！"));
+          });
+      } else {
+        callback(new Error("数据有误，请重新选择其他指纹录入机器！"));
+      }
+    },
+
+    //获取读卡/指纹机状态结果 每2秒调用一次   60秒超时
+    getfingerprintreadyresult(readyid, callback) {
+      this.$ajax(
+        "/auth/fingercenter/finger/savefinger/3/getfingerprintreadyresult",
+        {
+          readyid: readyid
+        },
+        "1"
+      )
+        .then(res => {
+          if (res.result.resultstate == 0) {
+            if (this.loading) {
+              setTimeout(() => {
+                this.getfingerprintreadyresult(readyid, callback);
+              }, 1000);
+            }
+          } else if (res.result.resultstate == 1) {
+            if (this.$refs.felForm) {
+              this.isConnect = this.$refs.felForm.ruleForm.fpcode;
+            } else {
+              this.isConnect = true;
+            }
+            this.clearInter();
+            callback();
+          } else {
+            this.clearInter();
+            callback(new Error(res.result.resultmsg || "连接失败！"));
+          }
+        })
+        .catch(err => {
+          this.clearInter();
+          callback(new Error(err.resultMsg || "连接失败！"));
+        });
+    },
+    //清空历史指纹
+    inDeletefingercode(data) {
+      this.count = 120;
+      this.is_zw = "1";
+      this.loading = true;
+      this.$ajax(
+        "/auth/fingercenter/finger/savefinger/4/deletefingercode",
+        {
+          fpcode: data.fpcode
+        },
+        "1"
+      )
+        .then(res => {
+          this.setvals = setInterval(() => {
+            if (this.count > 0) {
+              this.count--;
+            } else {
+              this.clearInter();
+              this.$message({
+                showClose: true,
+                message: "连接超时!",
+                type: "error"
+              });
+            }
+          }, 1000);
+          this.inGetfingercode(data);
+          this.$message("请录入第一次指纹");
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    clearInter() {
+      if (this.setvals) {
+        clearInterval(this.setvals);
+        this.setvals = null;
+      }
+      // this.count = 60;
+      // this.loading = false;
+    },
+    //读取指纹
+    inGetfingercode(data) {
+      this.$ajax(
+        "/auth/fingercenter/finger/savefinger/5/getfingercode",
+        {
+          fpcode: data.fpcode
+        },
+        "1"
+      )
+        .then(res => {
+          if (res.resultCode == "0") {
+            if (res.result) {
+              this.clearInter();
+              if (this.is_zw == "1") {
+                this.$message({
+                  showClose: true,
+                  message: "第一次指纹读取成功！请继续录入第二次指纹",
+                  type: "success"
+                });
+                this.fingercontent = res.result; //第一次指纹存储
+                this.is_zw = "2";
+                this.count = 120;
+                this.loading = true;
+                this.setvals = setInterval(() => {
+                  if (this.count > 0) {
+                    this.count--;
+                  } else {
+                    this.clearInter();
+                    this.$message({
+                      showClose: true,
+                      message: "连接超时！",
+                      type: "error"
+                    });
+                  }
+                }, 1000);
+                this.inGetfingercode(data);
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "第二次指纹读取成功！",
+                  type: "success"
+                });
+                this.fingercontent2 = res.result; //第二次指纹存储
+                this.is_zw = "3";
+                this.loading = true;
+                this.setsavefinger(data);
+              }
+            } else {
+              if (this.loading) {
+                window.setTimeout(() => {
+                  this.inGetfingercode(data);
+                }, 1000);
+              }
+            }
+          }
+        })
+        .catch(err => {
+          if (this.loading) {
+            window.setTimeout(() => {
+              this.inGetfingercode(data);
+            }, 1000);
+          }
+        });
+    },
+    //添加指纹
+    setsavefinger(data) {
+      this.$ajax(
+        this.interfaceUrl,
+        {
+          fgseq: data.fgseq, //手指ID
+          fingercontent: this.fingercontent, //第一次录入的指纹特征码
+          fingercontent2: this.fingercontent2, //第二次录入的指纹特征码
+          personcode: data.personcode
+        },
+        "1"
+      )
+        .then(res => {
+          this.clearInter();
+          if (!this.disabled) {
+            this.getyourfingers(data.personcode);
+          }
+          this.$message({
+            showClose: true,
+            message: "添加成功!",
+            type: "success"
+          });
+          this.$emit("success");
+        })
+        .catch(err => {
+          this.clearInter();
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    //获取指纹机器列表
+    getfingerprint() {
+      this.$ajax(
+        "/auth/fingercenter/finger/savefinger/1/getfingerprint",
+        {},
+        "1"
+      )
+        .then(res => {
+          this.selects.fpcode = res.result;
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      //关闭弹出框
+      if (false) {
+        this.is_zw = "0";
+        this.loading = false;
+      }
+      this.clearInter();
+      this.$emit("beforeClose");
+    },
+    //获取手指列表
+    getyourfingers(personcode) {
+      this.$ajax(
+        "/auth/fingercenter/finger/savefinger/7/getfingerperson",
+        { personcode: personcode },
+        "1"
+      )
+        .then(res => {
+          this.selects.fgseq = res.result;
+          if (this.$refs.felForm) {
+            let fgseq = this.$refs.felForm.ruleForm.fgseq;
+            let arr = this.selects.fgseq.map(o => o.id);
+            if (!arr.includes(fgseq)) {
+              this.$refs.felForm.ruleForm.fgseq = this.selects.fgseq[0].id;
+            }
+          }
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onPersoncodeBlur(arr, data) {
+      if (data.personcode) {
+        this.getyourfingers(data.personcode);
+      }
+    },
+    //确定使用人
+    openDetails(val) {
+      let personcode = val.personcode;
+      if (personcode) {
+        if (this.$refs.felForm) {
+          this.$refs.felForm.ruleForm.personcode = personcode;
+          this.$refs.felForm.validateField("personcode");
+        }
+        this.getyourfingers(personcode);
+        this.personDialog = false;
+      }
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.dialogReading = true;
+        this.getfingerprint();
+        this.getyourfingers("");
+        let fpcode = this.isConnect || "";
+        if (this.param && this.param.personcode) {
+          this.disabled = true;
+          this.defaultData = {
+            fpcode,
+            fgseq: this.param.fgseq,
+            personcode: this.param.personcode
+          };
+          this.title = "重新录入指纹";
+        } else {
+          this.disabled = false;
+          this.defaultData = {
+            fpcode,
+            fgseq: 1,
+            islocal: "0"
+          };
+          this.title = "添加指纹";
+        }
+        this.formData[1].noShow = false;
+        this.formData[2].disabled = this.disabled;
+        this.formData[3].disabled = this.disabled;
+      }
+    }
+  },
+  computed: {
+    loadingtext() {
+      if (this.is_zw == "0") {
+        return `指令正在发送，预计${this.count}秒后返回结果 `;
+      } else if (this.is_zw == "1") {
+        return `正在获取第一次指纹特征码，倒计时${this.count}秒...`;
+      } else if (this.is_zw == "2") {
+        return `正在获取第二次指纹特征码，倒计时${this.count}秒...`;
+      } else if (this.is_zw == "3") {
+        return `正在发送指纹，请稍后`;
+      }
+    }
+  },
+  beforeDestroy() {
+    this.dialogReading = false;
+    this.clearInter();
+  }
+};
+</script>

@@ -1,0 +1,101 @@
+<template>
+  <el-dialog
+    title="NB锁通讯"
+    width="50%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        height="100%"
+        interface="/system/device/devicenblock/6/getnbheartdetail"
+        class="wh100"
+        :param="params"
+        :refresh="refresh"
+        :list="datailList"
+      >
+        <fel-date style="width:370px!important;margin-right:15px;" size="mini" v-model="dates"></fel-date>
+        <el-button size="mini" type="primary" @click="search">查询</el-button>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+import { format } from "./../../../utils/utils";
+export default {
+  props: {
+    dialogVisible: { type: Boolean, require: true },
+    param: { type: Object }
+  },
+  data() {
+    return {
+      refresh: 0,
+      dates: [],
+      params: {
+        sdate: "",
+        edate: "",
+        roomid: ""
+      },
+      datailList: [
+        {
+          name: "心跳时间",
+          prop: "nhddate",
+          width:"220px"
+        },
+        {
+          name: "心跳内容",
+          prop: "nhdcontent"
+        },
+      ]
+    };
+  },
+  created() {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        let beforeDate = new Date();
+        this.dates = [
+          format(
+            new Date(beforeDate.getTime() - 24 * 60 * 60 * 1000),
+            "yyyy-MM-dd HH:mm:ss"
+          ), // + " 00:00:00",
+          format(new Date(), "yyyy-MM-dd HH:mm:ss") //+
+          // " " +
+          // String(new Date()).substring(16, 24)
+        ];
+        this.params.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.params.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+        this.search();
+      }
+    },
+    dates(val) {
+      if (val) {
+        this.params.sdate = format(val[0], "yyyy-MM-dd HH:mm:ss");
+        this.params.edate = format(val[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        let dates = [
+          format(new Date(), "yyyy-MM-dd HH:mm:ss"), //+ " 00:00:00",
+          format(new Date(), "yyyy-MM-dd HH:mm:ss") //+
+          // " " +
+          // String(new Date()).substring(16, 24)
+        ];
+        this.params.sdate = format(dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.params.edate = format(dates[1], "yyyy-MM-dd HH:mm:ss");
+      }
+    },
+    param(obj) {
+      this.params.roomid = obj.roomid;
+    }
+  },
+  methods: {
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

@@ -1,0 +1,232 @@
+<!-- 人员区域分布统计 -->
+<template>
+  <el-container class="ryqyfbtj101 wh100">
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inptext="'选择位置'">
+          <queryPosition
+            ref="queryPosition"
+            :showCheckbox="false"
+            class="con-popover qh_inp"
+            @onSelection="onChoiceWZ"
+            interface="/analysis/personanalysis/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox :inptext="'选择组织'">
+          <queryOrgan
+            ref="queryOrgan"
+            :showCheckbox="false"
+            class="con-popover qh_inp"
+            @onSelection="onChoiceZZ"
+            interface="/analysis/personanalysis/2/getpersontree"
+          ></queryOrgan>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <!-- <div class=""> -->
+      <el-container v-loading="loading" class="chart pad16-0">
+        <div class="ht zz"></div>
+        <div class="ht qy"></div>
+      </el-container>
+      <!-- </div> -->
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import queryPosition from "./queryPosition";
+import queryOrgan from "./queryOrgan";
+import echarts from 'echarts'
+export default {
+  name: "ryqyfbtj101",
+  components: {
+    queryPosition,
+    queryOrgan
+  },
+  data() {
+    return {
+      param: {
+        agid: "",
+        pgid: ""
+      },
+      loading: false,
+      myChart1: null,
+      myChart2: null
+    };
+  },
+  created() {
+    this.loading = true;
+    this.inQuery();
+  },
+  mounted() {
+    let ch = this.$el.querySelector(".chart");
+    this.setEcharts(ch.querySelector(".zz"), ch.querySelector(".qy"));
+  },
+  methods: {
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.$refs.queryPosition.onClear();
+      this.$refs.queryOrgan.onClear();
+      this.search();
+    },
+    onChoiceWZ(data) {
+      this.param.agid = data.buildid || "";
+    },
+    onChoiceZZ(data) {
+      this.param.pgid = data.pgid || "";
+    },
+    search() {
+      this.loading = true;
+      this.inQuery();
+    },
+    inQuery() {
+      this.$ajax(
+        "/analysis/personanalysis/3/getpersonanalysis",
+        this.param,
+        "1"
+      )
+        .then(res => {
+          let series = [],
+            legend = [];
+          res.result.group.forEach(obj => {
+            series.push({ name: obj.groupname, value: obj.groupcount });
+            legend.push(obj.groupname);
+          });
+          if (series.length == 0) {
+            series = [0];
+          }
+          if (this.myChart1) {
+            this.myChart1.setOption({
+              legend: {
+                data: legend
+              },
+              series: [
+                {
+                  data: series
+                }
+              ]
+            });
+          }
+          let series2 = [],
+            legend2 = [];
+          res.result.area.forEach(obj => {
+            series2.push({ name: obj.areaname, value: obj.areacount });
+            legend2.push(obj.areaname);
+          });
+          if (series2.length == 0) {
+            series2 = [0];
+          }
+          if (this.myChart2) {
+            this.myChart2.setOption({
+              legend: {
+                data: legend2
+              },
+              series: [
+                {
+                  data: series2
+                }
+              ]
+            });
+          }
+          this.loading = false;
+        })
+        .catch(err => {
+          this.loading = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+        });
+    },
+    setEcharts(dom1, dom2) {
+      // 基于准备好的dom，初始化echarts实例
+      this.myChart1 = echarts.init(dom1);
+      this.myChart2 = echarts.init(dom2);
+      // 绘制图表
+      this.myChart1.setOption({
+        title: {
+          text: "人员组织分布占比",
+          left: "center"
+        },
+        tooltip: {
+          trigger: "item",
+          formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        grid: {
+          top: 80
+        },
+        legend: {
+          type: "scroll",
+          orient: "vertical",
+          left: 10,
+          top: 20,
+          bottom: 20
+        },
+        series: [
+          {
+            name: "组织",
+            type: "pie",
+            minAngle: 1, // 设置每块扇形的最小占比
+            radius: "50%",
+            center: ["60%", "56%"],
+            itemStyle: {
+              emphasis: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: "rgba(0, 0, 0, 0.5)"
+              }
+            }
+          }
+        ]
+      });
+
+      this.myChart2.setOption({
+        title: {
+          text: "人员区域分布占比",
+          left: "center"
+        },
+        tooltip: {
+          trigger: "item",
+          formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        legend: {
+          type: "scroll",
+          orient: "vertical",
+          right: 10,
+          top: 20,
+          bottom: 20
+        },
+        grid: {
+          top: 100
+        },
+        series: [
+          {
+            name: "区域",
+            type: "pie",
+            radius: "50%",
+            minAngle: 1, // 设置每块扇形的最小占比
+            center: ["40%", "56%"],
+            itemStyle: {
+              emphasis: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: "rgba(0, 0, 0, 0.5)"
+              }
+            }
+          }
+        ]
+      });
+    }
+  }
+};
+</script>

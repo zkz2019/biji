@@ -1,0 +1,157 @@
+<!--  -->
+<template>
+  <el-dialog
+    title="批量删除列表"
+    width="70%"
+    class="importHistory"
+    :close-on-click-modal="false"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <paging-table
+        interface="/person/7/getpersonauthdel"
+        ref="paging-table"
+        :list="list"
+        :param="param"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input clearable class="search" v-model="param.search" :placeholder="'输入账号/姓名进行检索'"></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+    <delListDetails
+      :dialogVisible="DetailsVisible"
+      :padid="padid"
+      @beforeClose="DetailsVisible=false"
+    ></delListDetails>
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import delListDetails from "./delListDetails";
+export default {
+  props: {
+    dialogVisible: Boolean
+  },
+  components: {
+    delListDetails
+  },
+  data() {
+    let $this = this;
+    return {
+      DetailsVisible: false,
+      param: { search: "" },
+      padid: "",
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "日期",
+          prop: "paddate",
+          minWidth: "120px"
+        },
+        {
+          name: "操作者姓名",
+          prop: "username",
+          minWidth: "100px"
+        },
+        {
+          name: "操作账户",
+          prop: "userlogin",
+          minWidth: "90px"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "进度",
+          prop: "padallcount",
+          width: "80px",
+          formatter(row, b, c, d) {
+            if (row) {
+              let newtotal = Number(row.padnocount) + Number(row.padokcount);
+              let total = Number(row.padallcount);
+              return Math.floor((newtotal / total) * 100) + "%";
+            } else {
+              return "";
+            }
+          }
+        },
+        {
+          name: "删除数量",
+          prop: "padallcount",
+          minWidth: "80px"
+        },
+        {
+          name: "正在处理数",
+          prop: "padcount",
+          minWidth: "100px"
+        },
+        {
+          name: "处理成功数",
+          prop: "padokcount",
+          minWidth: "100px"
+        },
+        {
+          name: "处理失败数",
+          prop: "padnocount",
+          minWidth: "100px"
+        },
+
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(key) {
+                $this.onClick(this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick">详情</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.onRefresh();
+      } else {
+      }
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    onClick(data) {
+      this.padid = data.padid;
+      this.DetailsVisible = true;
+      console.log("data", data);
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

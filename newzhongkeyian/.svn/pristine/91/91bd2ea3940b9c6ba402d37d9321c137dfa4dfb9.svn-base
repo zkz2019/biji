@@ -1,0 +1,270 @@
+<template>
+  <div
+    @click="getfjlist(data, data.roomid )"
+    @dblclick="dbgetfjlist(data, data.roomid, )"
+    class="roomBox_box_subbox"
+  >
+    <article v-if="data.roomtype == 4" class="iconBox">
+      <span v-if="data.iswx == '1'" :class="getClass(data)" class="ficon-banshou pbanS"></span>
+      <span v-if="data.isyd > 0" :class="getClass(data)" class="ficon-suo psuo"></span>
+    </article>
+    <span
+      :class="
+        'type-' +
+        data.roomnetquality +
+        ' ' +
+        (selection == data.roomid? 'selection' : '')
+      "
+    ></span>
+    <div class="roomBox_box_subbox_first">
+      <img :class="getCl(data)" v-if="true" :src="getUrl(data)" :title="setTitle(data)" />
+      <div :title="setTitle(data)" class="roomtext">
+        {{
+        data.roomtype2 != 2
+        ? /[\u4E00-\u9FA5]|[\uFE30-\uFFA0]/gi.test(data.roomname)
+        ? data.roomname.substring(0, 3)
+        : data.roomname
+        : ''
+        }}
+      </div>
+    </div>
+    <div
+      class="roomBox_box_subbox_second"
+      :class="{
+        Danger: data.roomtype == 4 && data.roomrzperson != 0,
+      }"
+      v-if="
+        data.roomtype2 == 1 &&
+        data.roomnetquality != '0' &&
+        data.roomnetquality != '-2' &&
+        (data.roomtype == '1' || data.roomtype == '4')
+      "
+    >
+      {{
+      data.roomtype == 1 || data.roomtype == 4
+      ? data.roomrzperson
+      : data.roombdcard
+      }}/{{
+      data.roomtype == 1 || data.roomtype == 4
+      ? data.roommaxperson
+      : data.roommaxcard
+      }}
+    </div>
+    <admin
+      :btnRight="
+        this.btnAll && this.btnAll.fjczBtn && this.btnAll.fjczBtn.childs
+      "
+      :param="param"
+      :dialogVisible="dialogVisible"
+      @refresh="adminRefresh"
+      @beforeClose="dialogVisible = false"
+    ></admin>
+  </div>
+</template>
+
+<script>
+import admin from "./../admin";
+import { mapGetters, mapMutations } from "vuex";
+export default {
+  props: {
+    btnAll: Object,
+    data: Object,
+    selection: String | Number
+  },
+  components: {
+    admin
+  },
+  data: () => {
+    return {
+      // selection: "",
+      getRoomtype2s: {},
+      roomnexttypes: {},
+      param: {},
+      dialogVisible: false
+    };
+  },
+  created() {
+    this.roomnexttypes = this.getRoomnexttype()();
+    this.getRoomtype2s = this.getRoomtype2()();
+  },
+  watch: {
+    dialogVisible(val) {
+      if (!val) {
+        // this.adminRefresh();
+      }
+    }
+  },
+  methods: {
+    ...mapMutations(["fj38setAdminInfo"]),
+    ...mapGetters(["getRoomnexttype", "getRoomtype2"]),
+    adminRefresh() {},
+    getfjlist(data, key) {
+      console.log("data,key,obj", data, key);
+      if (data.roomnetquality == 0) {
+        return;
+      }
+      if (data.roomtype2 == "1") {
+        // this.selection = key;
+        this.$emit("changeSelection", key);
+        // data.roomlocation = obj.roomlocation;
+        this.fj38setAdminInfo(data);
+        this.param = data;
+        // this.$emit("onSelection", data);
+      }
+    },
+    dbgetfjlist(data, key) {
+      if (data.roomnetquality == 0) {
+        return;
+      }
+      if (data.roomtype2 == "1") {
+        // this.selection = key;
+        this.$emit("changeSelection", key);
+        // data.roomlocation = obj.roomlocation;
+        this.fj38setAdminInfo(data);
+        this.param = data;
+        this.dialogVisible = true;
+        // this.$emit("onSelection", data, true);
+      }
+    },
+    getClass(data) {
+      if (data.roomnetquality > 0) {
+        return "Blue";
+      } else if (data.roomnetquality == -1 || data.roomnetquality == -3) {
+        return "Danger";
+      } else {
+        return "C333";
+      }
+    },
+    setTitle(obj) {
+      let map = this.getRoomtype2s;
+      // {
+      //   "1": "宿舍",
+      //   "2": "公共",
+      //   "4": "酒店"
+      // };
+      let map2 = this.roomnexttypes;
+      map2[""] = "公共";
+      let map3 = {
+        "1": "房间",
+        "2": "楼梯",
+        "3": "装饰间"
+      };
+      // {
+      //   "": "公共",
+      //   "1": "教室",
+      //   "2": "办公室",
+      //   "3": "会议室",
+      //   "4": "实验室"
+      // };
+      let name = map[obj.roomtype];
+      if (obj.roomtype2 == 2) {
+        name = "";
+      } else if (obj.roomtype2 == 3) {
+        name = "装饰间";
+      }
+      if (obj.roomtype == 2) {
+        name = map2[obj.roomnexttype];
+      }
+      return name + "\n" + obj.roomname;
+    },
+    getUrl(data) {
+      //动态添加src的url
+      // if(data==undefined){
+      //     return;
+      // }
+      // openorclose    开关门
+      // roomnetquality 通讯状态
+      // roomcharge     电量
+      // roomtype       房间类型
+      // roomtype2      建筑类型
+      let img = "";
+      if (data.roomtype2 == 1) {
+        // 判断是否为房间
+        if (data.openorclose == 1) {
+          //判断开关门状态
+          if (data.roomnetquality > 0) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../../assets/image/km11.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../../assets/image/km21.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../../assets/image/km31.png");
+            } else {
+              img = require("../../../assets/image/km41.png");
+            }
+          } else if (data.roomnetquality == -1 || data.roomnetquality == -3) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../../assets/image/km10.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../../assets/image/km20.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../../assets/image/km30.png");
+            } else {
+              img = require("../../../assets/image/km40.png");
+            }
+          } else {
+            img = require("../../../assets/image/weianzhuang1.png");
+          }
+        } else {
+          //判断开关门状态
+          if (data.roomnetquality > 0) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../../assets/image/gm11.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../../assets/image/gm21.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../../assets/image/gm31.png");
+            } else {
+              img = require("../../../assets/image/gm41.png");
+            }
+          } else if (data.roomnetquality == -1 || data.roomnetquality == -3) {
+            //判断通讯状态
+            if (data.roomcharge >= 90) {
+              //判断电量
+              img = require("../../../assets/image/gm10.png");
+            } else if (data.roomcharge < 90 && data.roomcharge >= 60) {
+              img = require("../../../assets/image/gm20.png");
+            } else if (data.roomcharge < 60 && data.roomcharge >= 20) {
+              img = require("../../../assets/image/gm30.png");
+            } else {
+              img = require("../../../assets/image/gm40.png");
+            }
+          } else {
+            img = require("../../../assets/image/weianzhuang1.png");
+          }
+        }
+      } else if (data.roomtype2 == 2) {
+        // 判断是否为楼梯
+        img = require("../../../assets/image/stairs.png"); //楼梯
+      } else {
+        if (data.openorclose == 1) {
+          img = require("../../../assets/image/shebeijian.png");
+        } else {
+          img = require("../../../assets/image/shebeijian.png");
+        }
+      }
+
+      return img;
+    },
+    getCl(data) {
+      //楼梯样式
+      let cl = "";
+      if (data.roomtype2 == 2) {
+        // 判断是否为楼梯
+        cl = "louti"; //楼梯
+      } else {
+        cl = "";
+      }
+      return cl;
+    }
+  }
+};
+</script>
+
+<style></style>

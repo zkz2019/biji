@@ -1,0 +1,325 @@
+<template>
+  <el-container>
+    <offLine
+      v-if="addBut"
+      :addBut="addBut"
+      :offLineBut="offLineBut"
+      @onReturn="addBut=false"
+      class="wid100"
+    ></offLine>
+    <template v-else>
+      <el-header class="query_headbox">
+        <com-title>{{toParam.alias}}</com-title>
+        <retrieval class="query_head">
+          <inpbox :inptext="'请输入'">
+            <el-input
+              clearable
+              class="wid300 qh_inp"
+              v-model="param.search"
+              :placeholder="'输入卡号|姓名|'+getNumber()+'搜索'"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <el-button @click="cardInput" class="qh_btn" type="primary">查询</el-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </el-header>
+      <el-main class="pad0 query_main">
+        <paging-table
+          class="tobleList wh100"
+          height="100%"
+          interface="/auth/cardcenter/offlineauth/1/getofflineauth"
+          @onSelection="onSelection"
+          :list="list"
+          :refresh="refresh"
+          :param="param"
+          @onEjectChange="onEjectChange"
+        >
+          <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+            <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+            {{v.alias}}
+          </span>
+        </paging-table>
+      </el-main>
+    </template>
+    <batchEdit
+      offLine
+      :defaultData="defaultData"
+      @confirm="confirm"
+      :dialogVisible="dialogEdit"
+      @beforeClose="dialogEdit=false"
+    ></batchEdit>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import batchEdit from "./batchEdit";
+import offLine from "./offLine";
+export default {
+  components: {
+    batchEdit,
+    offLine
+  },
+  props: {
+    toParam: null
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  data() {
+    let $this = this;
+    return {
+      offLineBut: [],
+      topButs: [],
+      listBut: [],
+      addBut: false,
+      dialogEdit: false,
+      editData: [],
+      param: {
+        search: ""
+      },
+      list: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "被授权人",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "授权日期",
+          prop: "olcdate"
+        },
+        {
+          name: "结束日期",
+          prop: "oledate",
+          formatter(a, b, c) {
+            if (/^[0-9\-]{10}$/.test(c)) {
+              return c + " 23:59:59";
+            } else {
+              return c;
+            }
+          }
+        },
+        {
+          name: "授权状态",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.isemp;
+                if (value == "授权正常") {
+                  return "puc-pg";
+                } else if (value == "授权失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.isemp}}</span>`
+          }
+        },
+        {
+          name: "操作",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              }
+            },
+            methods: {
+              onClick(key) {
+                if (key == 9) {
+                  $this.editData = Object.assign({}, this.scope.row);
+                  let edate = this.scope.row.oledate;
+                  if (/^[0-9\-]*$/.test(edate)) {
+                    $this.defaultData = {
+                      edate: edate
+                    };
+                  } else {
+                    $this.defaultData = {
+                      edate: ""
+                    };
+                  }
+                  $this.dialogEdit = true;
+                }
+              }
+            },
+            template: `<div class="operat-buts"> 
+            <fel-button v-for="(v,k) of listBut" :key="k" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</fel-button>
+            </div>`
+          }
+        }
+      ],
+      refresh: 0,
+      tableData: [],
+      defaultData: {},
+      sonmenu: 0
+    };
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "398") {
+              this.listBut.push({ type: "9", name: alias, alias });
+              // } else if (id == "473") {
+              //   this.topButs.push(value.entity);
+            } else if (id == "472") {
+              if (value.childs) {
+                this.offLineBut = value.childs.map(o => o.entity);
+              }
+              this.topButs.push(value.entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    //重置事件
+    onReset() {
+      this.param.search = "";
+      this.cardInput();
+    },
+    ...mapGetters(["getNumber"]),
+    onSelection(data) {
+      this.tableData = data;
+    },
+    confirm(data) {
+      let arr = [];
+      if (this.editData instanceof Array) {
+        this.editData.forEach(obj => {
+          obj["oledate"] = data.edate || "";
+        });
+        arr = this.editData;
+      } else {
+        this.editData["oledate"] = data.edate || "";
+        arr.push(this.editData);
+      }
+      this.edit(arr);
+    },
+    cardInput() {
+      this.refresh = new Date().getTime();
+    },
+    //删除离线授权
+    delete(arr) {
+      this.$confirm("确定要删除这些授权吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax(
+            "/auth/cardcenter/offlineauth/saveofflineauth/1/deleteofflineauth",
+            {},
+            "1",
+            arr
+          )
+            .then(res => {
+              this.cardInput();
+              this.$message({
+                message: "删除成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+    //修改
+    edit(arr) {
+      this.$ajax(
+        "/auth/cardcenter/offlineauth/saveofflineauth/1/updateofflineauth",
+        {},
+        "1",
+        arr,
+        true
+      )
+        .then(res => {
+          this.cardInput();
+          this.dialogEdit = false;
+          this.$message({
+            message: "修改成功",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onClick(key, data) {
+      if (key == 1) {
+        if (this.tableData && this.tableData.length > 0) {
+          this.editData = this.tableData;
+          this.dialogEdit = true;
+          this.defaultData = {
+            // sdate: "",
+            edate: ""
+            // openstime: "",
+            // openetime: "",
+            // usecount: ""
+          };
+        } else {
+          this.$message({
+            message: "请先选择",
+            type: "warning"
+          });
+        }
+      } else if (key == "472") {
+        this.addBut = true;
+      }
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "lxsq386");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "lxsq386");
+    }
+  }
+};
+</script>

@@ -1,0 +1,130 @@
+<template>
+  <div class="dateSelect">
+    <el-date-picker
+      :picker-options="pickerOptions1"
+      class="month"
+      v-model="value2"
+      :clearable="false"
+      popper-class="miniDateM"
+      type="month"
+      placeholder="选择月"
+    ></el-date-picker>
+    <el-date-picker
+      ref="picker"
+      :value="value"
+      type="daterange"
+      start-placeholder="开始日期"
+      end-placeholder="结束日期"
+      popper-class="dateSelect_picker1 dateQueryList"
+      :picker-options="pickerOptions"
+      @input="onInput"
+    ></el-date-picker>
+  </div>
+</template>
+
+<script>
+import { format } from "@/utils/utils.js";
+export default {
+  data() {
+    return {
+      value2: "",
+      tValue: "",
+      defalutTime: "",
+      next: true,
+      pickerOptions: {},
+      pickerOptions1: {},
+    };
+  },
+  props: {
+    value: { type: Array | String, default: [] },
+  },
+  model: {
+    prop: "value",
+    event: "change",
+  },
+  watch: {
+    value(val) {
+      this.next = false;
+      if (val == null) {
+        this.value2 = new Date();
+      } else {
+        this.value2 = new Date(val[0]);
+      }
+    },
+    value2(val) {
+      this.setTime(val);
+    },
+    tValue(val) {
+      this.pickerOptions = {
+        disabledDate(time) {
+          return (
+            new Date(val[0]) > time.getTime() ||
+            time.getTime() > new Date(val[1])
+          );
+        },
+      };
+    },
+  },
+  created() {
+    this.pickerOptions1 = {
+      disabledDate(time) {
+        return time.getTime() > Date.now();
+      },
+    };
+    if (this.value) {
+      this.value2 = new Date(this.value[0]);
+    } else {
+      this.value2 = new Date();
+    }
+  },
+  mounted() {},
+  methods: {
+    setTime(val) {
+      let year = val.getFullYear();
+      let month = val.getMonth() + 1;
+      let total = new Date(year, month, 0).getDate();
+      let T = new Date();
+      let currentY = T.getFullYear();
+      let current = T.getMonth() + 1;
+      let time = "";
+      let YM = format(val, "yyyy/MM");
+      if (year == currentY && current == month) {
+        time = format(T, "dd");
+      } else {
+        time = total;
+      }
+      this.tValue = [`${YM}/01 00:00:00`, `${YM}/${time} 23:59:59`];
+      if (!this.next) {
+        this.next = true;
+        return;
+      }
+      this.$emit("change", this.tValue);
+    },
+    onInput(data) {
+      this.$emit("change", data);
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.dateSelect_picker1 {
+  width: 270px;
+  .el-picker-panel__body-wrapper {
+    .el-picker-panel__body {
+      min-width: 200px;
+      .el-picker-panel__content {
+        width: 100%;
+        .el-date-range-picker__header {
+          .el-picker-panel__icon-btn {
+            display: none;
+          }
+        }
+      }
+      .el-picker-panel__content:last-child {
+        display: none;
+      }
+    }
+  }
+}
+</style>

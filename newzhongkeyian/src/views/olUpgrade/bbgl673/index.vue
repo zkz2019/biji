@@ -1,0 +1,271 @@
+<!-- 版本管理 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <com-title>{{title}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.type" filterable placeholder="请选择">
+            <el-option v-for="item in options" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/system/onlineup/version/1/getversions"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        @sort-change="sortChange"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+      </paging-table>
+    </el-main>
+    <add
+      :types="addType"
+      :dvid="dvid"
+      :dialogVisible="dialogVisible"
+      @beforeClose="dialogVisible=false"
+      :options="addOptions"
+    ></add>
+  </el-container>
+</template>
+
+<script>
+import add from "./add";
+import Storages from "./../../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import { format, download } from "@/utils/utils.js";
+export default {
+  props: {},
+  components: { add },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      refreshTable: 0,
+      dialogVisible: false,
+      title: "版本管理",
+      dvid: "",
+      addType: "",
+      options: [{ id: "", name: "全部设备类型" }],
+      addOptions: [],
+      // value: "0",
+      param: { type: "", sequence: "", sortby: "" },
+      topButs: [],
+      listBut: [],
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "操作时间",
+          sortable: "custom",
+          prop: "dvcdate",
+        },
+        {
+          name: "操作账号",
+          sortable: "custom",
+          prop: "userlogin",
+        },
+        {
+          name: "设备类型",
+          sortable: "custom",
+          prop: "type",
+        },
+        {
+          name: "项目号",
+          sortable: "custom",
+          prop: "dvprojectnum",
+        },
+        {
+          name: "版本号",
+          sortable: "custom",
+          prop: "deviceversion",
+        },
+        {
+          name: "生成时间",
+          sortable: "custom",
+          prop: "dvcheckdate",
+        },
+        {
+          name: "更新内容",
+          sortable: "custom",
+          prop: "dvbei",
+        },
+        {
+          name: "操作",
+          width: "150px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            methods: {
+              onClick(key, row) {
+                $this.onClick(key, row);
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type,scope.row)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+    };
+  },
+  watch: {},
+  created() {
+    this.getOptions();
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.search();
+    },
+    onClick(key, data) {
+      if (key == "675") {
+        this.dvid = "";
+        this.addType = "1";
+        this.dialogVisible = true;
+      } else if (key == "z1") {
+        this.dvid = data.dvid;
+        this.addType = "3";
+        this.dialogVisible = true;
+      } else if (key == "z2") {
+        this.dvid = data.dvid;
+        this.addType = "2";
+        this.dialogVisible = true;
+      } else if (key == "745") {
+        this.addType = "4";
+        this.dialogVisible = true;
+      } else if (key == "z3") {
+        this.$confirm("确定要进行删除此版本吗?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        }).then(() => {
+          this.$ajax(
+            "/system/onlineup/deleteversion/1/deleteversion",
+            { dvid: data.dvid },
+            "1",
+            {},
+            true
+          )
+            .then((res) => {
+              this.$message({
+                type: "success",
+                message: "删除成功!",
+              });
+              this.onRefreshTable();
+            })
+            .catch((err) => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error",
+              });
+            });
+        });
+      }
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "673" }, "1")
+        .then((res) => {
+          res.result.forEach((item) => {
+            const entity = item.entity;
+            if (entity.id == "675") {
+              this.topButs.push(item.entity);
+            } else if (entity.id == "681") {
+              this.listBut.push({
+                type: "z1",
+                name: entity.alias,
+              });
+            } else if (entity.id == "682") {
+              this.listBut.push({
+                type: "z2",
+                name: entity.alias,
+              });
+            } else if (entity.id == "745") {
+              this.topButs.push(item.entity);
+            } else if (entity.id == "942") {
+              this.listBut.push({
+                type: "z3",
+                name: entity.alias,
+              });
+            }
+          });
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    getOptions() {
+      //获取下拉框选项
+      this.$ajax("/system/onlineup/version/2/getdevicetype", {}, "1").then(
+        (res) => {
+          this.options = [...this.options, ...res.result];
+          this.addOptions = res.result;
+        }
+      );
+    },
+    //重置事件
+    onReset() {
+      // this.value = "0";
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "bbgl673");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "bbgl673");
+    },
+  },
+};
+</script>

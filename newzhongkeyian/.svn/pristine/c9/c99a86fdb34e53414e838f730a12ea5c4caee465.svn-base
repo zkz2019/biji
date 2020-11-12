@@ -1,0 +1,587 @@
+<template></template>
+
+<script>
+import { loadScript } from "@/utils/utils.js";
+import setting from "@/setting.js";
+export default {
+  props: {
+    close: Boolean,
+    type: {
+      type: String | Number,
+      default: 0
+    }
+  },
+  data() {
+    return {
+      isInstall: false,
+      sectors: [],
+      adyjk: true,
+      rfidreader: null
+    };
+  },
+  created() {
+    this.jzjs(() => {
+      this.isInstall = false;
+      this.$emit("onInstall", false);
+      // alert("创建友我科技RFID云服务连接失败，请先下载安装！");
+      // window.location =
+      //   "http://www.youwokeji.com.cn/CloudReader/YOWORFIDReaderCloudForWeb.exe";
+      // window.setTimeout(() => {
+      //   this.judgeLoad();
+      // }, 10000);
+    });
+  },
+  watch: {
+    close() {
+      if (this.close) {
+        this.adyjk = true;
+        this.jzjs(() => {
+          if (this.adyjk) {
+            // this.$message({
+            //   showClose: true,
+            //   message: "创建友我科技RFID云服务连接失败，请先安装！",
+            //   type: "error"
+            // });
+            this.isInstall = false;
+            this.$emit("onInstall", false);
+            window.setTimeout(() => {
+              this.judgeLoad();
+            }, 5000);
+          }
+        });
+      } else {
+        this.adyjk = false;
+        this.disconnect();
+      }
+    }
+  },
+  beforeDestroy() {
+    this.adyjk = false;
+    this.disconnect();
+  },
+  methods: {
+    tips(callback, errCallback) {
+      if (this.isInstall) {
+        if (callback) {
+          callback();
+        }
+      } else {
+        this.jzjs(errCallback, callback);
+      }
+    },
+    download() {
+      window.location =
+        "/download/YOWORFIDReaderCloudForWeb.exe";
+      window.setTimeout(() => {
+        this.judgeLoad();
+      }, 10000);
+    },
+    jzjs(callback, Success) {
+      if (this.$config.system.name == "windows") {
+        if (typeof YOWORFIDReader == "undefined") {
+          loadScript(
+            "http://127.0.0.1:8008/YOWOCloudRFIDReader.js",
+            () => {
+              this.loadExe();
+              if (Success) {
+                Success();
+              }
+            },
+            () => {
+              if (callback) {
+                callback();
+              }
+            }
+          );
+        } else {
+          this.init();
+        }
+      } else {
+        setTimeout(() => {
+          this.$message({
+            showClose: true,
+            message:
+              "当前系统不支持友我科技RFID云服务，不能读写卡！目前只支持windows系统",
+            type: "error"
+          });
+        }, 1000);
+      }
+    },
+    judgeLoad() {
+      this.jzjs(() => {
+        if (this.adyjk) {
+          window.setTimeout(() => {
+            this.judgeLoad();
+          }, 5000);
+        }
+      });
+    },
+    callback() {},
+    disconnect() {
+      if (this.rfidreader) {
+        this.rfidreader.Disconnect();
+        this.rfidreader = null;
+      }
+    },
+    init() {
+      if (this.rfidreader) {
+        this.disconnect();
+      }
+      if (typeof YOWORFIDReader != "undefined" && YOWORFIDReader) {
+        this.rfidreader = YOWORFIDReader.createNew();
+        if (!this.rfidreader.TryConnect()) {
+          this.$message({
+            showClose: true,
+            message: "浏览器不支持友我科技RFID云服务，请更换浏览器后重试！",
+            type: "error"
+          });
+        }
+        this.rfidreader.onResult(resultdata => {
+          let arr = [0, 3, 5, 6];
+          if (arr.includes(resultdata.FunctionID)) {
+            this.callback(resultdata);
+            this.$emit("resultdata", resultdata);
+          }
+        });
+        if (this.type == 0) {
+          this.cardNumber();
+        }
+        this.isInstall = true;
+        this.$emit("onInstall", true);
+      }
+    },
+    readIDCard() {
+      this.tips(
+        () => {
+          this.rfidreader.Repeat = 0;
+          this.rfidreader.HaltAfterSuccess = 0;
+          this.rfidreader.RequestChinaIDCardNo();
+        },
+        () => {
+          this.$message({
+            showClose: true,
+            message: "创建友我科技RFID云服务连接失败，请先安装！",
+            type: "error"
+          });
+        }
+      );
+    },
+    loadExe() {
+      try {
+        this.init();
+      } catch (e) {
+        this.$message({
+          showClose: true,
+          message: "创建友我科技RFID云服务连接失败，请先安装！",
+          type: "error"
+        });
+        window.setTimeout(() => {
+          this.judgeLoad();
+        }, 10000);
+      }
+    },
+
+    cardNumber() {
+      if (!this.rfidreader) {
+        this.init();
+      }
+      this.rfidreader.Repeat = 1;
+      this.rfidreader.HaltAfterSuccess = 1;
+      this.rfidreader.RequestTypeACardNo(0, 0);
+    },
+    getErrStr(ErrCode) {
+      var ErrText = "";
+      switch (ErrCode) {
+        case -1:
+          ErrText = "没有找到IC卡读卡器，支持型号：YW-605HA或者YW-607";
+          break;
+        case -3:
+          ErrText = "寻卡失败或卡已经休眠,请拿离开读卡器，再放上";
+          break;
+        case -4:
+          ErrText = "寻卡失败";
+          break;
+        case -5:
+          ErrText = "卡休眠失败";
+          break;
+        case -6:
+          ErrText = "密钥认证失败";
+          break;
+        case -7:
+          ErrText = "读块失败";
+          break;
+        case -8:
+          ErrText = "写块失败";
+          break;
+        case -9:
+          ErrText = "钱包初始化失败";
+          break;
+        case -10:
+          ErrText = "钱包读余额失败";
+          break;
+        case -11:
+          ErrText = "钱包充值失败";
+          break;
+        case -12:
+          ErrText = "钱包减值失败";
+          break;
+        case -13:
+          ErrText = "复位错误";
+          break;
+        case -14:
+          ErrText = "COS执行错误";
+          break;
+        case -101:
+          ErrText = "参数错误";
+          break;
+        case -102:
+          ErrText = "DES校验错误";
+          break;
+        case -103:
+          ErrText = "读卡器不支持";
+          break;
+        case -600:
+          ErrText = "没找到YW-602系列UHF读卡器";
+          break;
+        case -601:
+          ErrText = "寻G2标签失败";
+          break;
+        case -602:
+          ErrText = "读G2标签失败";
+          break;
+        case -603:
+          ErrText = "写G2标签失败";
+          break;
+        case -604:
+          ErrText = "执行失败";
+          break;
+      }
+      return ErrText;
+    },
+    // 修改卡密码
+    writeBlock(obj, callback) {
+      console.log("obj", obj);
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = setting.defaultDesKey;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      let key = 0;
+      let time = null;
+      this.callback = function(data) {
+        if (data.FunctionID == 6) {
+          clearTimeout(time);
+          time = setTimeout(() => {
+            if (callback) {
+              callback();
+            }
+          }, 3000);
+          key++;
+          console.log(setting.fans.length + " data " + key, data);
+          if (key >= setting.fans.length) {
+            clearTimeout(time);
+            if (callback) {
+              callback();
+            }
+          }
+        }
+      };
+      setting.fans.forEach(index => {
+        console.log("index", index);
+        this.rfidreader.M1WriteBlock(
+          index * 4 + 3,
+          obj.pwda + "FF078069" + obj.pwdb,
+          0
+        );
+      });
+    },
+    cardEmpty(order) {
+      console.log("cardEmpty", order);
+      this.rfidreader.DesDir = 0;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      this.rfidreader.HaltAfterSuccess = 0;
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = order.pwda;
+      this.callback = () => {};
+      setting.sectors.forEach(obj => {
+        console.log("obj", obj);
+        this.rfidreader.M1WriteBlock(
+          obj[0],
+          "00000000000000000000000000000000",
+          0
+        );
+        this.rfidreader.M1WriteBlock(
+          obj[1],
+          "00000000000000000000000000000000",
+          0
+        );
+      });
+      this.rfidreader.M1WriteBlock(
+        Number(order.sector) * 4 + 0,
+        "00000000000000000000000000000000",
+        0
+      );
+    },
+    cardWrite4(order, callback, error) {
+      console.log("cardWrite4", order);
+      let num = Number(order.sector);
+      this.sectors = Object.assign([], setting.sectors);
+      this.sectors.splice(num, 1);
+
+      this.rfidreader.DesDir = 0;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      this.rfidreader.HaltAfterSuccess = 0;
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = order.pwda;
+      let index = 0;
+      this.callback = function(data) {
+        if (data.Result > 0 && data.FunctionID == 6) {
+          console.log("cardWrite4 " + index, data);
+          index++;
+          if (index == 2) {
+            if (callback) {
+              callback();
+            }
+          }
+        } else {
+          if (error) {
+            error(this.getErrStr(data.Result));
+          }
+          this.callback = () => {};
+        }
+      };
+      this.rfidreader.M1WriteBlock(num * 4 + 0, order.order0, 0);
+      this.rfidreader.M1WriteBlock(num * 4 + 2, order.order2, 0);
+    },
+    setBeep(a = 3, b = 1, c = 1) {
+      this.rfidreader.Beep(a, b, c);
+    },
+    WriteSector(order, arr, jkhd, error) {
+      console.log("WriteSector", arr);
+      let num = arr.length;
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = order.pwda;
+      this.rfidreader.DesDir = 0;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      this.rfidreader.HaltAfterSuccess = 0;
+      let index = 0;
+      if (num > 0) {
+        this.callback = function(data) {
+          if (data.Result > 0 && data.FunctionID == 6) {
+            console.log("data", data);
+            console.log("index", index);
+            index++;
+            if (index == num * 2) {
+              // this.rfidreader.Beep(3, 1, 1);
+              if (jkhd) {
+                jkhd();
+              }
+            }
+          } else {
+            if (error) {
+              console.log("121", 121);
+              error(this.getErrStr(data.Result));
+              this.callback = function() {};
+            }
+          }
+        };
+        for (let i = 0; i < num; i++) {
+          let obj = arr[i];
+          let cardcode = obj["cardcode"];
+          if (cardcode.length % 2 == 0) {
+            this.rfidreader.M1WriteBlock(
+              this.sectors[i][0],
+              obj["authorder1"],
+              0
+            );
+            this.rfidreader.M1WriteBlock(
+              this.sectors[i][1],
+              obj["authorder2"],
+              0
+            );
+          } else {
+            error("卡号不正确");
+            break;
+          }
+        }
+      }
+    },
+    //写卡
+    cardWrite(order, arr, jkhd, error) {
+      this.tips(
+        () => {
+          if (this.$config.system.name == "windows") {
+            if (!this.rfidreader) {
+              this.init();
+            }
+            this.writeBlock(order, () => {
+              this.cardWrite4(
+                order,
+                () => {
+                  this.WriteSector(order, arr, jkhd, error);
+                },
+                error
+              );
+            });
+          } else {
+            if (error) {
+              error(
+                "当前系统不支持友我科技RFID云服务，不能写卡！目前只支持windows系统"
+              );
+            }
+          }
+        },
+        () => {
+          if (error) {
+            error("创建友我科技RFID云服务连接失败，请先安装！");
+          }
+        }
+      );
+    },
+
+    cardReading4(order, callback, error) {
+      this.rfidreader.DesDir = 0;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      this.rfidreader.HaltAfterSuccess = 0;
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = order.pwda;
+      let index = 0;
+
+      let obj = {
+        order1: "",
+        order2: "",
+        authorders: []
+      };
+      let sector = Number(order.sector);
+      this.callback = function(data) {
+        if (data.Result > 0 && data.FunctionID == 5) {
+          index++;
+          if (index == 2) {
+            if (callback) {
+              obj.order2 = data.strData;
+              callback(obj);
+            }
+          } else {
+            let val = data.strData;
+            if (val && !/^0+$/.test(val)) {
+              obj.order1 = val;
+              this.rfidreader.M1ReadBlock(sector * 4 + 2, 0);
+            } else {
+              if (error) {
+                error("当前卡中的协议" + sector + "扇区没有数据");
+              }
+            }
+          }
+        } else {
+          if (error) {
+            console.log("d21", 421);
+            error(this.getErrStr(data.Result));
+            this.callback = () => {};
+          }
+        }
+      };
+      this.rfidreader.M1ReadBlock(sector * 4 + 0, 0);
+    },
+
+    readSector(order, obj, hdjk, error) {
+      let num = Number(order.sector);
+      this.sectors = Object.assign([], setting.sectors);
+      this.sectors.splice(num, 1);
+
+      let lengs = this.sectors.length;
+      this.rfidreader.KeyMode = 0;
+      this.rfidreader.KeyStringMode = 0;
+      this.rfidreader.KeyString = order.pwda;
+      this.rfidreader.DesDir = 0;
+      this.rfidreader.Repeat = 0;
+      this.rfidreader.BeepOnSuccess = 0;
+      this.rfidreader.HaltAfterSuccess = 0;
+      let key = 0;
+      let fun = is => {
+        let arr = this.sectors[key];
+        let i = arr[0];
+        if (is) {
+          i = arr[1];
+        }
+        this.rfidreader.M1ReadBlock(i, 0);
+        console.log("M1ReadBlock i", i);
+      };
+      let authorder = "";
+      let index = 0;
+      this.callback = function(data) {
+        if (data.Result > 0 && data.FunctionID == 5) {
+          console.log("key", key);
+          console.log("authorder", authorder);
+          console.log("data.strData", data.strData);
+          index++;
+          if (index == 2) {
+            key++;
+            index = 0;
+            obj.authorders.push({
+              authorder1: authorder,
+              authorder2: data.strData
+            });
+            authorder = "";
+            if (key == lengs) {
+              // this.rfidreader.Beep(3, 1, 1);
+              if (hdjk) {
+                hdjk(obj);
+              }
+            } else {
+              fun();
+            }
+          } else {
+            authorder = data.strData;
+            fun(true);
+          }
+        } else {
+          if (error) {
+            console.log("d431", 232);
+            error(this.getErrStr(data.Result));
+            this.callback = () => {};
+          }
+        }
+      };
+      fun();
+    },
+    //读卡
+    cardReading(order, hdjk, error) {
+      this.tips(
+        () => {
+          if (this.$config.system.name == "windows") {
+            if (!this.rfidreader) {
+              this.init();
+            }
+            this.cardReading4(
+              order,
+              obj => {
+                this.readSector(order, obj, hdjk, error);
+              },
+              error
+            );
+          } else {
+            if (error) {
+              error(
+                "当前系统不支持友我科技RFID云服务，不能读卡！目前只支持windows系统"
+              );
+            }
+          }
+        },
+        () => {
+          if (error) {
+            error("创建友我科技RFID云服务连接失败，请先安装！");
+          }
+        }
+      );
+    }
+  }
+};
+</script>

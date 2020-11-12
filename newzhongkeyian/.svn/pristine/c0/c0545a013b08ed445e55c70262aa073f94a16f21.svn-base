@@ -1,0 +1,607 @@
+<!-- 房间管理   房间管理的状态管理以vuex为辅  vuex里面的fj38的很多状态没有用到 -->
+<template>
+  <el-container class="fjgl38">
+    <fel-left-tree>
+      <div slot="left" class="left-tree">
+        <fel-tree1
+          ref="fel-tree1"
+          :showCheckbox="false"
+          class="tree1"
+          :idArr="[0]"
+          :interfaceData="interfaceData"
+          :refresh="refreshTree"
+          interface="/lock/1/getbuildtree"
+          nodeKey="agid"
+          iconName="agtype"
+          :defaultProps="{
+            children: 'children',
+            label: 'agname',
+            isLeaf: 'isLeaf',
+          }"
+          @handleNodeClick="handleNodeClick"
+        ></fel-tree1>
+      </div>
+      <template>
+        <fjglFloor :btnAll="btnAll" v-if="visble" :refresh="refresh" :param="floorParam"></fjglFloor>
+        <fjglRegion
+          :btnAll="btnAll"
+          v-else
+          :refresh="refresh"
+          :param="buildtree"
+          @toRegion="toRegion"
+          @toFloor="toFloor"
+        ></fjglRegion>
+      </template>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import fjglFloor from "./fjgl-floor";
+import fjglRegion from "./fjgl-region";
+export default {
+  name: "fjgl38",
+  components: { fjglRegion, fjglFloor },
+  created() {
+    this.inGetsonmenu();
+  },
+  data() {
+    return {
+      refreshTree: 0,
+      refresh: 0,
+      visble: false,
+      timing: null,
+      floorParam: {},
+      buildtree: {},
+      agidObj: {},
+      file: {
+        agid: ""
+      },
+      btnAll: {
+        drydcBtn: {
+          //导入导出按钮
+          topBtns: {},
+          exportButs: [],
+          importButs: [],
+          exImportButs: [],
+          ggexportButs: [],
+          ggimportButs: [],
+          ggexImportButs: []
+        },
+        fjczBtn: {},
+        zlxfBtn: {},
+        plxfBtn: {},
+        czwsxsqBtn: {}
+      },
+      sonmenu: 0
+    };
+  },
+  watch: {
+    floorParam() {}
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "38" }, "1")
+        .then(res => {
+          let obj = {};
+          res.result.forEach(item => {
+            if (item.entity.id == "318") {
+              //导入导出
+              this.setdrdcBtn(item);
+              this.$store.dispatch("setdrydcBtn", item);
+            } else if (item.entity.id == "321") {
+              //房间操作
+              this.btnAll.fjczBtn = item;
+              this.$store.commit("setfjczBtn", item);
+            } else if (item.entity.id == "319") {
+              //指令下发
+              this.btnAll.zlxfBtn = item;
+              this.$store.commit("setzlxfBtn", item);
+            } else if (item.entity.id == "320") {
+              //批量下发
+              this.btnAll.plxfBtn = item;
+              this.$store.commit("setplxfBtn", item);
+            } else if (item.entity.id == "509") {
+              //房间显示信息
+              obj.fjxsxx = item;
+            } else if (item.entity.id == "570") {
+              this.btnAll.czwsxsqBtn = item;
+              this.$store.commit("setczwsxsqBtn", item);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          console.log("err", err);
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    setdrdcBtn(obj) {
+      //导入导出按钮
+      this.btnAll.drydcBtn.topBtns = obj.entity;
+      obj.childs.forEach(data => {
+        if (data.entity.id == "46") {
+          this.btnAll.drydcBtn.importButs.push({
+            name: data.entity.alias,
+            tempUrl: "/lock/upload/4/downauthmodel",
+            url: "/lock/upload/1/uploadauth",
+            errUrl: "/lock/upload/7/downauth"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "51") {
+          this.btnAll.drydcBtn.importButs.push({
+            name: data.entity.alias,
+            tempUrl: "/lock/upload/5/downauthbackmodel",
+            url: "/lock/upload/2/uploadauthback",
+            errUrl: "/lock/upload/8/downauthback"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "263") {
+          this.btnAll.drydcBtn.importButs.push({
+            name: data.entity.alias,
+            tempUrl: "/lock/upload/6/downauthcheckmodel",
+            url: "/lock/upload/a/uploadauthchecknew", // "/lock/upload/3/uploadauthcheck",
+            errUrl: "/lock/upload/9/downauthcheck"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "538") {
+          this.btnAll.drydcBtn.exImportButs.push({
+            name: data.entity.alias,
+            url: "/lock/upload/4/downauthmodel"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "539") {
+          this.btnAll.drydcBtn.exImportButs.push({
+            name: data.entity.alias,
+            url: "/lock/upload/5/downauthbackmodel"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "540") {
+          this.btnAll.drydcBtn.exImportButs.push({
+            name: data.entity.alias,
+            url: "/lock/upload/6/downauthcheckmodel"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "573") {
+          this.btnAll.drydcBtn.exportButs.push({
+            id: "573",
+            name: data.entity.alias,
+            url: "/lock/upload/b/downauthperson",
+            data: this.file
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "656") {
+          this.btnAll.drydcBtn.ggimportButs.push({
+            name: data.entity.alias,
+            tempUrl: "/lock/upload/m/downpublicauthmodel",
+            url: "/lock/upload/n/uploadpublicauth", // "/lock/upload/3/uploadauthcheck",
+            errUrl: "/lock/upload/p/downuploadauthpublicfail"
+          });
+        } else if (data.entity.id == "657") {
+          this.btnAll.drydcBtn.ggexImportButs.push({
+            name: data.entity.alias,
+            url: "/lock/upload/m/downpublicauthmodel"
+          });
+          // exportButs.push(data.entity);
+        } else if (data.entity.id == "775") {
+          //公共房间退房导入模板
+          this.btnAll.drydcBtn.ggexImportButs.push({
+            name: data.entity.alias,
+            url: "/lock/upload/r/downpublicbackmodel"
+          });
+        } else if (data.entity.id == "774") {
+          //公共房间退房导入
+          this.btnAll.drydcBtn.ggimportButs.push({
+            name: data.entity.alias,
+            tempUrl: "/lock/upload/r/downpublicbackmodel",
+            url: "/lock/upload/q/uploadpublicback",
+            errUrl: "/lock/upload/t/downuploadpublicbackfail"
+          });
+        } else if (data.entity.id == "779") {
+          //公共房间比对导入模板
+          this.btnAll.drydcBtn.ggexImportButs.push({
+            name: data.entity.alias,
+            url: "lock/upload/v/downpubliccheckmodel"
+          });
+        } else if (data.entity.id == "778") {
+          //公共房间比对导入
+          this.btnAll.drydcBtn.ggimportButs.push({
+            name: data.entity.alias,
+            tempUrl: "lock/upload/v/downpubliccheckmodel",
+            url: "lock/upload/u/uploadpubliccheck",
+            errUrl: "lock/upload/x/downuploadpubliccheckfail"
+          });
+        }
+      });
+    },
+    interfaceData(arr) {
+      arr.forEach(obj => {
+        this.agidObj[obj.agfatherid] = this.agidObj[obj.agfatherid] || [];
+        this.agidObj[obj.agid] = [...this.agidObj[obj.agfatherid], obj.agid];
+      });
+    },
+    toRegion(data) {
+      let arr = this.agidObj[data.agid + ""] || [];
+      // arr.push("0", data.fatherId + "", data.agid + "");
+      this.$refs["fel-tree1"].addIdSets(arr);
+      this.$refs["fel-tree1"].setCurrentKey(data.agid + "");
+    },
+    toFloor(data) {
+      let arr = this.agidObj[data.fatherId + ""] || [];
+      // arr.push("0", data.fatherId + "");
+      this.$refs["fel-tree1"].addIdSets(arr);
+      this.$refs["fel-tree1"].setCurrentKey(data.agid + "");
+      this.visble = true;
+      this.floorParam = data;
+    },
+    onRefreshTree() {
+      this.refreshTree = new Date().getTime();
+    },
+    handleNodeClick(data) {
+      if (data.agtype == 3 || data.agtype == 2) {
+        this.visble = true;
+        this.floorParam = data;
+      } else {
+        this.visble = false;
+        this.buildtree = data;
+        this.file.agid = data.agid;
+      }
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+.fjgl38 {
+  overflow: hidden !important;
+  .fjglmain {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .fjglBox {
+    background: #fff;
+    margin: 0 16px 16px;
+    // width: 100%;
+    // height: 100%;
+    display: flex;
+    color: #333;
+    flex-direction: column;
+    .fjglBox_top {
+      background: #e4f4ff;
+      width: 100%;
+      height: 40px !important;
+      display: flex;
+      h3 {
+        padding-left: 20px;
+        font-size: 16px;
+        line-height: 40px;
+        flex: 1;
+        float: left;
+        color: #333;
+      }
+      .fjglBox_top_right {
+        width: 310px;
+
+        display: flex;
+        float: right;
+        // padding-right: 15px;
+        align-items: center;
+        .fjglBox_top_right_btn {
+          background: #fff;
+          margin-right: 10px;
+          width: 120px;
+          border-radius: 5px;
+          display: flex;
+          .fjglBox_top_right_btn1 {
+            width: 60px;
+            position: relative;
+            font-size: 14px;
+          }
+          .fjglBox_top_right_btn1::before {
+            content: "";
+            display: inline-block;
+            height: 14px;
+            border-right: 1px solid #333;
+            width: 0;
+            position: absolute;
+            right: 0;
+          }
+          .fjglBox_top_right_btn2 {
+            width: 60px;
+            margin: 0;
+            font-size: 14px;
+          }
+          .c333 {
+            color: #333;
+          }
+        }
+      }
+    }
+    .fjglBox_middle {
+      margin: 0;
+      background: #fff;
+      width: 100%;
+      flex: 1;
+      height: 0;
+      display: flex;
+      flex-wrap: wrap;
+      overflow: auto;
+    }
+    .fjglBOx_bottom {
+      height: 40px;
+      width: 100%;
+      line-height: 50px;
+      font-size: 18px;
+      color: #000;
+      padding-bottom: 10px;
+      background: #fff;
+      text-align: center;
+    }
+  }
+
+  .fjglBox2 {
+    flex: 1;
+    padding: 0 24px 16px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    .fjglBox2_head {
+      width: 100%;
+      height: 125px !important;
+      background: url("../../assets/image/wuding.png") no-repeat;
+      background-size: 100% 102%;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      .fjglBox2_head_top {
+        height: 45px;
+        display: flex;
+        justify-content: space-between;
+        .fjglBox2_head_left {
+          padding-top: 10px;
+          display: flex;
+          .ztbox1,
+          .ztbox2,
+          .ztbox3 {
+            width: 15px;
+            height: 15px;
+            margin: 3px 10px 0;
+          }
+          .ztbox1 {
+            border: solid #24a6f9 1px;
+          }
+          .ztbox2 {
+            border: solid #ff4141 1px;
+          }
+          .ztbox3 {
+            border: solid #999999 1px;
+          }
+        }
+        .fjglBox2_head_right {
+          padding-top: 10px;
+          .btn {
+            margin-left: 10px;
+            .el-icon--right {
+              margin: 0;
+            }
+          }
+          .openBtn {
+            padding: 0px 10px;
+            line-height: 32px;
+            width: 120px;
+            height: 32px;
+            margin: 0 5px;
+          }
+        }
+      }
+      .fjglBox2_head_bottom {
+        flex: 1;
+        font-size: 16px;
+        line-height: 80px;
+        padding-top: 14px;
+        margin: 0 auto;
+        div {
+          // padding-left: 29%;
+          display: flex;
+          text-align: center;
+          justify-content: center;
+        }
+      }
+    }
+  }
+  .floorBox:hover {
+    cursor: pointer;
+  }
+  .floormax {
+    // width: 100%;
+    // padding: 24px;
+    position: relative;
+    .separator {
+      width: 100%;
+      display: block;
+      border-top: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+  }
+  .postionB {
+    position: absolute;
+    bottom: 0;
+  }
+  .floorBox:hover {
+    border-radius: 8px;
+    box-shadow: 0 6px 6px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04); //0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    transform: translate(0, -1px);
+  }
+  .regionBox:hover {
+    border-radius: 8px;
+    box-shadow: 0 6px 6px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04); //0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    transform: translate(0, -1px);
+  }
+  .region {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px 2%;
+    // border-bottom: 1px solid #ccc;
+  }
+  .floor {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 40px 10px 10px 10px;
+  }
+  .regionBox {
+    transition: all 0.4s;
+    box-shadow: 0 0 #fff;
+    background: #fff;
+    display: flex;
+    width: 32%;
+    margin: 0 10px 10px 0;
+    height: 190px;
+    color: #333;
+    padding: 10px 0;
+    .regionBox_left {
+      min-width: 0;
+      // width: 50%;
+      height: 100%;
+      div {
+        margin-top: 40px;
+        margin-left: 15px;
+        width: 80%;
+        height: 60%;
+        img {
+          min-width: 140px; //100%;
+          height: 100%;
+        }
+      }
+    }
+
+    .regionBox_right {
+      min-width: 150px;
+      // flex: 1;
+      height: 80%;
+      display: flex;
+      flex-direction: column;
+      margin-top: 15px;
+      background: #fff;
+      padding-left: 10px;
+      // padding:15px 0 0 10px;
+      h3 {
+        font-size: 18px;
+        height: 30%;
+        padding-top: 10px;
+        font-weight: normal;
+      }
+      ul {
+        font-size: 14px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        li {
+          flex: 1;
+
+          span:nth-of-type(1) {
+            display: inline-block;
+            margin: 0 10px;
+          }
+        }
+      }
+    }
+  }
+
+  .floorBox {
+    transition: all 0.4s;
+    box-shadow: 0 0 #fff;
+    background: #fff;
+    display: flex;
+    width: 23.5%;
+    margin: 0 1% 1% 0;
+    height: 150px;
+    color: #333;
+    .floorBox_left {
+      min-width: 0;
+      // width: 36%;
+      height: 100%;
+      div {
+        margin-top: 38px;
+        margin-left: 10px;
+        width: 70%;
+        height: 66%;
+        img {
+          min-width: 75px;
+          height: 100%;
+        }
+      }
+    }
+
+    .floorBox_right {
+      min-width: 130px;
+      // flex: 1;
+      height: 100%;
+      display: flex;
+      background: #fff;
+      padding-left: 10px;
+      flex-direction: column;
+      h3 {
+        font-size: 18px;
+        height: 28%;
+        padding-top: 8px;
+        font-weight: normal;
+      }
+      ul {
+        font-size: 14px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        li {
+          flex: 1;
+
+          span:nth-of-type(1) {
+            display: inline-block;
+            margin: 0 10px;
+          }
+        }
+      }
+    }
+  }
+  @media screen and (max-height: 700px) {
+    .fjglBox {
+      margin: 0 8px 8px;
+    }
+    .fjglBox2 {
+      padding: 0 8px 8px;
+      .fjglBox2_head {
+        height: 100px !important;
+        .fjglBox2_head_bottom {
+          line-height: 44px;
+        }
+      }
+    }
+  }
+  @media screen and (max-height: 640px) {
+    .fjglBox {
+      margin: 0 6px 6px;
+    }
+    .fjglBox2 {
+      padding: 0 6px 6px;
+      .fjglBox2_head {
+        height: 90px !important;
+        .fjglBox2_head_bottom {
+          font-size: 14px;
+          line-height: 20px;
+        }
+      }
+    }
+  }
+}
+</style>

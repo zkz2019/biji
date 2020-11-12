@@ -1,0 +1,467 @@
+<!-- 门禁配置 -->
+<template>
+  <el-dialog
+    title="门禁配置"
+    width="60%"
+    ref="dialog"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <!-- noInit :refresh="refresh"-->
+    <el-container v-show="cardShow" class="dialog-table6 mjtabel wh100">
+      <!-- <paging-table
+        class="tobleList"
+        height="100%"
+        ref="paging-table"
+        interface="/system/device/deviceaccess/accessorder/4/getpersonlist"
+        :list="list"
+        :refresh="refresh"
+        @onSelect="onSelection"
+        :param="cardParam"
+      />-->
+    </el-container>
+    <fel-form
+      v-loading="loading"
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+    <personnel
+      :param="personParam"
+      @onSelect="onSelect"
+      @beforeClose="personDialog=false"
+      :dialogVisible="personDialog"
+    ></personnel>
+  </el-dialog>
+</template>
+
+<script>
+import personnel from "./personnelList";
+export default {
+  props: {
+    param: Object,
+    paramObj: Object | Array,
+    dialogVisible: Boolean
+  },
+  components: { personnel },
+  data() {
+    let $this = this;
+    return {
+      personDialog: false,
+      cardShow: false,
+      loading: false,
+      personParam: { search: "" },
+      cardParam: {},
+      list: [
+        { name: "学号", prop: "personcode" },
+        { name: "组织", prop: "personlocation" },
+        { name: "电话", prop: "personmobile" },
+        { name: "姓名", prop: "personname" }
+      ],
+      refresh: 0,
+      selects: {},
+      defaultData: { personcode: "", personcode1: "" },
+      formData: [
+        {
+          width: "50%",
+          value: "personname",
+          name: "责任人",
+          type: "text",
+          onInput:this.onInputText,
+          buts: [
+            {
+              class: "but-connect",
+              title: "搜索人员信息",
+              icon: "el-icon-search",
+              onClick: this.onInput
+            }
+          ]
+          // onInput: this.onInput,
+          // onClear: this.onBlur
+        },
+        // {
+        //   width: "50%",
+        //   value: "personcode",
+        //   name: "人员编号",
+        //   type: "text"
+        // },
+        {
+          width: "50%",
+          value: "personmobile",
+          name: "联系方式",
+          type: "text"
+        },
+        {
+          width: "50%",
+          value: "accessname",
+          name: "门禁名称",
+          type: "text",
+          disabled: false,
+        },
+        {
+          width: "50%",
+          value: "contacttype",
+          name: "门锁类型",
+          type: "select",
+          select: "contacttypelist",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "workmode",
+          name: "工作模式",
+          type: "select",
+          select: "workmodetype", 
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "forcelock",
+          name: "强锁模式",
+          type: "select",
+          select: "forcelocktype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "warnstatus",
+          name: "拆机报警",
+          type: "select",
+          select: "warnstatustype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "mcardtype",
+          name: "管理卡开门模式",
+          type: "select",
+          select: "mcardtypetype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "networkmode",
+          name: "服务器离线授权",
+          type: "select",
+          select: "networkmodetype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "offlineauth",
+          name: "脱机离线授权",
+          type: "select",
+          select: "offlineauthtype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "supportmodetype",
+          name: "协议开门卡",
+          type: "select",
+          select: "supportmodetypes",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "issyso",
+          name: "调试信息",
+          type: "select",
+          select: "issysotype",
+          svalue: "id",
+          slabel: "name"
+        },
+        // {
+        //   width: "50%",
+        //   value: "acode",
+        //   name: "协议卡扇区秘钥A",
+        //   type: "text"
+        // },
+        // {
+        //   width: "50%",
+        //   value: "bcode",
+        //   name: "协议卡扇区秘钥B",
+        //   type: "text"
+        // },
+        // {
+        //   width: "50%",
+        //   name: "协议卡加密扇区",
+        //   value: "sector",
+        //   type: "select",
+        //   select: "sectortype",
+        //   svalue: "",
+        //   slabel: ""
+        // },
+        {
+          width: "50%",
+          value: "batchnumberout",
+          name: "当前批次号",
+          readonly: true,
+          type: "text",
+        },
+        {
+          width: "50%",
+          value: "batchnumber",
+          name: "更新批次号",
+          readonly: true,
+          type: "clearInput",
+          buts: [
+            {
+              class: "but-connect",
+              title: "重新获取协议卡批次号",
+              // icon: "el-icon-refresh",
+              name: "获取",
+              onClick: this.personClick
+            }
+          ]
+        },
+        { width: "50%", value: "txcode", name: "通讯秘钥", type: "text" },
+        {
+          width: "50%",
+          value: "accessisencryption",
+          name: "加密类型",
+          type: "select",
+          select: "accessisencryptiontype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "opencontrol",
+          name: "常开后控制",
+          type: "select",
+          select: "opencontroltype",
+          svalue: "id",
+          slabel: "name"
+        },
+        // {
+        //   value: "roomopenweekArr",
+        //   name: "1号读头唯一ID",
+        //   type: "text",
+        // },
+        // {
+        //   value: "roomopenweekArr",
+        //   name: "1号读头名称",
+        //   type: "text",
+        // },
+        {
+          width: "50%",
+          value: "openweek",
+          name: "每周开门的天",
+          type: "select",
+          select: "opendaytype",
+          svalue: "id",
+          slabel: "name"
+        },
+        {
+          width: "50%",
+          value: "opentime",
+          name: "每日常开时间段",
+          type: "time",
+          format: "HH:mm",
+          date: "ftime"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.getdeployaccessinfo();
+      }
+    }
+  },
+  mounted() {
+    let dom = (this.$refs["dialog"].$el.querySelector(
+      ".el-dialog"
+    ).onclick = e => {
+      this.cardShow = false;
+      e.stopPropagation();
+    });
+  },
+  methods: {
+    onInput(arr, value) {
+      // return;
+      this.personDialog = true;
+    },
+    onSelect(data) {
+      this.defaultData.personname = data.personname;
+      this.defaultData.personcode = data.personcode;
+      this.defaultData.personmobile = data.personmobile;
+      this.defaultData = JSON.parse(JSON.stringify(this.defaultData));
+      this.personDialog = false;
+      return;
+    },
+    onInputText(){
+      this.defaultData.personcode="";
+      this.defaultData = JSON.parse(JSON.stringify(this.defaultData));
+    },
+    onClick1() {
+      this.cardShow = false;
+    },
+    onBlur() {
+      // this.cardShow = false;
+    },
+    onSelection(data) {
+      if (this.defaultData.personcode != undefined) {
+        this.defaultData.personcode = data.personname;
+        this.defaultData.personcode1 = data.personcode;
+        this.defaultData = JSON.parse(JSON.stringify(this.defaultData));
+        this.cardShow = false;
+      }
+    },
+    // onInput(data) {
+    //   this.cardShow = true;
+    //   this.cardParam.search = data[0];
+    //   this.refresh = new Date().getTime();
+    // },
+    getdeployaccessinfo() {
+      if (this.param) {
+        this.$ajax(
+          "/system/device/deviceaccess/accessorder/1/getdeployaccessinfo",
+          { accessid: this.param.accessid },
+          "1"
+        )
+          .then(res => {
+            this.selects = Object.assign(this.selects, res.result);
+            if (res.result.forcelock == "null") {
+              res.result.forcelock = "";
+            }
+            if (res.result.opencontrol == "null") {
+              res.result.opencontrol = "";
+            }
+            if(res.result.issystem == "0"){
+              this.formData[2].disabled=true;
+            }else{
+              this.formData[2].disabled=false;
+            }
+            let batchnumberout ={batchnumberout:res.result.batchnumber} ;
+            delete res.result.batchnumber;
+            this.defaultData = Object.assign(res.result,batchnumberout);
+            if(res.result.opentime!=""){
+              this.defaultData.opentime = res.result.opentime.split("~");
+              this.defaultData = JSON.parse(JSON.stringify(this.defaultData));
+            }else{
+              this.defaultData.opentime = ["",""];
+              this.defaultData = JSON.parse(JSON.stringify(this.defaultData));
+            }
+          })
+          .catch(err => {
+            console.log("err", err.resultMsg);
+          });
+      }
+    },
+    personClick(arr, data) {
+      if (this.param) {
+        this.$ajax(
+          "/system/device/deviceaccess/accessorder/3/getbatchno",
+          { accessid: this.param.accessid },
+          "1"
+        )
+          .then(res => {
+            data.batchnumber = res.result;
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] `+err.resultMsg ,
+              type: "error"
+            });
+          });
+      }
+    },
+    submitForm(item) {
+      let data = Object.assign({ accessid: this.param.accessid }, item);
+      let roomopentime = "";
+      if (data.opentime[0] && data.opentime[1]) {
+        roomopentime = data.opentime.join("~");
+      }
+      // let roomopenweek = "";
+      // if (typeof data.roomopenweekArr != "string") {
+      //   roomopenweek = data.roomopenweekArr.join(",");
+      // } else {
+      //   roomopenweek = data.roomopenweekArr;
+      // }
+      let obj = {
+        personmobile:data.personmobile,
+        personname:data.personname,
+        accessname:data.accessname,
+        accessid: data.accessid,
+        acode: data.acode,
+        batchnumber: data.batchnumber,
+        bcode: data.bcode,
+        contacttype: data.contacttype,
+        forcelock: data.forcelock, //==null?"":data.forcelock,
+        issyso: data.issyso,
+        mcardtype: data.mcardtype,
+        networkmode: data.networkmode,
+        offlineauth: data.offlineauth,
+        opencontrol: data.opencontrol, //==null?"":data.opencontrol,
+        opentime: roomopentime,
+        openweek: data.openweek,
+        personcode: data.personcode,
+        sector: data.sector,
+        supportmodetype: data.supportmodetype,
+        txcode: data.txcode,
+        warnstatus: data.warnstatus,
+        workmode: data.workmode,
+        accessisencryption:data.accessisencryption,
+      };
+      this.$ajax(
+        "/system/device/deviceaccess/accessorder/2/savedeployaccessinfo",
+        obj,
+        "1",
+        {},
+        true
+      )
+        .then(res => {
+          this.beforeClose();
+          this.$message({
+            message: "配置成功",
+            type: "success"
+          });
+          this.$emit("onRefresh");
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.defaultData = { opentime: ["", ""] /*, roomopenweekArr: [] */ };
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+
+<style>
+.mjtabel {
+  width: 90%;
+  position: absolute;
+  z-index: 10;
+  left: 7%;
+  top: 18%;
+  height: 70%;
+}
+</style>

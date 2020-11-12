@@ -1,0 +1,443 @@
+<!-- 修改版本:添加版本 -->
+<template>
+  <el-dialog
+    :title="title"
+    :width="wid"
+    v-loading="loading"
+    :element-loading-text="'请求中...'"
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.8)"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      @exportFile="exportFile"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+      @input="onInput"
+    ></fel-form>
+  </el-dialog>
+</template>
+
+<script>
+import { format, downloadBin } from "@/utils/utils.js";
+export default {
+  props: {
+    options: Array,
+    dvid: String | Number,
+    types: String,
+    dialogVisible: Boolean
+  },
+  data() {
+    return {
+      loading: false,
+      selects: {
+        options: []
+      },
+      defaultData: {},
+      file: null,
+      next: true,
+      isdetails: true,
+      title: "",
+      wid: "",
+      formData: [],
+      formData1: [
+        {
+          noShow: true,
+          width: "50%",
+          value: "deviceversion",
+          name: "版本号",
+          type: "text",
+          rules: {
+            required: true,
+            message: "请先填写版本号",
+            trigger: "blur"
+          }
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "projectnum",
+          name: "项目号",
+          type: "text",
+          rules: {
+            required: true,
+            message: "请先填写版本号",
+            trigger: "blur"
+          }
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "dvbei",
+          name: "版本更新内容",
+          type: "text",
+          rules: {
+            required: true,
+            message: "请先填写版本更新内容",
+            trigger: "blur"
+          }
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "type",
+          name: "设备类型",
+          type: "select",
+          select: "options",
+          slabel: "name",
+          svalue: "id",
+          rules: {
+            required: true,
+            message: "请先选择设备类型",
+            trigger: "change"
+          }
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "file",
+          name: "上传文件",
+          type: "uploadImg",
+          uWidth: "120px",
+          ulabel: "上传文件",
+          isCustom: true
+        }
+      ],
+      formData2: [
+        {
+          noShow: false,
+          width: "50%",
+          value: "deviceversion",
+          name: "版本号",
+          type: "text",
+          readonly: true
+        },
+        {
+          noShow: false,
+          width: "50%",
+          value: "dvprojectnum",
+          name: "项目号",
+          readonly: true,
+          type: "text"
+        },
+        {
+          noShow: false,
+          width: "50%",
+          value: "type",
+          name: "设备类型",
+          readonly: true,
+          type: "text"
+        },
+        // {
+        //   noShow: false,
+        //   width: "50%",
+        //   value: "dvbei",
+        //   name: "更新内容",
+        //   readonly: true,
+        //   type: "text"
+        // },
+
+        // {
+        //   noShow: false,
+        //   width: "50%",
+        //   value: "dvcdate",
+        //   name: "操作时间",
+        //   readonly: true,
+        //   type: "text"
+        // },
+        {
+          noShow: false,
+          width: "50%",
+          value: "dvcheckdate",
+          name: "生成时间",
+          readonly: true,
+          type: "text"
+        },
+        // {
+        //   noShow: false,
+        //   width: "50%",
+        //   value: "userlogin",
+        //   name: "操作账号",
+        //   readonly: true,
+        //   type: "text"
+        // },
+
+        {
+          noShow: false,
+          width: "50%",
+          value: "dvcheck",
+          name: "校验id",
+          readonly: true,
+          type: "text"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      this.formData = this.formData1;
+      if (val) {
+        this.isdetails = true;
+        this.wid = "50%";
+        this.next = true;
+        if (this.types == "1") {
+          this.title = "添加版本";
+          this.wid = "30%";
+          this.formData[4].noShow = false;
+          this.formData[3].isCustom = false;
+          this.formData[4].width = "100%";
+        } else if (this.types == "2") {
+          this.getversioninfo();
+          this.title = "修改版本";
+          this.wid = "35%";
+          this.formData[2].noShow = false;
+          this.formData[2].width = "100%";
+        } else if (this.types == "3") {
+          this.title = "重传程序";
+          this.wid = "30%";
+          this.formData[4].noShow = false;
+          this.formData[4].width = "100%";
+        } else if (this.types == "4") {
+          this.title = "生成版本";
+          this.formData[0].noShow = false;
+          this.formData[1].noShow = false;
+          this.formData[3].noShow = false;
+          this.formData[4].noShow = false;
+        }
+        this.selects.options = this.options;
+      } else {
+        // this.formData = this.formData1;
+        this.formData.forEach((item, ind) => {
+          if (item.isCustom) {
+            item.isCustom = true;
+          }
+          item.noShow = true;
+          item.width = "50%";
+        });
+      }
+    }
+  },
+  methods: {
+    getversioninfo() {
+      this.$ajax(
+        "/system/onlineup/updateversion/1/getversioninfo",
+        { dvid: this.dvid },
+        "1"
+      )
+        .then(res => {
+          this.defaultData = res.result;
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    onInput(data) {
+      if (this.next) {
+        this.file = null;
+      }
+    },
+    exportFile(data) {
+      if (this.next) {
+        if (this.types == "1") {
+          this.next = false;
+          this.getInfo(data);
+          this.file = data;
+        } else {
+          this.file = data;
+        }
+      }
+    },
+    getInfo(data) {
+      this.$ajax(
+        "/system/onlineup/saveversion/4/readversion",
+        {},
+        "1",
+        data,
+        "读取版本信息中..."
+      )
+        .then(res => {
+          this.formData = this.formData2;
+          console.log("更换表单", res, this.formData, this.file);
+          this.wid = "50%";
+          this.defaultData = res.result;
+        })
+        .catch(err => {
+          this.isdetails = false;
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    submitForm(data) {
+      if (this.types == "2") {
+        let obj = { dvbei: data.dvbei, dvcheck: data.dvcheck, dvid: this.dvid };
+        this.$ajax(
+          "/system/onlineup/updateversion/2/updateversion",
+          obj,
+          "1",
+          {},
+          true
+        )
+          .then(res => {
+            this.$message({
+              type: "success",
+              message: "修改成功!"
+            });
+            this.beforeClose();
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      } else if (this.types == "3") {
+        if (!this.file) {
+          this.$message({
+            type: "error",
+            message: "请先选择上传文件!"
+          });
+          return;
+        }
+        this.$ajax(
+          "/system/onlineup/updateversion/3/updateversionorder",
+          { dvid: this.dvid },
+          "1",
+          this.file,
+          true
+        )
+          .then(res => {
+            this.$message({
+              type: "success",
+              message: "重传成功!"
+            });
+            this.beforeClose();
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      } else if (this.types == "4") {
+        if (!this.file) {
+          this.$message({
+            type: "error",
+            message: "请先选择上传文件!"
+          });
+          return;
+        }
+        let param = {
+          deviceversion: data.deviceversion,
+          projectnum: data.projectnum,
+          type: data.type
+        };
+        this.$ajax(
+          "/system/onlineup/saveversion/2/generatedversion",
+          param,
+          "1",
+          this.file,
+          true
+        )
+          .then(res => {
+            this.inExport(
+              "/system/onlineup/saveversion/3/downversion",
+              data.deviceversion,
+              { filepath: res.result }
+            );
+            this.$message({
+              type: "success",
+              message: "生成成功!"
+            });
+            this.beforeClose();
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      } else {
+        delete data.file;
+        if (!this.file) {
+          this.$message({
+            type: "error",
+            message: "请先选择校验正确的文件!"
+          });
+          return;
+        }
+        this.$ajax(
+          "/system/onlineup/saveversion/5/saveversion2",
+          {},
+          "7",
+          this.file,
+          120000
+        )
+          .then(res => {
+            this.$message({
+              type: "success",
+              message: "添加成功!"
+            });
+            this.next = true;
+
+            this.beforeClose();
+          })
+          .catch(err => {
+            this.next = true;
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      }
+    },
+    inExport(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "8", obj, "版本下载中...", 60000)
+        .then(res => {
+          if (res.size) {
+            downloadBin(res, name);
+            this.$notify({
+              title: "成功",
+              message: name + "版本下载成功！",
+              type: "success"
+            });
+          }
+        })
+        .catch(err => {
+          this.$message.error("版本下载失败！失败原因：" + err.resultMsg);
+        });
+    },
+    beforeClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      if (
+        this.$refs.felForm &&
+        this.$refs.felForm.$refs.uploadImg &&
+        this.$refs.felForm.$refs.uploadImg.length > 0
+      ) {
+        this.$refs.felForm.$refs.uploadImg[0].onDelete();
+      }
+      this.file = null;
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+
+<style>
+</style>

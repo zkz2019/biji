@@ -1,0 +1,304 @@
+<template>
+  <el-dialog
+    title="批量添加房间"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      class="single-row"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+    <roomtype
+      @onRefresh="onRefresh"
+      :dialogVisible="dialogRoomtype"
+      @beforeClose="dialogRoomtype=false"
+    ></roomtype>
+  </el-dialog>
+</template>
+
+<script>
+import roomtype from "./roomType";
+export default {
+  components: {
+    roomtype
+  },
+  props: {
+    dialogVisible: Boolean,
+    fatheragid: Object,
+    title: String
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogRoomtype: false,
+      defaultData: { roomtype: {} },
+      typeResult: {},
+      pgidObj: {},
+      selects: {
+        buildtype: [],
+        roomtype: [],
+        roomnexttype: [],
+        sequencebuildid: []
+      },
+      formData: [
+        {
+          value: "Tagcode",
+          name: "上级建筑名称",
+          disabled: true,
+          type: "text"
+        },
+        {
+          value: "areatype",
+          name: "房间属性 ",
+          type: "select",
+          select: "buildtype",
+          onChange: this.onChange,
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            {
+              required: true,
+              message: "请选择建筑属性",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          value: "roomcount",
+          name: "房间数",
+          type: "text",
+          rules: [{ required: true, message: "请输入房间数", trigger: "blur" }]
+        },
+        {
+          value: "startroomno",
+          name: "起始房间号",
+          type: "text",
+          rules: [
+            { required: true, message: "请输入起始房间号", trigger: "blur" }
+          ]
+        },
+        {
+          noShow: true,
+          value: "roomtype",
+          name: "房型",
+          type: "select",
+          select: "roomtype",
+          onChange: this.onChangetype1,
+          slabel: "housename",
+          vkey: "houseid",
+          svalue: "",
+          rules: [
+            {
+              required: true,
+              message: "请选择房型",
+              trigger: "change"
+            }
+          ],
+          buts: [
+            {
+              class: "but-connect",
+              title: "编辑房型",
+              icon: "el-icon-edit",
+              onClick: this.personClick
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "houseprice",
+          name: "房价",
+          type: "text",
+          disabled: true
+        },
+        {
+          noShow: true,
+          value: "roommaxperson",
+          name: "最大入住人数",
+          type: "text"
+        },
+        {
+          noShow: true,
+          value: "roomnexttype",
+          name: "类别",
+          type: "select",
+          select: "roomnexttype",
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            {
+              required: true,
+              message: "请选择类别",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          value: "sequencebuildid",
+          name: "位置",
+          type: "select",
+          select: "sequencebuildid",
+          slabel: "name",
+          placeholder: "默认添加最后位置",
+          svalue: "id"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.handle();
+        // this.gettext();
+        this.inSelectType();
+      }
+    }
+  },
+  created() {},
+  methods: {
+    onRefresh() {
+      this.inSelectType();
+    },
+    personClick() {
+      this.dialogRoomtype = true;
+    },
+    handle() {
+      this.formData[7].noShow = true;
+      this.formData[4].noShow = true;
+      this.formData[5].noShow = true;
+      this.formData[6].noShow = true;
+      this.defaultData = {
+        Tagcode:
+          this.fatheragid.buildlocation + "--" + this.fatheragid.buildname
+      };
+    },
+
+    onChangetype1(arr, data) {
+      let obj = arr[0] || {};
+      data.houseid = obj.houseid;
+      data.houseprice = obj.houseprice;
+      data.roommaxperson = obj.maxperson;
+    },
+    inSelectType() {
+      this.$ajax(
+        "/system/build/save/9/getbuildsbyfather",
+        {
+          buildid: this.fatheragid.buildid
+        },
+        "1"
+      )
+        .then(res => {
+          this.selects.sequencebuildid = res.result || [];
+        })
+        .catch(err => {});
+      //获取区域类型
+      let url = "/system/build/save/4/getagtype";
+      this.$ajax(url, {}, "1")
+        .then(res => {
+          this.typeResult = res.result;
+          this.selects.buildtype = this.typeResult.atlist;
+          this.selects.roomtype = this.typeResult.houselist;
+          this.selects.roomnexttype = this.typeResult.publictypelist;
+          if (this.$refs["felForm"]) {
+            let obj = this.$refs["felForm"].ruleForm;
+            if (obj && obj.areatype == 4) {
+              if (obj.roomtype && obj.roomtype.houseid) {
+                let arr = this.selects.roomtype.filter(val => {
+                  return obj.roomtype.houseid == val.houseid;
+                });
+                if (arr && arr.length > 0) {
+                  obj.roomtype = arr[0];
+                  obj.houseid = arr[0].houseid;
+                  obj.houseprice = arr[0].houseprice;
+                  obj.roommaxperson = arr[0].maxperson;
+                } else {
+                  obj.roomtype = "";
+                  obj.houseid = "";
+                  obj.houseprice = "";
+                  obj.roommaxperson = "";
+                }
+              }
+            }
+          }
+        })
+        .catch(err => {});
+    },
+    onChange(arr) {
+      this.formData[7].noShow = true;
+      if (arr[0] == 1 || arr[0] == 3) {
+        this.formData[4].noShow = true;
+        this.formData[5].noShow = true;
+        this.formData[6].noShow = false;
+      } else if (arr[0] == 4) {
+        this.formData[4].noShow = false;
+        this.formData[5].noShow = false;
+        this.formData[6].noShow = false;
+      } else if (arr[0] == 2) {
+        this.formData[7].noShow = false;
+        this.formData[4].noShow = true;
+        this.formData[5].noShow = true;
+        this.formData[6].noShow = true;
+      } else {
+        this.formData[4].noShow = true;
+        this.formData[5].noShow = true;
+        this.formData[6].noShow = true;
+      }
+    },
+    submitForm(data) {
+      if (data.areatype == 4) {
+        if (!data.houseid) {
+          this.$message({
+            showClose: true,
+            message: "请选择房型",
+            type: "error"
+          });
+          return false;
+        }
+      }
+      delete data.roomtype;
+      data.buildid = this.fatheragid.buildid;
+      delete data.Tagcode;
+      // 判断提交事件
+      this.$ajax(
+        "/system/build/save/a/savebatchroom",
+        data,
+        "1",
+        {},
+        true,
+        120000
+      )
+        .then(res => {
+          this.$message({
+            message: "批量添加成功",
+            type: "success"
+          });
+          this.$emit("onRefresh");
+          this.beforeClose();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      this.defaultData = { Tagcode: "" };
+      //关闭事件
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

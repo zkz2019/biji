@@ -1,0 +1,236 @@
+@media screen and (max-height: 520px) {
+
+    .con-select {
+        width: 140px;
+    }
+
+    .con-popover {
+        width: 180px;
+    }
+
+    .con-search {
+        width: 200px;
+    }
+
+    .con-num {
+        width: 120px;
+    }
+
+    .dateSelect {
+        width: 470px;
+        width: 340px !important;
+    }
+
+    .con-date {
+        .el-input__inner {
+            width: 300px;
+        }
+    }
+
+    .el-tabs__nav-next,
+    .el-tabs__nav-prev {
+        line-height: 30px;
+    }
+
+    .home {
+        .header {
+            height: 40px;
+            line-height: 40px;
+
+            .header-left {
+                .logo {
+                    height: 28px;
+                    max-width: 160px;
+                }
+            }
+
+            .header-content {
+                .header-menu {
+                    .el-submenu {
+
+                        .el-submenu__title {
+                            padding: 0 10px;
+                            font-size: 14px;
+
+                            i {
+                                font-size: 14px;
+                                margin-right: 5px;
+                            }
+                        }
+                    }
+
+                    .el-menu--horizontal>.el-menu-item {
+                        padding: 0 10px;
+                        font-size: 14px;
+                        height: 40px;
+                        line-height: 40px;
+
+                        i {
+                            font-size: 14px;
+                            margin-right: 5px;
+                        }
+                    }
+
+                    .el-menu--horizontal>.el-submenu .el-submenu__title {
+                        height: 40px;
+                        line-height: 40px;
+                    }
+                }
+
+                .header-scroll {
+                    width: 20px;
+                    font-size: 16px;
+                    padding-top: 2px;
+
+                }
+
+            }
+
+            .quick {
+                height: 40px;
+                line-height: 40px;
+            }
+
+            .header-right {
+                .el-dropdown {
+                    height: 40px;
+                }
+
+                .userinfo-inner {
+                    // .logo {
+                    //     margin: 4px 0px 4px 10px;
+                    //     height: 32px;
+                    //     width: 32px;
+
+                    img {
+                        margin: 8px; //4px 0px 4px 10px;
+                        height: 24px;
+                        width: 24px;
+                        // margin: 3px;
+                        // height: 26px;
+                        // width: 26px;
+                    }
+
+                    // }
+
+                }
+
+                .full-screen {
+                    top: 0px;
+                }
+            }
+        }
+
+        .section {
+            .section-header {
+                margin: 6px 10px;
+                height: 24px;
+                line-height: 24px;
+
+                .el-tabs__item {
+                    font-size: 14px;
+                    height: 24px;
+                    line-height: 24px;
+
+                    i {
+                        font-size: 14px;
+                    }
+                }
+            }
+        }
+    }
+
+    .com-title {
+        margin: 0 0 6px 0;
+        padding: 4px 0 0 32px;
+        height: 32px;
+
+        span.navig {
+            font-size: 15px;
+        }
+
+        .ti_text {
+            height: 20px;
+            font-size: 16px;
+        }
+
+        .ti_textL {
+            .el-button--mini {
+                padding: 4px 15px;
+            }
+        }
+    }
+
+    .query_head {
+        margin: 4px 8px;
+        padding: 4px 8px;
+
+    }
+
+    .inpbox {
+
+        .qh_text {
+            padding-right: 4px;
+        }
+
+        .sbox {
+            margin: 2px 24px 2px 6px;
+        }
+
+    }
+
+    .query_main {
+        margin: 2px 8px 8px;
+        padding: 0 14px;
+
+        .paging-fy {
+            padding: 4px 3px 2px;
+            // padding-right: 100px;
+        }
+    }
+
+    .query_main.batch {
+        margin-top: 0px;
+        height: 100%; //批量授权处修改
+    }
+
+    .batch-authori {
+
+        .b-left {
+            .query-input {
+                margin-bottom: 8px;
+
+                .in-search {
+                    padding: 8px;
+                }
+            }
+        }
+
+        .b-centre {
+            margin: 0 4px;
+        }
+
+        .b-right {
+            .tobleList {
+                padding-bottom: 8px;
+            }
+        }
+
+        .tobleList {
+            padding: 0 8px;
+        }
+
+        .tsTop {
+            height: 28px;
+            line-height: 28px;
+        }
+    }
+
+    .fel-form .form-content .content-div {
+        margin: 0 20px 0 10px;
+    }
+
+    .single-row .form-content .form-el {
+        width: 90%;
+    }
+}

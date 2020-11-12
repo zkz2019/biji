@@ -1,0 +1,749 @@
+<!-- NBIOT锁 -->
+<template>
+  <el-container>
+    <fel-left-tree class="nblots361">
+      <div slot="left" class="left-tree">
+        <fel-tree1
+          :showCheckbox="false"
+          class="tree1"
+          :idArr="[0]"
+          :refresh="refreshTree"
+          interface="/system/device/devicenblock/1/getbuildtree"
+          @handleNodeClick="handleNodeClick"
+        ></fel-tree1>
+      </div>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{toParam.alias}}</com-title>
+          <retrieval class="query_head">
+            <inpbox inptext="CSQ小于">
+              <el-input-number
+                class="wid100p qh_inp numChangeicon"
+                v-model="param.lesscsq"
+                controls-position="right"
+                :min="0"
+                :max="40"
+              ></el-input-number>
+            </inpbox>
+            <inpbox inptext="信噪比小于">
+              <el-input-number
+                class="wid100p qh_inp numChangeicon"
+                v-model="param.lesssnr"
+                controls-position="right"
+                :min="-20"
+                :max="30"
+              ></el-input-number>
+            </inpbox>
+            <inpbox inptext="信号强度小于">
+              <el-input-number
+                class="wid100p qh_inp numChangeicon"
+                v-model="param.lesssinger"
+                controls-position="right"
+                :min="-144"
+                :max="-44"
+              ></el-input-number>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-select v-model="param.lockstate" class="wid150 qh_inp">
+                <el-option
+                  v-for="item in lockstates"
+                  :key="item.lockstate"
+                  :label="item.statename"
+                  :value="item.lockstate"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inpb="true">
+              <el-select v-model="param.roomtxtype" class="wid150 qh_inp">
+                <el-option
+                  v-for="item in roomtxtypes"
+                  :key="item.roomtxtype"
+                  :label="item.typename"
+                  :value="item.roomtxtype"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="wid300 qh_inp"
+                v-model="param.search"
+                placeholder="输入位置/IMEI/唯一ID进行检索"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            :isAll="range == 2? true:false"
+            :class="{'cover-up':range == 2}"
+            interface="/system/device/devicenblock/2/getdevicenblock"
+            :list="list"
+            @sort-change="sortChange"
+            @onSelection="onSelection"
+            :refresh="refresh"
+            :param="param"
+            :paramObj="paramObj"
+            @onEjectChange="onEjectChange"
+          >
+            <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+              {{v.alias}}
+            </span>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <!-- <el-select class="wid150" v-model="queryParam.gotype">
+                <el-option
+                  v-for="item in ranges"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                ></el-option>
+              </el-select>
+              <el-select v-model="queryParam.gotype2">
+                <el-option
+                  v-for="item in quantitytypes"
+                  :key="item.alias"
+                  :label="item.alias"
+                  :value="item.alias"
+                ></el-option>
+              </el-select>
+              <fel-button @click="inSavegatewayorder" type="primary">开始</fel-button>-->
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <!-- <div class="cover-up" v-show="range == 2">
+                <el-checkbox disabled v-model="range" true-label="2" false-label="1"></el-checkbox>
+              </div>-->
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+            </template>
+          </paging-table>
+        </el-main>
+        <historyNBIOT
+          @beforeClose="dialogHistory=false"
+          :dialogVisible="dialogHistory"
+          :paramObj="paramObj"
+        ></historyNBIOT>
+        <queryNBIOT
+          :param="queryParam"
+          @beforeClose="dialogQuery=false"
+          :dialogVisible="dialogQuery"
+        ></queryNBIOT>
+        <modifyNBIOT
+          @onRefresh="onRefresh"
+          :param="modifyParam"
+          :paramObj="modifyParamObj"
+          @beforeClose="dialogModify=false"
+          :dialogVisible="dialogModify"
+        ></modifyNBIOT>
+        <replaceNBIOT
+          @onRefresh="onRefresh"
+          :param="replaceParam"
+          @beforeClose="dialogReplace=false"
+          :dialogVisible="dialogReplace"
+        ></replaceNBIOT>
+        <infoNBIOT :param="infoParam" @beforeClose="dialogInfo=false" :dialogVisible="dialogInfo"></infoNBIOT>
+        <guideFile
+          title="NBIOT锁"
+          :dialogVisible="dialogGuideFile"
+          :importButs="importButs"
+          :exportButs="exportButs"
+          @handleClose="dialogGuideFile=false"
+          @showHistory="showHistory"
+        ></guideFile>
+        <nbTongxun
+          :param="tongxunParam"
+          @beforeClose="dialogTongxun=false"
+          :dialogVisible="dialogTongxun"
+        ></nbTongxun>
+      </el-container>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import nbTongxun from "./nbTongxun";
+import Storages from "../../../utils/Storage.js"; //缓存工具
+import queryNBIOT from "./queryNBIOT";
+import historyNBIOT from "./historyNBIOT";
+import modifyNBIOT from "./modifyNBIOT";
+import replaceNBIOT from "./replaceNBIOT";
+import infoNBIOT from "./infoNBIOT";
+import guideFile from "@/views/common/guideFile.vue";
+export default {
+  components: {
+    historyNBIOT,
+    queryNBIOT,
+    modifyNBIOT,
+    replaceNBIOT,
+    infoNBIOT,
+    guideFile,
+    nbTongxun
+  },
+  props: {
+    toParam: Object,
+    toRoute: Object
+  },
+  data() {
+    let $this = this;
+    return {
+      lockstates: [{ lockstate: "", statename: "所有状态门锁" }],
+      roomtxtypes: [{ roomtxtype: "", typename: "所有运营商门锁" }],
+      tongxunParam: {},
+      dialogHistory: false,
+      dialogReplace: false,
+      dialogTongxun: false,
+      replaceParam: {},
+      modifyParamObj: [],
+      dialogInfo: false,
+      infoParam: {},
+      importButs: [],
+      exportButs: [],
+      refreshTree: 0,
+      topButs: [],
+      addParam: {},
+      dialogGuideFile: false,
+      modifyParam: {},
+      dialogQuery: false,
+      dialogModify: false,
+      range: "1",
+      ranges: [
+        {
+          value: "勾选范围",
+          label: "勾选范围"
+        },
+        {
+          value: "区域范围",
+          label: "全部列表"
+        }
+      ],
+      queryParam: {
+        gotype: "勾选范围",
+        gotype2: ""
+      },
+      quantitytypes: [],
+      refresh: 0,
+      param: {
+        buildid: "",
+        search: "",
+        lockstate: "",
+        roomtxtype: "",
+        sortby: "",
+        sequence: "",
+        lesscsq: undefined,
+        lesssinger: undefined,
+        lesssnr: undefined
+      },
+      paramObj: {},
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          width: "40px",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+        {
+          name: "门锁位置",
+          sortable: "custom",
+          prop: "roomlocation"
+          // width: "120px"
+        },
+        {
+          show: true,
+          name: "设备型号",
+          prop: "roommodel"
+        },
+        {
+          name: "门锁唯一ID",
+          sortable: "custom",
+          prop: "roomcode2"
+          // width: "110px"
+        },
+        {
+          name: "门锁ICCID",
+          sortable: "custom",
+          prop: "roomiccid"
+          // width: "110px"
+        },
+        {
+          name: "门锁IMEI",
+          sortable: "custom",
+          prop: "roomimei"
+          // width: "140px"
+        },
+        {
+          show: true,
+          name: "门锁IMSI",
+          sortable: "custom",
+          prop: "roomimsi"
+        },
+        {
+          name: "CSQ",
+          sortable: "custom",
+          prop: "roomcsq",
+          width: "70px"
+        },
+        {
+          name: "信噪比",
+          sortable: "custom",
+          prop: "roomsnr",
+          width: "80px"
+        },
+        {
+          name: "信号强度",
+          sortable: "custom",
+          prop: "roomsignal",
+          width: "90px"
+        },
+        {
+          show: true,
+          name: "平台类型",
+          sortable: "custom",
+          prop: "txtype"
+        },
+        {
+          name: "小区id",
+          prop: "roomcellid"
+        },
+        {
+          name: "最后通讯",
+          sortable: "custom",
+          prop: "lastactivedate",
+          width: "90px"
+        },
+        {
+          name: "通讯状态",
+          prop: "roomstate",
+          sortable: "custom",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.roomstate;
+                if (value == "在线") {
+                  return "puc-pg";
+                } else if (value == "离线") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.roomstate}}</span>`
+          }
+        },
+        {
+          show: true,
+          name: "SIM卡到期时间",
+          sortable: "custom",
+          prop: "roomsimdate"
+        },
+        {
+          name: "操作",
+          width: "150px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              }
+            },
+            methods: {
+              onClick(key) {
+                if (key == 2) {
+                  $this.modify(this.scope.row);
+                } else if (key == 4) {
+                  $this.delete([this.scope.row.roomid]);
+                } else if (key == 5) {
+                  $this.onReplace(this.scope.row);
+                } else if (key == 9) {
+                  $this.onInfo(this.scope.row);
+                } else if (key == 10) {
+                  $this.onTongxun(this.scope.row);
+                }
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      listBut: [],
+      listArr: [],
+      sonmenu: 0
+    };
+  },
+  watch: {
+    toRoute(val) {
+      this.param.search = val.roomcode2;
+      this.onRefresh();
+    }
+  },
+  created() {
+    this.inGetsonmenu();
+    this.inGetlockstate();
+    this.inGetroomtxtype();
+  },
+  mounted() {
+    if (this.toRoute) {
+      this.param.search = this.toRoute.roomcode2;
+      this.onRefresh();
+    }
+    this.getEject();
+  },
+  methods: {
+    onTongxun(obj) {
+      this.tongxunParam = obj;
+      this.dialogTongxun = true;
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        // let sortby = obj.prop;
+        // if (sortby == "roomlocation") {
+        //   sortby = "roomlocation";
+        // } else if (sortby == "roomcode2") {
+        //   sortby = "roomcode2";
+        // } else if (sortby == "roomiccid") {
+        //   sortby = "roomiccid";
+        // } else if (sortby == "roomimei") {
+        //   sortby = "roomimei";
+        // } else if (sortby == "roomimsi") {
+        //   sortby = "roomimsi";
+        // } else if (sortby == "roomcsq") {
+        //   sortby = "roomcsq";
+        // } else if (sortby == "roomsnr") {
+        //   sortby = "roomsnr";
+        // } else if (sortby == "roomsignal") {
+        //   sortby = "roomsignal";
+        // } else if (sortby == "txtype") {
+        //   sortby = "txtype";
+        // } else if (sortby == "roomstate") {
+        //   sortby = "roomstate";
+        // } else if (sortby == "lastactivedate") {
+        //   sortby = "lastactivedate";
+        // }
+        this.param.sortby = obj.prop;
+        console.log("this", this.param.sortby);
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    //信息
+    onInfo(data) {
+      this.infoParam = data;
+      this.dialogInfo = true;
+    },
+    // 更改
+    onReplace(data) {
+      this.replaceParam = data;
+      this.dialogReplace = true;
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    showHistory() {
+      //导入历史弹框
+      this.dialogHistory = true;
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        if (key == "lesscsq" || key == "lesssinger" || key == "lesssnr") {
+          this.param[key] = undefined;
+        } else {
+          this.param[key] = "";
+        }
+      });
+      this.onRefresh();
+      this.isSelectable = true;
+      this.range = "1";
+    },
+    inGetlockstate() {
+      this.$ajax("/system/device/devicenblock/3/getlockstate", {}, "1")
+        .then(res => {
+          this.lockstates.push(...res.result);
+        })
+        .catch(err => {});
+    },
+    inGetroomtxtype() {
+      this.$ajax("/system/device/devicenblock/4/getroomtxtype", {}, "1")
+        .then(res => {
+          this.roomtxtypes.push(...res.result);
+        })
+        .catch(err => {});
+    },
+    onSelection(data) {
+      this.listArr = data;
+    },
+    onClick(key, data) {
+      if (key == 467) {
+        this.dialogGuideFile = true;
+      } else if (key == 368) {
+        this.dialogQuery = true;
+      } else if (key == 366) {
+        this.dialogHistory = true;
+      }
+    },
+    inSavegatewayorder(id, obj) {
+      this.queryParam.gotype = this.range == 2 ? "区域范围" : "勾选范围";
+      this.queryParam.gotype2 = obj.alias;
+      if (id == "568") {
+        this.modify();
+      } else if (!this.queryParam.gotype2) {
+        this.$message({
+          message: "请先选择指令类型",
+          type: "warning"
+        });
+      } else if (
+        this.queryParam.gotype == "勾选范围" &&
+        (!this.listArr || this.listArr.length == 0)
+      ) {
+        this.$message({
+          message: "请先选择要发指令的门锁",
+          type: "warning"
+        });
+      } else {
+        this.queryParam.buildid = this.paramObj.buildid;
+        let obj = this.queryParam;
+        if (this.queryParam.gotype != "勾选范围") {
+          obj = Object.assign({}, this.param, this.queryParam);
+        }
+        this.$ajax(
+          "/system/device/devicenblock/order/1/savenblockorder",
+          obj,
+          "1",
+          this.listArr.map(o => o.roomid),
+          true
+        )
+          .then(res => {
+            this.$message({
+              message: this.queryParam.gotype2 + "指令下发成功",
+              type: "success"
+            });
+            this.onRefresh();
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      }
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          console.log("res", res);
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == 467) {
+              let arr = value.childs;
+              if (arr && arr.length > 0) {
+                this.topButs.push(value.entity);
+                arr.forEach(obj => {
+                  let vid = obj.entity.id;
+                  let valias = obj.entity.alias;
+                  if (vid == "365") {
+                    this.importButs.push({
+                      name: valias,
+                      tempUrl: "",
+                      url:
+                        "/system/device/devicenblock/upload/2/uploaddevicenblock",
+                      errUrl: "/system/device/devicenblock/upload/5/downstu"
+                    });
+                  } else if (vid == "364") {
+                    this.exportButs.push({
+                      name: valias,
+                      url:
+                        "/system/device/devicenblock/upload/1/downdevicenblock",
+                      data: this.param
+                    });
+                  } else if (vid == "366") {
+                    this.exportButs.push({ name: valias });
+                  }
+                });
+              }
+            } else if (id == "363") {
+              this.listBut.push({
+                type: "4",
+                name: "删除"
+              });
+            } else if (id == "362") {
+              // this.listBut.push({
+              //   type: "2",
+              //   name: "修改"
+              // });
+              this.listBut.push({
+                type: "5",
+                name: "更换"
+              });
+            } else if (id == "554") {
+              this.listBut.push({
+                type: "2",
+                name: "配置"
+              });
+            } else if (id == "567") {
+              this.listBut.push({
+                type: "9",
+                name: "信息"
+              });
+            } else if (id == "366") {
+              this.topButs.push(value.entity);
+            } else if (id == "368") {
+              this.topButs.push(value.entity);
+            } else if (id == "367") {
+              value.childs.forEach(item => {
+                if (
+                  item.entity.id == "369" ||
+                  item.entity.id == "370" ||
+                  item.entity.id == "371" ||
+                  item.entity.id == "568"
+                ) {
+                  this.quantitytypes.push(item.entity);
+                }
+              });
+            } else if (id == "666") {
+              this.listBut.push({
+                type: "10",
+                name: "通讯"
+              });
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    delete(arr) {
+      this.$confirm("此操作将删除当前门锁, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax(
+            "/system/device/devicenblock/delete/1/deletedevicenblock",
+            {},
+            "1",
+            arr,
+            true
+          )
+            .then(res => {
+              if (res.resultCode == "0") {
+                this.$message({
+                  message: res.result
+                });
+              } else {
+                this.$message({
+                  message: "删除指令已下发!",
+                  type: "success"
+                });
+                this.onRefresh();
+              }
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(err => {});
+    },
+    modify(data) {
+      if (this.range == 2) {
+        this.modifyParamObj = [];
+        this.modifyParam = Object.assign({ gotype: "区域范围" }, this.param);
+      } else {
+        if (data) {
+          this.modifyParamObj = [data.roomid];
+        } else {
+          this.modifyParamObj = this.listArr.map(o => o.roomid);
+        }
+        this.modifyParam = Object.assign({ gotype: "勾选范围" }, this.param);
+      }
+      this.dialogModify = true;
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    handleNodeClick(data) {
+      this.paramObj = data;
+      this.param.buildid = data.buildid;
+      this.isSelectable = true;
+      this.$refs["paging-table"].clearSelection();
+      this.range = "1";
+      this.onRefresh();
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onEjectChange() {
+      //将用户隐藏表格的信息存到localStorage
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("nblots361.eject", arr);
+    },
+    getEject() {
+      //从localStorage获取用户隐藏表格的信息
+      let arr = Storages.getlocalStorage("nblots361.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        // obj.show = arr[key];
+        obj.show = typeof arr[key] == "undefined" ? obj.show : arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    }
+  }
+};
+</script>

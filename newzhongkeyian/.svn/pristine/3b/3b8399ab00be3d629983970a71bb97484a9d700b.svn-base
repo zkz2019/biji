@@ -1,0 +1,393 @@
+<!-- 电池消耗查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox :inptext="'请选择时间'">
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+          <!-- <fel-date class="maR10 qh_date con-date" style="width:370px!important;" v-model="dates"></fel-date> -->
+        </inpbox>
+        <inpbox :inptext="'消耗电量'">
+          <el-select class="con-select qh_inp" v-model="param.changetype">
+            <el-option
+              v-for="item in quantitytypes"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox>
+          <el-input
+            clearable
+            class="con-select qh_inp maR24"
+            v-model="param.changequantity"
+            placeholder="输入电量"
+          ></el-input>
+        </inpbox>
+        <!-- <inpbox :inptext="'消耗电量排序'">
+          <el-select class="con-select qh_inp" v-model="param.changetype">
+            <el-option
+              v-for="item in xhdlpxTypes"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            ></el-option>
+          </el-select>
+        </inpbox>-->
+        <inpbox :inptext="'是否在线'">
+          <el-select class="con-select qh_inp" v-model="param.roomstate">
+            <el-option v-for="item in sfzxTypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'选择位置'">
+          <queryPosition
+            ref="queryPosition"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/quantityrecord/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            placeholder="输入位置/房间进行查询"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/analysis/quantitychange/1/listQuantityChange"
+        :list="list"
+        ajaxType="9"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="paramObj"
+        @sort-change="sortChange"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="but of topButs" class="sli but-blue" @click="exportBut(but.id)">
+          <i v-if="but.icon" :class="'ficon-'+but.icon"></i>
+          {{but.alias}}
+        </span>
+      </paging-table>
+    </el-main>
+    <el-dialog
+      title="查看"
+      width="70%"
+      class="grantDialog"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="dialogAdd"
+    >
+      <tjcharts
+        class="dialog-table6 wh100"
+        :Times="dates"
+        :refresh="refreshStatis"
+        :param="statisParam"
+      ></tjcharts>
+    </el-dialog>
+    <exportHistory
+      historyUrl="/analysis/quantitychange/3/downQuantityChangeHistory"
+      :dialogVisible="iHvisible"
+      ajaxType="9"
+      @beforeClose="()=>{iHvisible=false}"
+    ></exportHistory>
+  </el-container>
+</template>
+
+<script>
+import { timerDownload } from "../personnel/index.js";
+import { getDates } from "./query.js";
+import tjcharts from "./tjcharts";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import exportHistory from "../personnel/export-history";
+import queryPosition from "./queryPosition";
+export default {
+  name: "dcdlcx162",
+  components: {
+    queryPosition,
+    exportHistory,
+    tjcharts,
+  },
+  data() {
+    let $this = this;
+    return {
+      isExport: false,
+      isExportHistory: false,
+      dialogAdd: false,
+      iHvisible: false,
+      refreshStatis: 0,
+      statisParam: {},
+      sfzxtype: "",
+      dates: [],
+      xhdlpxTypes: [
+        { id: "1", name: "小于等于" },
+        { id: "2", name: "大于等于" },
+      ],
+      sfzxTypes: [
+        { id: "1", name: "在线" },
+        { id: "2", name: "离线" },
+      ],
+      paramObj: {
+        build: {
+          type: "1",
+          arearoom: [],
+          build: [],
+        },
+      },
+      isonlines: [
+        {
+          id: "",
+          name: "全部",
+        },
+        {
+          id: "1",
+          name: "在线",
+        },
+        {
+          id: "0",
+          name: "离线",
+        },
+      ],
+      topButs: [],
+
+      quantitytypes: [
+        {
+          id: "1",
+          name: "小于等于",
+        },
+        {
+          id: "2",
+          name: "大于等于",
+        },
+      ],
+      param: {
+        changequantity: "",
+        search: "",
+        changetype: "",
+        edate: "",
+        roomstate: "",
+        search: "",
+        sdate: "",
+        sorttype: "",
+        sortby: "",
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "房间类型",
+          sortable: "custom",
+          prop: "roomtype",
+        },
+        {
+          name: "位置",
+          sortable: "custom",
+          prop: "roomlocation",
+        },
+        {
+          name: "房间",
+          sortable: "custom",
+          prop: "roomname",
+        },
+        {
+          name: "最近更换电池日期",
+          sortable: "custom",
+          prop: "changedate",
+        },
+        {
+          name: "当前电池消耗电量",
+          sortable: "custom",
+          prop: "changequantity",
+        },
+        {
+          name: "开门次数",
+          sortable: "custom",
+          prop: "unlockingcount",
+        },
+        {
+          name: "当前电量",
+          sortable: "custom",
+          prop: "roomcharge",
+        },
+        {
+          name: "是否在线",
+          sortable: "custom",
+          prop: "roomstate",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.roomstate;
+                if (value == "在线") {
+                  return "puc-pg";
+                } else if (value == "离线") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.roomstate}}</span>`,
+          },
+        },
+        {
+          name: "记录",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                $this.statisParam = Object.assign({}, this.scope.row);
+                $this.refreshStatis = new Date().getTime();
+                $this.dialogAdd = true;
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick">查看</el-button>
+            </div>`,
+          },
+        },
+      ],
+      refresh: 0,
+    };
+  },
+  created() {
+    let tValue = getDates();
+    this.dates = tValue;
+    this.param.sdate = tValue[0];
+    this.param.edate = tValue[1];
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    exportBut(id) {
+      if (id == "945") {
+        let url = "/analysis/quantitychange/2/exportQuantityChange";
+        let tValue = getDates(this.dates);
+        this.param.sdate = tValue[0];
+        this.param.edate = tValue[1];
+        let name = "电池消耗查询";
+        this.inExportPackage(url, name, this.param, this.paramObj);
+      } else if (id == "946") {
+        this.exportHistory();
+      }
+    },
+
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sorttype = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sorttype = "1";
+        }
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sorttype = "";
+        this.param.sortby = "";
+      }
+      this.search();
+    },
+    inExportPackage(url, name, data = {}, obj = {}) {
+      this.$ajax(url, data, "9", obj, true, 60000)
+        .then((res) => {
+          this.$message({
+            message: name + "文件导出已下发，文件正在生成中",
+            type: "success",
+          });
+          timerDownload(
+            res.result,
+            "/analysis/quantitychange/3/downQuantityChangeHistory",
+            this,
+            name,
+            "9"
+          );
+        })
+        .catch((err) => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error",
+          });
+        });
+    },
+    exportHistory() {
+      this.iHvisible = true;
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "944" }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let entity = value.entity;
+            let id = entity.id;
+            if (id == "945") {
+              this.topButs.push(entity);
+            } else if (id == "946") {
+              this.topButs.push(entity);
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    beforeClose() {
+      this.dialogAdd = false;
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      this.$refs.dates.value2 = new Date();
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.$refs.queryPosition.onClear();
+      this.search();
+    },
+    onChoiceWZ(data, type) {
+      if (type == "1") {
+        this.paramObj.build.type = 2;
+        this.paramObj.build.arearoom = data;
+        this.paramObj.build.build = [];
+      } else {
+        this.paramObj.build.type = 1;
+        this.paramObj.build.arearoom = [];
+        this.paramObj.build.build = data;
+      }
+      // this.paramObj = data;
+    },
+    search() {
+      let tValue = getDates(this.dates);
+      this.param.sdate = tValue[0];
+      this.param.edate = tValue[1];
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "dcdlcx162");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "dcdlcx162");
+    },
+  },
+};
+</script>

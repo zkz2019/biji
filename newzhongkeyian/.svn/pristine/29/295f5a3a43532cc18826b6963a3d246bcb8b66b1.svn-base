@@ -1,0 +1,139 @@
+<!-- 操作记录 -门禁 -->
+<template>
+  <fel-dialog
+    title="操作记录"
+    width="70%"
+    minWidth="1050px"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="mjRecord">
+      <paging-table
+        height="100%"
+        interface="/access/v2.0/door/m/listAccessAuthUpdate"
+        class="heig100"
+        @onSelection="onSelection"
+        :list="list"
+        ajaxType="9"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="{adid:paramObj.adid}"
+      ></paging-table>
+    </el-container>
+    <recordDetails
+      :paramObj="paramDetails"
+      :dialogVisible="dialogVisibleDetails"
+      @beforeClose="dialogVisibleDetails=false"
+    ></recordDetails>
+  </fel-dialog>
+</template>
+
+<script>
+import recordDetails from "./recordDetails";
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    paramObj: Object,
+    dialogVisible: Boolean
+  },
+  name: "record",
+  components: { recordDetails },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      param: {},
+      paramDetails: {},
+      dialogVisibleDetails: false,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+        {
+          name: "操作日期",
+          prop: "aaucdate"
+        },
+        {
+          name: "处理总数",
+          prop: "aaucount"
+        },
+        {
+          name: "处理失败数",
+          prop: "aaunocount"
+        },
+        {
+          name: "处理成功数",
+          prop: "aauokcount"
+        },
+        {
+          name: "操作类型",
+          prop: "aautypename"
+        },
+        {
+          name: "操作账号",
+          prop: "userlogin"
+        },
+        {
+          name: "操作",
+          width: "150px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                $this.onClick(this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+      <fel-button type="text" size="small" @click.stop="onClick">详情</fel-button>
+</div>`
+          }
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param = {
+          adid: this.paramObj.adid,
+          amid: this.paramObj.amid
+        };
+        this.onRefresh();
+      }
+    }
+  },
+  created() {},
+  methods: {
+    ...mapGetters(["getNumber"]),
+    onResize() {
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.onRefresh();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onRefresh() {
+      //刷新表格
+      this.refresh = new Date().getTime();
+    },
+    onSelection(data) {},
+    onClick(obj) {
+      this.paramDetails = { aauid: obj.aauid };
+      this.dialogVisibleDetails = true;
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+.mjRecord {
+  height: 480px;
+}
+</style>
+

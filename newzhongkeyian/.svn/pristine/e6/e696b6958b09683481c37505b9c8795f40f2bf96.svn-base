@@ -1,0 +1,908 @@
+<!-- 指纹详情 -->
+<template>
+  <el-container>
+    <el-header class="elheader query_headbox">
+      <com-title>{{ toParam.alias }}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-select v-model="param.personstate" class="con-select qh_inp">
+            <el-option
+              v-for="item in states"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'选择组织'">
+          <el-cascader
+            ref="cascader"
+            class="con-popover qh_inp"
+            size="mini"
+            v-model="param.pgid"
+            :options="zzoptions"
+            :props="{ checkStrictly: true, value: 'pgid', label: 'pgname' }"
+            clearable
+          ></el-cascader>
+        </inpbox>
+        <inpbox :inptext="'请输入'">
+          <el-input
+            class="con-search qh_inp"
+            clearable
+            type="text"
+            :placeholder="'请输入' + getNumber() + '|姓名|手机号搜索'"
+            v-model="param.search"
+          ></el-input>
+        </inpbox>
+        <inpbox :inptext="''">
+          <el-button @click="onQuerySearch" class="qh_btn" type="primary">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="elmainbox query_main">
+      <paging-table
+        height="100%"
+        ref="paging-table"
+        :isAll="range == 2 ? true : false"
+        :class="{ 'cover-up': range == 2 }"
+        @sort-change="sortChange"
+        @onEjectChange="onEjectChange"
+        interface="/auth/fingercenter/finger/1/getpersonfinger"
+        :param="param"
+        @onSelection="
+          d => {
+            this.listArrs = d
+          }
+        "
+        class="heig100"
+        :list="list"
+        :refresh="refresh"
+      >
+        <span v-for="(v, k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-' + v.icon"></i>
+          {{ v.alias }}
+        </span>
+        <template v-if="batchButs && batchButs.length > 0">
+          <!-- <span class="sli">
+            <el-select class="wid150" v-model="range">
+              <el-option
+                v-for="item in ranges"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+          </span>-->
+          <div class="full-list" v-show="!list[0].show">
+            <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+          </div>
+          <!-- <div class="cover-up" v-show="range == 2">
+            <el-checkbox disabled v-model="range" true-label="2" false-label="1"></el-checkbox>
+          </div>-->
+          <batch-but
+            class="sli but-blue"
+            :type="range"
+            :list="listArrs"
+            :param="batchButs"
+            @onClick="onBatchClick"
+          ></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <fel-dialog
+      title="指纹授权列表"
+      width="70%"
+      minWidth="900px"
+      class="grantDialog"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="dialogVisible"
+    >
+      <el-container class="dialog-table6 query_main">
+        <paging-table
+          ref="grant-paging-table"
+          :isAll="grantRange == 2 ? true : false"
+          :class="{ 'cover-up': grantRange == 2 }"
+          @onSelection="
+            d => {
+              this.rcids = d
+            }
+          "
+          interface="/auth/fingercenter/finger/deletefingerauths/1/getfingerauths"
+          :param="{ personcode: grantParam.personcode }"
+          :refresh="grantRefresh"
+          :list="grantList"
+        >
+          <template v-if="grantButs && grantButs.length > 0">
+            <div class="full-list" v-show="!grantList[0].show">
+              <el-checkbox
+                v-model="grantRange"
+                @change="onGrantChange"
+                true-label="2"
+                false-label="1"
+              >跨页全选</el-checkbox>
+            </div>
+            <batch-but
+              class="sli but-blue"
+              :type="grantRange"
+              :list="rcids"
+              :param="grantButs"
+              @onClick="onGrantBatchClick"
+            ></batch-but>
+          </template>
+        </paging-table>
+      </el-container>
+    </fel-dialog>
+    <detailsDialog
+      :buss="buttomsDialog"
+      :param="detailsParam"
+      @beforeClosecg="beforeClosecg"
+      :dialogVisible="dialogDetails"
+      @beforeClose="dialogDetails = false"
+    />
+    <detailsModify
+      @confirm="confirmModify"
+      :param="grantParam"
+      :paramObj="paramObj"
+      :dialogVisible="cardModify"
+      @beforeClose="cardModify = false"
+    />
+    <detailsAdd :dialogVisible="dialogAdd" @beforeClose="dialogAdd = false" />
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import detailsDialog from "./detailsDialog";
+import detailsModify from "./detailsModify";
+import detailsAdd from "./detailsAdd";
+export default {
+  components: {
+    detailsAdd,
+    detailsModify,
+    detailsDialog
+  },
+  props: {
+    toParam: null
+  },
+  created() {
+    this.$ajax("/auth/fingercenter/finger/2/getgrouptree", {}, "1")
+      .then(res => {
+        this.zzoptions = res.result;
+      })
+      .catch(err => {
+        console.log("err", err);
+      });
+    this.inGetsonmenu();
+  },
+  data() {
+    let $this = this;
+    return {
+      activeName: "first",
+      zzoptions: [],
+      paramObj: [],
+      buttomsDialog: [],
+      batchButs: [],
+      grantButs: [],
+      listGrantBut: [],
+      dialogAdd: false,
+      rcids: [],
+      cardModify: false,
+      grantRefresh: 0,
+      listArrs: [],
+      detailsParam: {},
+      dialogDetails: false,
+      grantParam: {},
+      FileimportVisible: false,
+      param: {
+        personstate: "",
+        search: "",
+        sequence: "",
+        sortby: "",
+        pgid: ""
+      },
+      refresh: 0,
+      dialogVisible: false,
+      isGranSelectable: true,
+      mjList: [
+        {
+          type: "selection",
+          selectable: this.onGranSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "门禁位置",
+          prop: ""
+        },
+        {
+          name: "门禁名称",
+          prop: ""
+        },
+        {
+          name: "门名称",
+          prop: ""
+        },
+        {
+          name: "读头编号",
+          prop: ""
+        },
+        {
+          name: "授权账号",
+          prop: ""
+        },
+        {
+          name: "授权创建时间",
+          prop: ""
+        },
+        {
+          name: "授权开始时间",
+          prop: ""
+        },
+        {
+          name: "授权结束时间",
+          prop: ""
+        },
+        {
+          name: "开门时间段",
+          prop: ""
+        },
+        {
+          name: "可开门次数",
+          prop: ""
+        }
+      ],
+      grantList: [
+        {
+          type: "selection",
+          selectable: this.onGranSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "授权账号",
+          prop: "userlogin"
+        },
+        {
+          name: "授权创建时间",
+          prop: "empcdate"
+        },
+        {
+          name: "授权开始时间",
+          prop: "empsdate"
+        },
+        {
+          name: "授权结束时间",
+          prop: "empedate"
+        },
+        {
+          name: "开门时间段",
+          prop: "opentime"
+        },
+        {
+          name: "可开门次数",
+          prop: "opencount"
+        }
+        // {
+        //   name: "操作",
+        //   width: "100px",
+        //   template: {
+        //     props: ["scope"],
+        //     computed: {
+        //       listBut() {
+        //         return $this.listGrantBut;
+        //       }
+        //     },
+        //     methods: {
+        //       onClick(key, obj) {
+        //         $this.onClick(key, Object.assign({}, this.scope.row), obj);
+        //       }
+        //     },
+        //     template: `<div>
+        //      <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+        //     </div>`
+        //   }
+        // }
+      ],
+      listBut: [],
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+
+        {
+          name: "姓名",
+          prop: "personname",
+          sortable: "custom"
+        },
+        {
+          name: this.getNumber(),
+          minWidth: "90px",
+          prop: "personcode",
+          sortable: "custom"
+        },
+        {
+          name: "手机号",
+          prop: "personmobile",
+          sortable: "custom"
+        },
+        {
+          name: "归属组织",
+          minWidth: "90px",
+          prop: "personlocation",
+          sortable: "custom"
+        },
+        {
+          name: "指纹详情",
+          minWidth: "90px",
+          prop: "fingercount",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                if (this.scope.row.personcode) {
+                  $this.detailsParam = this.scope.row;
+                  $this.dialogDetails = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="scope.row.fingercount && scope.row.fingercount != 0"><a class="a-click" @click.stop="onClick">{{scope.row.fingercount}}</a></span>
+              <span v-else>{{scope.row.fingercount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "已授权门锁",
+          minWidth: "110px",
+          prop: "rfcount",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                if (this.scope.row.personcode) {
+                  $this.grantParam = this.scope.row;
+                  $this.grantRefresh = new Date().getTime();
+                  $this.dialogVisible = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="scope.row.rfcount && scope.row.rfcount != 0"><a class="a-click" @click.stop="onClick">{{scope.row.rfcount}}</a></span>
+              <span v-else>{{scope.row.rfcount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "已授权门禁",
+          minWidth: "110px",
+          prop: "rfcount",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick() {
+                if (this.scope.row.personcode) {
+                  $this.grantParam = this.scope.row;
+                  $this.grantRefresh = new Date().getTime();
+                  $this.dialogVisible = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="scope.row.rfcount && scope.row.rfcount != 0"><a class="a-click" @click.stop="onClick">{{scope.row.rfcount}}</a></span>
+              <span v-else>{{scope.row.rfcount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "状态",
+          prop: "personstate",
+          sortable: "custom",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.personstate;
+                if (value == "正常") {
+                  return "puc-pg";
+                } else if (value == "停用") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.personstate}}</span>`
+          }
+        },
+        {
+          name: "操作",
+          width: "140px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+              row() {
+                if (this.scope.row.personstate == "正常") {
+                  let a = JSON.parse(JSON.stringify(this.scope.row));
+                  a.personstate = "启用";
+                  return a;
+                }
+                return this.scope.row;
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                $this.onClick(key, Object.assign({}, this.scope.row), obj);
+              },
+              getState(str, state) {
+                if (str == "删除") {
+                  return true;
+                } else if (state == "未录入" || state == "") {
+                  return false;
+                } else if (state == "正常" && str == "同步") {
+                  return true;
+                } else if (state == str) {
+                  return false;
+                } else {
+                  return true;
+                }
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" v-if='getState(v.name,row.personstate)' :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      range: "1",
+      grantRange: "1",
+      ranges: [
+        {
+          value: "1",
+          label: "勾选范围"
+        },
+        {
+          value: "2",
+          label: "全部列表"
+        }
+      ],
+      choiceType: "",
+      choiceTypes: [],
+      state: "",
+      states: [
+        {
+          value: "",
+          label: "所有状态指纹"
+        },
+        {
+          value: "正常",
+          label: "正常指纹"
+        },
+        {
+          value: "停用",
+          label: "停用指纹"
+        },
+        {
+          value: "未录入",
+          label: "未录入指纹"
+        }
+      ],
+      topButs: [],
+      sonmenu: 0
+    };
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "404") {
+              this.topButs.push(value.entity);
+            } else if (id == "405") {
+              this.batchButs.push(value.entity);
+              this.listBut.push({
+                type: "6",
+                name: "启用",
+                alias
+              });
+            } else if (id == "406") {
+              this.batchButs.push(value.entity);
+              this.listBut.push({
+                type: "7",
+                name: "停用",
+                alias
+              });
+            } else if (id == "407") {
+              // this.buttomsDialog.push({
+              //   type: "7",
+              //   name: "删除",
+              //   alias
+              // });
+              this.batchButs.push(value.entity);
+              this.listBut.push({
+                type: "4",
+                name: "删除",
+                alias
+              });
+            } else if (id == "409") {
+              this.grantButs.push(value.entity);
+              this.listGrantBut.push({
+                type: "g3",
+                name: "修改",
+                alias
+              });
+            } else if (id == "408") {
+              this.grantButs.push(value.entity);
+              this.listGrantBut.push({
+                type: "g4",
+                name: "删除",
+                alias
+              });
+            } else if (id == "410") {
+              this.buttomsDialog.push(value.entity);
+            } else if (id == "411") {
+              // this.buttomsDialog.push({
+              //   type: "5",
+              //   name: "修改",
+              //   alias
+              // });
+              if (value.childs) {
+                value.childs.forEach(item => {
+                  this.buttomsDialog.push(item);
+                });
+              }
+            } else if (id == "413") {
+              this.buttomsDialog.push({
+                type: "34",
+                name: alias,
+                alias
+              });
+            } else if (id == "744") {
+              console.log("id", id);
+              this.batchButs.push(value.entity);
+              this.listBut.push({
+                type: "8",
+                name: "同步",
+                alias
+              });
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          console.log("err", err);
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        let sortby = obj.prop;
+        this.param.sortby = sortby;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onQuerySearch();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "zwgl383");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "zwgl383");
+    },
+    onGranSelectable() {
+      return this.isGranSelectable;
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    handleClick() {
+      this.onGrantChange();
+      this.grantRange = "1";
+    },
+    onGrantChange(val) {
+      if (val == 2) {
+        this.$refs["grant-paging-table"].clearSelection();
+        this.$refs["grant-paging-table"].toggleAllSelection();
+        this.$refs["grant-paging-table1"].clearSelection();
+        this.$refs["grant-paging-table1"].toggleAllSelection();
+        setTimeout(() => {
+          this.isGranSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["grant-paging-table"].clearSelection();
+        this.$refs["grant-paging-table1"].clearSelection();
+        this.isGranSelectable = true;
+      }
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    //重置事件
+    onReset() {
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.onQuerySearch();
+      this.isSelectable = true;
+      this.isGranSelectable = true;
+      this.range = "1";
+      this.grantRange = "1";
+    },
+    ...mapGetters(["getNumber"]),
+    beforeClosecg() {
+      this.onQuerySearch();
+    },
+    //提交 修改指纹授权列表
+    confirmModify(data /*obj*/) {
+      data.opencount = data.usecount;
+      let url =
+        "/auth/fingercenter/finger/deletefingerauths/5/updateallfingerauths";
+      let param = {};
+      if (this.grantRange == 1) {
+        param = this.paramObj;
+        url =
+          "/auth/fingercenter/finger/deletefingerauths/4/batchupdatefingerauths";
+      }
+      this.$ajax(url, data, "1", param, true)
+        .then(() => {
+          this.grantRefresh = new Date().getTime();
+          this.cardModify = false;
+          this.$message({
+            message: "修改成功",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    //选择 修改指纹授权列表
+    onCardModify(arr) {
+      let data = this.rcids;
+      if (arr) {
+        data = arr;
+      }
+      if (this.grantParam && this.grantParam.personcode) {
+        if (this.grantRange != 2) {
+          if (data && data.length > 0) {
+            this.paramObj = data;
+            this.cardModify = true;
+          } else {
+            this.$message({
+              message: "请先选择授权",
+              type: "warning"
+            });
+            return;
+          }
+        } else {
+          this.cardModify = true;
+        }
+      }
+    },
+    //删除指纹授权列表
+    onGrantDelete(arr) {
+      let data = this.rcids;
+      if (arr) {
+        data = arr;
+      }
+      if (this.grantParam && this.grantParam.personcode) {
+        let url =
+          "/auth/fingercenter/finger/deletefingerauths/2/batchdeletefingerauths";
+        let obj = {
+          personcode: this.grantParam.personcode
+        };
+        let param = [];
+        let ctext = "确定要删除被选中的授权吗？";
+        if (this.grantRange == 2) {
+          ctext = "确定要删除全部列表的授权吗？";
+          url =
+            "/auth/fingercenter/finger/deletefingerauths/3/deleteallfingerauths";
+        } else if (data && data.length > 0) {
+          param = data;
+        } else {
+          this.$message({
+            message: "请先选择授权",
+            type: "warning"
+          });
+          return;
+        }
+        this.$confirm(ctext, "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }).then(() => {
+          this.$ajax(url, obj, "1", param, true)
+            .then(() => {
+              this.grantRefresh = new Date().getTime();
+              this.$message({
+                message: "删除成功",
+                type: "success"
+              });
+              this.onQuerySearch();
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      }
+    },
+    // 开始操作指纹列表
+    onAction(type, arr) {
+      let url = "/auth/fingercenter/finger/deletefinger/1/batchactionfinger";
+      let data = {
+        actiontype: type || this.choiceType
+      };
+      let param = [];
+      if (arr) {
+        param = arr;
+      } else if (!arr && this.range == 2) {
+        url = "/auth/fingercenter/finger/deletefinger/2/allactionfinger";
+        data = Object.assign(data, this.param);
+      } else {
+        param = this.listArrs;
+      }
+      this.$ajax(url, data, "1", param, true)
+        .then(() => {
+          this.$message({
+            message: type + "操作成功",
+            type: "success"
+          });
+          setTimeout(() => {
+            this.onQuerySearch();
+          }, 500);
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onQuerySearch() {
+      this.refresh = new Date().getTime();
+    },
+    onGrantBatchClick(key) {
+      if (this.grantRange == 1 && this.rcids.length == 0) {
+        this.$message({
+          showClose: true,
+          message: "请先选中授权",
+          type: "warning"
+        });
+      } else {
+        if (key == 408) {
+          this.onGrantDelete();
+        } else if (key == 409) {
+          this.onCardModify();
+        }
+      }
+    },
+    onBatchClick(key, obj) {
+      if (this.range == 2) {
+        // this.onAction(obj.alias);
+        if (key == 406 || key == 407) {
+          this.$confirmCon("确定删除当前指纹授权吗？", () => {
+            this.onAction(obj.alias);
+          });
+        } else if (key == 744) {
+          this.$confirmCon("此操作将同步此指纹授权，是否继续？", () => {
+            this.onAction(obj.alias);
+          });
+        } else {
+          this.onAction(obj.alias);
+        }
+      } else if (this.listArrs.length != 0) {
+        // this.onAction(obj.alias);
+        if (key == 406 || key == 407) {
+          this.$confirmCon("确定删除当前指纹授权吗？", () => {
+            this.onAction(obj.alias);
+          });
+        } else if (key == 744) {
+          this.$confirmCon("此操作将同步此指纹授权，是否继续？", () => {
+            this.onAction(obj.alias);
+          });
+        } else {
+          this.onAction(obj.alias);
+        }
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选中指纹",
+          type: "warning"
+        });
+      }
+    },
+    onClick(key, data, obj) {
+      if (key == "d1") {
+        this.FileimportVisible = true;
+      } else if (key == 4) {
+        this.$confirmCon("确定删除当前指纹授权吗？", () => {
+          this.onAction(obj.alias, [data]);
+        });
+      } else if (key == 6) {
+        // this.$confirmCon("此操作将此启用此指纹授权，是否继续？", () => {
+        this.onAction(obj.alias, [data]);
+        // });
+      } else if (key == 7) {
+        this.$confirmCon("确定删除当前指纹授权吗？", () => {
+          this.onAction(obj.alias, [data]);
+        });
+      } else if (key == 8) {
+        this.$confirmCon("此操作将同步此指纹授权，是否继续？", () => {
+          this.onAction(obj.alias, [data]);
+        });
+      } else if (key == 404) {
+        this.dialogAdd = true;
+      } else if (key == "g4") {
+        this.onGrantDelete([data]);
+      } else if (key == "g3") {
+        this.onCardModify([data]);
+      }
+    },
+    // onSync(str, obj) {
+    //   console.log('str,obj', str, obj)
+    // },
+    beforeClose() {
+      this.dialogVisible = false;
+    }
+  }
+};
+</script>

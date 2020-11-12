@@ -1,0 +1,597 @@
+<!-- 网关运行监控 -->
+<template>
+  <el-container class="wgrz312">
+    <el-header class="query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <div class="hederboxright">
+            <el-select class="qh_inp" @change="search" v-model="param.olstate" placeholder="请选择">
+              <el-option
+                v-for="item in selectarr"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+          </div>
+        </inpbox>
+
+        <inpbox :inptext="'请输入'">
+          <el-input
+            clearable
+            class="wid250 qh_inp"
+            v-model="param.search"
+            placeholder="选择网关通讯/唯一ID进行查询"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <el-button class="buta qh_btn" type="primary" @click="search">查询</el-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="elmin query_main">
+      <paging-table
+        height="100%"
+        @onSelection="(d)=>{this.rcids = d}"
+        interface="/system/control/gatelog/1/getgatelog"
+        class="heig100"
+        :param="param"
+        :refresh="refresh"
+        :list="list"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+        <template v-if="batchButs && batchButs.length > 0">
+          <batch-but class="sli but-blue" :list="rcids" :param="batchButs" @onClick="onBatchClick"></batch-but>
+        </template>
+      </paging-table>
+    </el-main>
+    <el-dialog
+      title="监控网关列表"
+      width="70%"
+      class="grantDialog"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="dialogVisible"
+    >
+      <el-container class="dialog-table6 wh100">
+        <paging-table
+          interface="/system/control/gatelog/info/3/getgatelogdevice"
+          :param="grantParam"
+          :refresh="grantRefresh"
+          :list="grantList"
+        />
+      </el-container>
+    </el-dialog>
+    <el-dialog
+      ref="formDialog"
+      title="添加日志"
+      top="10vh"
+      width="60%"
+      :close-on-click-modal="false"
+      :before-close="closeForm"
+      :visible.sync="dialogForm"
+    >
+      <el-container class="dialog-table6">
+        <paging-table
+          interface="/system/control/gatelog/save/1/getgateway"
+          class="card-paging"
+          @onSelection="onSelect"
+          :list="cardList"
+          :refresh="cardRefresh"
+          :param="cardParam"
+        >
+          <span class="sli">
+            <el-input class="wid300 maR10" placeholder="输入网关通讯ID/唯一ID/创建人进行检索" v-model="cardParam.search"></el-input>
+            <fel-button type="primary" @click="inSearch">查询</fel-button>
+          </span>
+        </paging-table>
+      </el-container>
+      <div slot="footer" class="dialog-form-but">
+        <el-button @click="closeForm">取消</el-button>
+        <el-button type="primary" @click="submitForm">确定</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog
+      title="监控日志列表"
+      width="70%"
+      top="8vh"
+      class="grantDialog"
+      :close-on-click-modal="false"
+      :before-close="beforeJournalClose"
+      :visible.sync="dialogJournal"
+    >
+      <el-container class="dialog-table6 wh100">
+        <paging-table
+          noInti
+          interface="/system/control/gatelog/info/2/getgateloginfo"
+          :param="journalParam"
+          :refresh="journalRefresh"
+          :list="journalList"
+        >
+          <span class="sli">
+            <span class="maR5">网关</span>
+            <el-select @change="onChangeJournal" class="wid150" v-model="journalParam.gateway">
+              <el-option v-for="item in roomids" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
+          </span>
+        </paging-table>
+      </el-container>
+    </el-dialog>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+export default {
+  props: ["toParam"],
+  data() {
+    let $this = this;
+    return {
+      topButs: [],
+      batchButs: [],
+      cardRefresh: 0,
+      cardParam: {
+        search: ""
+      },
+      roomids: [],
+      journalRefresh: 0,
+      journalParam: {
+        gateway: ""
+      },
+      dialogJournal: false,
+      journalList: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "指令类型",
+          prop: "oldtype2",
+          width: "100px"
+        },
+        {
+          name: "指令内容",
+          prop: "oldcontent"
+        },
+        {
+          name: "指令日期",
+          prop: "olddate",
+          width: "160px"
+        },
+        {
+          name: "日志类型",
+          prop: "oldtype",
+          width: "80px"
+        }
+      ],
+      dialogForm: false,
+      cardList: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "通讯ID/指纹机名称",
+          prop: "gatewaycode"
+        },
+        {
+          name: "唯一ID",
+          prop: "gatewaycode2"
+        },
+        {
+          name:"创建人",
+          prop:"userlogin"
+        },
+        {
+          name: "位置",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "类型",
+          prop: "type"
+        }
+      ],
+      olremark: "",
+      gateway: [],
+      grantRefresh: 0,
+      grantParam: { olid: "" },
+      grantList: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "网关位置",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "网关通讯ID",
+          prop: "gatewaycode"
+        },
+        {
+          name: "网关唯一ID",
+          prop: "gatewaycode2"
+        },
+        {
+          name: "网关型号",
+          prop: "gatewaymodel"
+        },
+        {
+          name: "IP地址",
+          prop: "gatewayip"
+        },
+        {
+          name: "通讯状态",
+          prop: "gatewaystate"
+        }
+      ],
+      rcids: [],
+      dialogVisible: false,
+      selectarr: [
+        { label: "全部网关", value: "" },
+        { label: "监控中网关", value: "1" }
+      ],
+      param: {
+        olstate: "",
+        search: ""
+      },
+      listBut: [],
+      refresh: 0,
+      list: [
+        // {
+        //   type: "selection"
+        // },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "监控数量",
+          prop: "olcount",
+          width: "80px",
+          template: {
+            props: ["scope"],
+            methods: {
+              isNumber(num) {
+                if (num) {
+                  return /^[0-9]*$/.test(num);
+                }
+                return false;
+              },
+              onClick() {
+                if (this.scope.row.olcount) {
+                  $this.grantParam.olid = this.scope.row.olid;
+                  $this.grantRefresh = new Date().getTime();
+                  $this.dialogVisible = true;
+                }
+              }
+            },
+            template: `<div>
+              <span v-if="isNumber(scope.row.olcount)"><a class="a-click" @click.stop="onClick">{{scope.row.olcount}}</a></span>
+              <span v-else>{{scope.row.olcount}}</span>
+            </div>`
+          }
+        },
+        {
+          name: "网关位置",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "网关唯一ID",
+          prop: "gatewaycode2"
+        },
+        {
+          name: "网关通讯ID",
+          prop: "gatewaycode"
+        },
+        {
+          name: "开始监控时间",
+          prop: "olsdate"
+        },
+        {
+          name: "结束监控时间",
+          prop: "oledate"
+        },
+        {
+          name: "监控状态",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.olstate;
+                if (value == "运行") {
+                  return "puc-pg";
+                } else if (value == "停止") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{scope.row.olstate}}</span>`
+          }
+        },
+        {
+          name: "监控创建人",
+          prop: "userlogin"
+        },
+        {
+          name: "操作",
+          width: "130px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;  
+                
+              },
+              row(){
+                return this.scope.row;
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                $this.onClick(key, Object.assign({}, this.scope.row), obj);
+              }
+            },
+            template: `<div class="operat-buts">
+             <el-button v-for="(v,i) of listBut" v-show='row.olstate != v.name' :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      sonmenu: 0
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          res.result.forEach(value => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "184") {
+              this.topButs.push(value.entity);
+            } else if (id == "185") {
+              this.listBut.push({
+                type: "7",
+                name: "停止",
+                alias
+              });
+              // this.batchButs.push(value.entity);
+            } else if (id == "195") {
+              // this.batchButs.push(value.entity);
+              this.listBut.push({
+                type: "6",
+                name: "启用",
+                alias
+              });
+            } else if (id == "186") {
+              this.listBut.push({
+                type: "3",
+                name: "查看",
+                alias
+              });
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+      });
+      this.search();
+    },
+    inSearch() {
+      this.cardRefresh = new Date().getTime();
+    },
+    onChangeJournal() {
+      this.journalRefresh = new Date().getTime();
+    },
+    beforeJournalClose() {
+      this.dialogJournal = false;
+    },
+    onSelect(obj) {
+      this.gateway = obj;
+    },
+    closeForm() {
+      this.gateway = [];
+      this.olremark = "";
+      this.dialogForm = false;
+    },
+    submitForm() {
+      if (this.gateway && this.gateway.length > 0) {
+        this.$ajax(
+          "/system/control/gatelog/save/2/savegatelog",
+          {
+            olremark: this.olremark
+          },
+          "1",
+          this.gateway.map(o => o.gatewaycode),
+          true
+        )
+          .then(res => {
+            this.closeForm();
+            this.search();
+            this.$message({
+              message: "添加成功",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      } else {
+        this.$message({
+          message: "请先选择要添加日志的网关",
+          type: "warning"
+        });
+      }
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onBatchClick(key, obj) {
+      if (this.rcids.length != 0) {
+        if (key == "185") {
+          let arr = this.rcids.map(o => o.olid);
+          this.deleteJournal(arr, obj.alias);
+        }
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请先选中日志",
+          type: "warning"
+        });
+      }
+    },
+    onClick(key, data, obj) {
+      if (key == "6") {
+        this.$confirm("此操作将此启用此日志，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/control/gatelog/regain/1/regaingatelog",
+              {
+                olid: data.olid
+              },
+              "1",
+              {},
+              true
+            )
+              .then(res => {
+                this.$message({
+                  message: "启动成功",
+                  type: "success"
+                });
+                this.search();
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] `+err.resultMsg ,
+                  type: "error"
+                });
+              });
+          })
+          .catch(err => {});
+      } else if (key == "7") {
+        this.$confirm("此操作将此停用此日志，是否继续？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.deleteJournal([data.olid], obj.alias);
+          })
+          .catch(err => {});
+      } else if (key == "3") {
+        this.$ajax(
+          "/system/control/gatelog/info/1/getgateinfo",
+          {
+            olid: data.olid
+          },
+          "1"
+        )
+          .then(res => {
+            this.roomids = res.result;
+            this.journalParam.olid = data.olid;
+            this.journalParam.gateway = this.roomids[0] || "";
+            this.journalRefresh = new Date().getTime();
+            this.dialogJournal = true;
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] `+err.resultMsg ,
+              type: "error"
+            });
+          });
+      } else if (key == "184") {
+        this.inSearch();
+        this.dialogForm = true;
+      }
+    },
+    deleteJournal(data, ts) {
+      this.$ajax(
+        "/system/control/gatelog/delete/1/deletegatelog",
+        { olid: data },
+        "1",
+        {},
+        true
+      )
+        .then(res => {
+          this.$message({
+            message: ts + "成功",
+            type: "success"
+          });
+          this.search();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    //搜索
+    search() {
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      //将用户隐藏表格的信息存到localStorage
+      let arr = this.list.map(o => o.show);
+      Storages.setlocalStorage("wgyxjk312.eject", arr);
+    },
+    getEject() {
+      //从localStorage获取用户隐藏表格的信息
+      let arr = Storages.getlocalStorage("wgyxjk312.eject") || [];
+      let lists = [];
+      this.list.forEach((value, key) => {
+        let obj = Object.assign({}, value);
+        obj.show = arr[key];
+        lists.push(obj);
+      });
+      this.list = lists;
+    }
+  }
+};
+</script>

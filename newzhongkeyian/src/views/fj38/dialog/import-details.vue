@@ -1,0 +1,564 @@
+<template>
+  <el-dialog
+    title="导入列表详情"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeDetailed"
+    :visible.sync="dialogDetailed"
+  >
+    <el-container class="dialog-table6 wh100">
+      <!-- <el-header class="query_headbox">
+      </el-header>-->
+      <paging-table
+        :interface="interface1"
+        :list="listInfo"
+        :param="param"
+        :refresh="detailedRefresh"
+      >
+        <retrieval class="query_head">
+          <inpbox :inpb="true">
+            <el-input
+              clearable
+              class="qh_w270 qh_inp maR24"
+              v-model="param.search"
+              :placeholder="listObj.type=='3'?'输入房间名称查询':'输入'+getNumber()+'/姓名/房间名称查询'"
+            ></el-input>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="search()">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset()">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+import { download } from "@/utils/utils.js";
+import { mapGetters } from "vuex";
+export default {
+  props: {
+    dialogDetailed: Boolean,
+    listObj: Object,
+    uploadid: String | Number
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { uploadid: "", search: "" },
+      listInfo: [],
+      detailedRefresh: 0,
+      interface1: "/lock/upload/f/getuploadauth",
+      listAuth: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "操作时间",
+          width: "120px",
+          prop: "uadate"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "姓名",
+          prop: "personname",
+          width: "75px"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        {
+          name: "下发卡片",
+          prop: "iscard",
+          width: "80px"
+        },
+        {
+          name: "下发指纹",
+          prop: "isfinger",
+          width: "80px"
+        },
+        {
+          name: "下发app",
+          prop: "isopen",
+          width: "75px"
+        },
+        {
+          name: "下发密码",
+          prop: "ispsw",
+          width: "80px"
+        },
+        {
+          name: "下发身份证",
+          prop: "isidcard",
+          width: "95px"
+        },
+
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.uastatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.uastatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.uastatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          width: "150px",
+          prop: "uaremark"
+        }
+      ],
+      listBack: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        // {
+        //   name: "导入明细id",
+        //   prop: "uabid"
+        // },
+        {
+          name: "时间",
+          prop: "uabdate"
+        },
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.uabstatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.uabstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.uabstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "uabremark"
+        }
+      ],
+      listCheck: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        {
+          name: "绑定卡片卡号",
+          prop: "card"
+        },
+        {
+          name: "绑定指纹" + this.getNumber(),
+          prop: "finger"
+        },
+        {
+          name: "绑定蓝牙钥匙" + this.getNumber(),
+          prop: "appopen"
+        },
+        {
+          name: "绑定身份证" + this.getNumber(),
+          prop: "idcard"
+        },
+        {
+          name: "绑定密码",
+          prop: "password"
+        },
+
+        // {
+        //   name: "导入明细id",
+        //   prop: "uacid"
+        // },
+        {
+          name: "时间",
+          prop: "uacdate"
+        },
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.uacstatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.uacstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.uacstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "uacremark"
+        }
+      ],
+      listGauth: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "人员姓名",
+          prop: "personname"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "是否下发指纹",
+          prop: "isfinger"
+        },
+        {
+          name: "是否下发app开门",
+          prop: "isopen"
+        },
+        {
+          name: "是否下发卡片",
+          prop: "iscard"
+        },
+        // {
+        //   name: "是否下发密码",
+        //   prop: "ispsw"
+        // },
+        {
+          name: "时间",
+          prop: "uapdate"
+        },
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.uapstatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.uapstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.uapstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "uapremark"
+        }
+      ],
+      listGback: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "人员姓名",
+          prop: "personname"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        {
+          name: "导入时间",
+          prop: "upbdate"
+        },
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.upbstatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.upbstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.upbstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "upbremark"
+        }
+      ],
+      listGgong: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间名称",
+          prop: "roomname"
+        },
+        {
+          name: "绑定卡片卡号",
+          prop: "card"
+        },
+        {
+          name: "绑定指纹" + this.getNumber(),
+          prop: "finger"
+        },
+        {
+          name: "绑定蓝牙钥匙" + this.getNumber(),
+          prop: "appopen"
+        },
+        {
+          name: "绑定密码",
+          prop: "password"
+        },
+        {
+          name: "时间",
+          prop: "upbdate"
+        },
+        {
+          name: "状态",
+          width: "90px",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.upcstatus == "0") {
+                  return "正在导入";
+                } else if (this.scope.row.upcstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.upcstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "upcremark"
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogDetailed(val) {
+      if (val) {
+        this.onRefresh1();
+      }
+    },
+    uploadid(val) {
+      if (val) {
+        this.param.uploadid = val;
+      } else {
+        this.param.puloadid = "";
+      }
+    },
+    listObj(obj) {
+      if (obj.type == "1") {
+        this.listInfo = this.listAuth;
+        this.interface1 = "/lock/upload/f/getuploadauth";
+      } else if (obj.type == "2") {
+        this.listInfo = this.listBack;
+        this.interface1 = "/lock/upload/g/getuploadauthback";
+      } else if (obj.type == "3") {
+        this.listInfo = this.listCheck;
+        this.interface1 = "/lock/upload/h/getuploadauthcheck";
+      } else if (obj.type == "4") {
+        this.interface1 = "/lock/upload/o/getuploadauthpublic";
+        this.listInfo = this.listGauth;
+      } else if (obj.type == "7") {
+        this.interface1 = "lock/upload/s/getuploadpublicback";
+        this.listInfo = this.listGback;
+      } else if (obj.type == "8") {
+        this.interface1 = "lock/upload/w/getuploadpubliccheck";
+        this.listInfo = this.listGgong;
+      }
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeDetailed() {
+      this.$emit("beforeDetailed");
+    },
+    search() {
+      this.onRefresh1();
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh1();
+    },
+    onRefresh1() {
+      this.detailedRefresh = new Date().getTime();
+    }
+  }
+};
+</script>

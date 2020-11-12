@@ -1,0 +1,826 @@
+<!-- 批量授权 -->
+<template>
+  <el-container class="rightBatchAdd">
+    <batchList
+      v-if="addBut"
+      :toParam="toParam"
+      :topButs="listButs"
+      :showBtn="showBtn"
+      @onClick="onClick"
+    ></batchList>
+    <el-container v-else>
+      <el-header class="query_headbox">
+        <com-title>
+          <span class="navig" type="text" @click="toBatch">批量授权</span>
+          <i class="arrow"></i>
+          添加批量授权
+        </com-title>
+      </el-header>
+      <el-container class="query_main batch">
+        <adjust class="batch-authori">
+          <adjust-div class="b-left">
+            <div class="tsTop">步骤1：选择待授权卡片</div>
+            <div class="b-left_box">
+              <div class="box_top">
+                <el-select
+                  size="mini"
+                  class="box_top_sel"
+                  @change="onChange"
+                  v-model="cardParam.type"
+                  placeholder="请选择"
+                >
+                  <!-- 选择人员显示input框,待授权卡片列表显示fel-tabel,查询弹出表格;选择组织显示组织树,待授权卡片列表显示paging-tabel,查询填充待授权卡片列表 -->
+                  <el-option
+                    v-for="item in options"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  ></el-option>
+                </el-select>
+                <template v-if="!ryOrzz">
+                  <el-cascader
+                    ref="cascader"
+                    class="box_top_cas"
+                    size="mini"
+                    v-model="zzValue"
+                    :options="zzoptions"
+                    :props="{ checkStrictly: true ,value:'pgid',label:'pgname' }"
+                    @change="zzOnchange"
+                    clearable
+                  ></el-cascader>
+                </template>
+                <template v-else>
+                  <pub-select
+                    ref="felSelect"
+                    class="box_top_cas"
+                    @onChange="onRyChange"
+                    @onShow="onShow"
+                    @noNext="noNext"
+                    :options="ryoptions"
+                    :loadText="loadText"
+                    :show="rySelectShow"
+                    :next="next"
+                  >
+                    <el-input
+                      ref="selInput"
+                      class="fel-select_input"
+                      size="mini"
+                      :placeholder="'输入卡号|姓名|'+getNumber()+'搜索'"
+                      v-model="ryvalue"
+                      @focus="onRyFocus"
+                      @input="onRyInput"
+                      @clear="onRyClear"
+                      clearable
+                    ></el-input>
+                  </pub-select>
+                </template>
+                <el-button
+                  class="box_top_btn"
+                  size="mini"
+                  @click.stop="queryFirstCard(cardParam.type)"
+                  type="primary"
+                >查询</el-button>
+              </div>
+              <div class="b-left_box_bottom">
+                <template v-if="ryOrzz">
+                  <fel-table
+                    class="tobleList b-left_box_bottom_table"
+                    :loading="loading"
+                    :queryData="queryData"
+                    :list="list"
+                    @selection-change="select"
+                  >
+                    <span type="text" class="b-left_box_bottom_title">待授权卡片列表</span>
+                    <el-button
+                      :disabled="queryDataDel.length==0"
+                      type="text"
+                      class="mar0-10"
+                      @click="onDelete('0')"
+                    >
+                      <i class="ficon-remove"></i>移除
+                    </el-button>
+                    <el-button
+                      :disabled="queryData.length==0"
+                      type="text"
+                      class="mar0-10"
+                      @click="onDelete('1')"
+                    >
+                      <i class="ficon-empty"></i>清空
+                    </el-button>
+                  </fel-table>
+                </template>
+                <template v-else>
+                  <paging-table
+                    ref="pagingStay"
+                    class="tobleList wh100"
+                    interface="/auth/cardcenter/lotauth/7/getcard2"
+                    layout=" prev, pager, next"
+                    noInit
+                    :list="list"
+                    :refresh="waitCardRefresh"
+                    :param="cardParam"
+                    :paramObj="paramObj"
+                    :noRefresh="noRefresh"
+                  >
+                    <span class="b-left_box_bottom_title">待授权卡片列表</span>
+                  </paging-table>
+                </template>
+              </div>
+            </div>
+          </adjust-div>
+          <adjust-div class="b-centre" noadjust>
+            <div class="tsTop">步骤2：选择位置</div>
+            <div class="b-center_box">
+              <div class="box_top position_box">
+                <el-button
+                  class="box_top_rightBtn"
+                  @click="queryLastCard(cardParam.type)"
+                  type="primary"
+                >确认选择</el-button>
+                <!-- 确认选择,如果选择人员则传递列表全部人员及选中建筑;如果选中组织则传递组织id及选中建筑,获得卡片列表填入批量生成授权列表 -->
+                <div class="top-switch" @click="changePosiOrGro">
+                  <i class="el-icon-arrow-left"></i>
+                  <span v-if="isGroup">按位置显示</span>
+                  <span v-else>按分组显示</span>
+                </div>
+              </div>
+              <div v-if="!isGroup" class="b-center_box_bottom">
+                <fel-tree1
+                  class="tree1"
+                  ref="tree1"
+                  key="position"
+                  interface="/auth/cardcenter/lotauth/2/getbuildtree"
+                  @checkchange="checkchange"
+                  :idArr="[0]"
+                  :refresh="refreshPosition"
+                ></fel-tree1>
+              </div>
+              <div v-else class="b-center_box_bottom">
+                <fel-tree1
+                  :refresh="refreshGroup"
+                  key="group"
+                  class="tree1"
+                  interface="/arearoom/public/3/listAreaRoomCardTree"
+                  @checkchange="checkchangeGroup"
+                  ajaxType="9"
+                  nodeKey="arid"
+                  iconName="artype"
+                  :param="{areafatherid:'',artype:1}"
+                  paramKey="areafatherid"
+                  :defaultProps="{
+                    children: 'children',
+                    label: 'arname',
+                    isLeaf: 'isLeaf'
+                  }"
+                  :idArr="[0]"
+                ></fel-tree1>
+              </div>
+            </div>
+          </adjust-div>
+          <adjust-div class="b-right" dragLeft>
+            <div class="tsTop">步骤3：批量生成授权</div>
+            <paging-table
+              noInit
+              height="100%"
+              ref="paging-table"
+              class="heig100 b-right_table"
+              interface="/auth/cardcenter/lotauth/9/getcardauthpage2"
+              :list="generateList"
+              :paramObj="generateObj"
+              :refresh="refresh"
+              @onAajx="onAajx"
+            >
+              <el-button
+                v-for="(v,k) of topButs"
+                type="text"
+                :disabled="thridDisabled"
+                :key="k"
+                class="mar0-10"
+                @click="onClick(v.id, v)"
+              >
+                <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+                {{v.alias}}
+              </el-button>
+            </paging-table>
+          </adjust-div>
+        </adjust>
+      </el-container>
+    </el-container>
+    <batchEdit
+      :defaultData="defaultData"
+      @confirm="confirm"
+      :dialogVisible="dialogEdit"
+      @beforeClose="dialogEdit=false"
+    ></batchEdit>
+  </el-container>
+</template>
+
+<script>
+import pubSelect from "./../common/pub-select";
+import { mapGetters } from "vuex";
+import batchEdit from "./batchEdit";
+import batchList from "./batchList";
+import { arrReduceRightObj } from "@/utils/utils";
+export default {
+  components: {
+    batchEdit,
+    batchList,
+    pubSelect
+  },
+  props: {
+    toParam: null,
+    toRoute: null
+  },
+  created() {
+    this.$ajax("/auth/cardcenter/lotauth/6/getgrouptree", {}, "1").then(res => {
+      this.zzoptions = res.result;
+    });
+    this.inGetsonmenu();
+    this.toRoutes();
+  },
+  activated() {
+    this.toRoutes();
+  },
+  deactivated() {
+    this.toNum = 0;
+  },
+  beforeDestroy() {
+    this.toNum = 0;
+  },
+  data() {
+    let $this = this;
+    return {
+      isGroup: false,
+      toNum: 0,
+      copyRoutes: {},
+      showBtn: false,
+      waitCardRefresh: 0,
+      refreshGroup: 0,
+      refreshPosition: 0,
+      refresh: 0,
+      // cardRefresh: 0,
+      zzValue: "",
+      ryOrzz: false,
+      loading: false,
+      addBut: true,
+      dialogEdit: false,
+      noRefresh: true,
+      rySelectShow: false,
+      thridDisabled: true,
+      next: true,
+      loadText: "",
+      ryvalue: "",
+      cardParam: { type /*人员或组织*/: "1", pgids: "", search: "" }, //pgids: "",
+      defaultData: {
+        sdate: "",
+        edate: "",
+        openstime: "00:00",
+        openetime: "23:59",
+        usecount: "",
+        isfingerentry: "0",
+        isapp: "0",
+        ismcard: "0",
+        isaddpass: "0",
+        issweep: "0"
+      },
+      paramObj: [], //组织待授权列表参数
+      options: [
+        { value: "1", label: "人员" },
+        { value: "2", label: "组织" }
+      ],
+      zzoptions: [],
+      ryoptions: [],
+      listButs: [],
+      cardbuild: { build: [], pgids: [], card: [], type: "" },
+      cardgroup: { group: [] },
+      queryData: [],
+      queryDataDel: [],
+      generateList: [
+        {
+          name: "序号",
+          type: "index",
+          width: "60px"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        },
+        {
+          name: "位置",
+          prop: "roomlocation",
+          formatter(row, a, b) {
+            return row.roomlocation + " - " + row.roomname;
+          }
+        }
+      ],
+
+      list: [
+        {
+          show: false,
+          type: "selection"
+        },
+        {
+          name: "卡号",
+          prop: "cardcode"
+        },
+        {
+          name: "姓名",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode"
+        }
+      ],
+      topButs: [
+        {
+          id: 0,
+          alias: "清空",
+          icon: "empty"
+        },
+        {
+          id: 2,
+          alias: "修改",
+          icon: "image30"
+        }
+      ],
+      sonmenu: 0
+    };
+  },
+  computed: {
+    generateObj() {
+      let obj = {
+        build: [],
+        card: [],
+        pgids: [],
+        type: "1",
+        arearoom: [],
+        type2: "2"
+      };
+      obj.build = [...this.cardbuild.build];
+      obj.card = [...this.queryDataDel];
+      obj.pgids = [...this.paramObj];
+      obj.type = this.cardParam.type;
+      obj.arearoom = [...this.cardgroup.group];
+      obj.type2 = this.isGroup ? 2 : 1;
+      return obj;
+    },
+    thridLength() {
+      return (
+        this.$refs["paging-table"] &&
+        this.$refs["paging-table"].queryData &&
+        this.$refs["paging-table"].queryData.length
+      );
+    }
+  },
+  watch: {
+    dialogEdit(val) {
+      if (val) {
+        this.defaultData = {
+          sdate: "",
+          edate: "",
+          openstime: "00:00",
+          openetime: "23:59",
+          usecount: "",
+          isfingerentry: "0",
+          isapp: "0",
+          ismcard: "0",
+          isaddpass: "0",
+          issweep: "0"
+        };
+      }
+    },
+    addBut(val) {
+      if (!val) {
+        this.onReset();
+      }
+    }
+  },
+  methods: {
+    onAajx(data) {
+      this.thridDisabled = data.length == 0 ? true : false;
+      console.log("obj,data", data);
+    },
+    toRoutes() {
+      if (
+        this.toRoute &&
+        this.toRoute.in &&
+        this.copyRoutes.keys != this.toRoute.keys
+      ) {
+        this.addBut = false;
+        setTimeout(() => {
+          this.copyRoutes = JSON.parse(JSON.stringify(this.toRoute));
+          if (this.toRoute && this.toRoute.in && this.toRoute.in == "renyuan") {
+            console.log("toRoutes", this.toRoute);
+            this.ryvalue = this.toRoute.personcode;
+            this.queryFirstCard(1, false);
+          }
+        }, 0);
+      } else {
+        this.toNum++;
+        if (this.toNum < 5) {
+          setTimeout(() => {
+            this.toRoutes();
+          }, 200);
+        }
+      }
+    },
+
+    onReset() {
+      this.cardParam = { type: "1", pgids: "", search: "" };
+      this.zzValue = "";
+      this.ryvalue = "";
+      this.queryData = [];
+      this.queryDataDel = [];
+      this.paramObj = [];
+      this.ryOrzz = true;
+      this.noRefresh = true;
+    },
+    zzOnchange(val) {
+      //选中组织
+      // this.cardParam.pgids = val[val.length - 1]; // `[${val[val.length-1]}]`
+      this.paramObj = [val[val.length - 1]];
+      this.$refs.cascader.toggleDropDownVisible(false);
+    },
+    onChange(val) {
+      //选择人员或组织
+      if (val == "2") {
+        this.ryOrzz = false;
+        this.cardParam.search = "";
+        this.list[0].show = true;
+        this.noRefresh = true;
+        this.queryData = [];
+      } else {
+        this.paramObj = [];
+        this.ryOrzz = true;
+        this.zzValue = "";
+        this.list[0].show = false;
+      }
+    },
+    onRyChange(data) {
+      let next = true;
+      this.queryData.forEach(item => {
+        if (item.cardcode == data.cardcode) {
+          next = false;
+        }
+      });
+      if (next) {
+        this.queryData.push(data);
+        this.rySelectShow = false;
+      }
+    },
+    onRyInput(val) {
+      this.loadText = "点击查询进行检索";
+      this.rySelectShow = true;
+    },
+    onRyFocus(val) {
+      this.next = false;
+      this.loadText = "点击查询进行检索";
+      this.rySelectShow = true;
+    },
+    onRyClear() {
+      this.value = "";
+      this.ryoptions = [];
+      this.rySelectShow = false;
+    },
+    onShow(val) {
+      this.rySelectShow = val;
+    },
+    noNext() {
+      this.next = true;
+    },
+    toBatch() {
+      this.addBut = true;
+    },
+    queryFirstCard(type, bool = true) {
+      if (type == "1") {
+        if (this.ryvalue) {
+          this.rySelectShow = true;
+          this.loadText = "加载中...";
+          this.$ajax(
+            "/auth/cardcenter/lotauth/7/getcard2",
+            { type: 1, search: this.ryvalue, page: 1, rows: 20 },
+            "1",
+            this.paramObj
+          )
+            .then(res => {
+              this.ryoptions = res.result.data;
+              if (this.ryoptions.length == 0) {
+                this.loadText = "无数据";
+                return;
+              }
+              if (!bool) {
+                this.ryoptions.forEach(item => {
+                  if (
+                    item.personcode == this.ryvalue ||
+                    item.cardcode == this.ryvalue
+                  ) {
+                    this.onRyChange(item);
+                  }
+                });
+              }
+            })
+            .catch(err => {
+              this.loadText = err.resultMsg;
+            });
+        } else {
+          this.rySelectShow = true;
+          this.loadText = "请输入内容进行查询";
+          return;
+        }
+      } else {
+        if (this.paramObj.length > 0) {
+          this.noRefresh = false;
+          this.waitCardRefresh = new Date().getTime();
+        } else {
+          this.$message({
+            message: "请先选择查询组织!",
+            type: "warning"
+          });
+        }
+      }
+    },
+    queryLastCard(type) {
+      if (
+        this.cardbuild.build.length == 0 &&
+        this.cardgroup.group.length == 0
+      ) {
+        this.$message({
+          message: `请先选择${this.isGroup ? "分组!" : "建筑!"}`,
+          type: "warning"
+        });
+        return;
+      }
+      if (type == "1") {
+        this.cardbuild.card = [...this.queryData];
+        this.cardbuild.type = type;
+        this.cardbuild.pgids = [];
+      } else {
+        this.cardbuild.card = [];
+        this.cardbuild.pgids = [...this.paramObj];
+        this.cardbuild.type = type;
+      }
+      if (
+        (this.cardbuild.card.length == 0 && this.cardbuild.pgids.length == 0) ||
+        (this.cardbuild.card.length > 0 && this.queryDataDel.length == 0)
+      ) {
+        this.$message({
+          message: "请先选择人员或组织",
+          type: "warning"
+        });
+        return;
+      }
+      this.onRefreshTable();
+    },
+    onRefreshTable() {
+      this.refresh = new Date().getTime();
+    },
+    changePosiOrGro() {
+      this.isGroup = !this.isGroup;
+      this.isGroup ? this.treeRefresh(true) : this.treeRefresh(false);
+    },
+    treeRefresh(isgroup) {
+      this.cardbuild = { build: [], pgids: [], person: [], type: "" };
+      this.cardgroup = { group: [] };
+      if (isgroup) {
+        this.refreshGroup = new Date().getTime();
+      } else {
+        this.refreshPosition = new Date().getTime();
+      }
+    },
+    // onRefresh() {
+    //   this.queryLastCard(this.cardParam.type);
+    // },
+    select(val) {
+      //待授权fel-tabel 选中事件;被选中的值可以移除
+      this.queryDataDel = val;
+    },
+    onDelete(type) {
+      //弹出的paging-tabel隐藏,移除及清空事件
+      if (type == "0") {
+        this.queryDataDel.forEach(val => {
+          let ind = this.queryData.indexOf(val);
+          this.queryData.splice(ind, 1);
+        });
+      } else {
+        this.queryData = [];
+      }
+    },
+    onClick(key, data) {
+      //清空,批量修改,生效授权事件
+      if (key == "0") {
+        this.thridDisabled = true;
+        this.$refs["paging-table"].setQueryData([]);
+      } else if (key == "2") {
+        this.dialogEdit = true;
+      } else if (key == "397") {
+        if (this.$refs["paging-table"].queryData.length == 0) {
+          this.$message({
+            message: "列表数据为空!",
+            type: "warning"
+          });
+          return;
+        } else {
+          this.$ajax(
+            "auth/cardcenter/lotauth/8/savecardauth2",
+            this.defaultData,
+            "1",
+            this.generateObj,
+            "请求中...",
+            120000
+          )
+            .then(res => {
+              this.queryLastCard(this.cardParam.type);
+              this.$message({
+                message: "授权已下发!",
+                type: "success"
+              });
+              this.thridDisabled = true;
+              this.addBut = true;
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        }
+      } else if (key == "d1") {
+        //显示隐藏批量授权卡页面  batchList的事件
+        this.addBut = false;
+      }
+    },
+    confirm(val, data) {
+      console.log("val,data", val, data);
+      //修改/批量修改;
+      this.defaultData = val;
+      this.dialogEdit = false;
+    },
+    checkchange(val, data) {
+      //建筑树选中事件
+      this.cardbuild.build = data.checkedNodes;
+    },
+    checkchangeGroup(val, data) {
+      this.cardgroup.group = data.checkedNodes.map(node => {
+        return { arid: node.arid, artype: node.artype };
+      });
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          if (res.result) {
+            res.result.forEach(value => {
+              let id = value.entity.id;
+              let alias = value.entity.alias;
+              if (id == "397") {
+                this.topButs.push(value.entity);
+                this.showBtn = true;
+              } else if (id == "446") {
+                this.listButs.push(value.entity);
+              }
+            });
+          }
+          this.sonmenu = 4;
+        })
+        .catch(() => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    ...mapGetters(["getNumber"])
+  }
+};
+</script>
+
+<style lang="scss">
+.rightBatchAdd {
+  .box_top {
+    background: #fff;
+    padding: 5px 5px 0 5px;
+    height: 40px;
+    justify-content: flex-end;
+    display: flex;
+    // margin-bottom:5px;
+    .b-left_box_top_card-query {
+      position: absolute;
+      width: 28%;
+      height: 85%;
+      z-index: 10;
+      left: 12px;
+      top: 75px;
+      .maR180 {
+        margin-right: 180px;
+      }
+    }
+    .box_top_rightBtn {
+      float: right;
+      height: 27px;
+      width: 95px;
+      margin: 2px 15px;
+
+      line-height: 0px;
+    }
+    .box_top_sel {
+      width: 80px;
+      margin-right: 10px;
+    }
+    .box_top_cas {
+      flex: 1;
+      margin-right: 10px;
+      line-height: 27px;
+    }
+    .box_top_btn {
+      width: 56px;
+      height: 27px;
+      margin: 1px 15px 0 0;
+    }
+  }
+  .position_box {
+    height: 65px;
+    flex-direction: column;
+    .box_top_rightBtn {
+      align-self: flex-end;
+    }
+  }
+  .b-left_box {
+    // width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    .b-left_box_bottom {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      .b-left_box_bottom_title {
+        position: absolute;
+        left: 15px;
+        font-size: 16px;
+      }
+      .b-left_box_bottom_table {
+        flex: 1;
+      }
+    }
+    .b-left_box_pagin {
+      height: 50px;
+      text-align: right;
+      background: #fff;
+    }
+  }
+  .b-center_box {
+    flex: 1;
+    // height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    .b-center_box_bottom {
+      margin: 10px;
+      flex: 1;
+      overflow: auto;
+      position: relative;
+      .fel-tree {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+    }
+  }
+  .b-right {
+    .checkAdminCard {
+      // background: #409eff;
+      // color: #fff;
+      // border: none;
+      position: absolute;
+      left: 15px;
+      padding-top: 4px;
+      width: 215px;
+    }
+    .checkAdminCard:nth-of-type(2) {
+      left: 110px;
+    }
+    .checkAdminCard:nth-of-type(3) {
+      left: 200px;
+    }
+    .tobleList {
+      padding-top: 2px;
+    }
+    .b-right_table {
+      padding: 6px 14px 0;
+    }
+  }
+}
+</style>

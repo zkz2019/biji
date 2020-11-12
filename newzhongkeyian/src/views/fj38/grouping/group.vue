@@ -1,0 +1,53 @@
+<template>
+  <div @click="groupClick(data)" class="floorBox">
+    <div class="floorBox_left">
+      <div>
+        <img src="../../../assets/image/fenzu.png" alt />
+      </div>
+    </div>
+    <div class="floorBox_right">
+      <h3 :title="data.arealocation">{{data.arealocation}}</h3>
+      <ul>
+        <li>
+          <img src="../../../assets/image/qinshi.png" alt />
+          <span>宿舍房间数:</span>
+          <span>{{data.roomcount}}</span>
+        </li>
+        <li>
+          <img src="../../../assets/image/xiangqing.png" alt />
+          <span>入住数:</span>
+          <span>{{data.rzcount}}</span>
+        </li>
+        <li>
+          <img src="../../../assets/image/louceng.png" alt />
+          <span>床位数:</span>
+          <span>{{data.bedcount}}</span>
+        </li>
+        <li>
+          <img src="../../../assets/image/gonggong.png" alt />
+          <span>公共房间数:</span>
+          <span>{{data.publiccount}}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</template>
+
+<script>
+// import emitter from "@/mixins/emitter.js";
+export default {
+  // mixins: [emitter],
+  props: {
+    data: Object,
+  },
+  methods: {
+    groupClick(data) {
+      // console.log("this.dispatch", this.dispatch);
+      this.$emit("onGroupClick", data);
+      // this.dispatch("fjgl38", "onGroupClick", data);
+    },
+  },
+};
+</script>
+
+<style></style>

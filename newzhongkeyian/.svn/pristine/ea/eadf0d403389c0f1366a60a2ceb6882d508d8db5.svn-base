@@ -1,0 +1,128 @@
+<!-- 修改蓝牙钥匙授权 -->
+<template>
+  <el-dialog
+    title="修改蓝牙钥匙授权"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      @submitForm="onClick"
+      width="160px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+      @closeForm="beforeClose"
+    />
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import { format } from "@/utils/utils.js";
+export default {
+  props: {
+    type: String,
+    param: Object,
+    paramObj: Object | Array,
+    list: Array,
+    dialogVisible: Boolean
+  },
+  data() {
+    return {
+      button: [
+        {
+          type: "0",
+          name: "清空"
+        },
+        {
+          type: "2",
+          name: "确认"
+        }
+      ],
+      formData: [
+        {
+          width: "50%",
+          value: "empsdate",
+          name: "授权开始日期",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "empedate",
+          name: "授权结束日期",
+          type: "date",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          width: "50%",
+          value: "openstime",
+          name: "每日可开门起始时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            {
+              required: true,
+              message: "请选择每日授权开始时间",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "openetime",
+          name: "每日可开门结束时间",
+          type: "time",
+          format: "HH:mm",
+          rules: [
+            { required: true, message: "请选择下级组织名称", trigger: "blur" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "opencount",
+          name: "开门使用次数",
+          type: "text"
+        }
+      ],
+      defaultData: {
+        personcode: this.param.personcode,
+        personname: this.param.personname,
+        empsdate: "",
+        empedate: "",
+        openstime: "00:00",
+        openetime: "23:59",
+      }
+    };
+  },
+  watch: {
+    dialogVisible() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.defaultData = {
+        personcode: this.param.personcode,
+        personname: this.param.personname,
+        empsdate: "",
+        empedate: "",
+        openstime: "00:00",
+        openetime: "23:59",
+      };
+    }
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onClick(data) {
+      this.$emit("confirm", data, this.paramObj);
+    }
+  }
+};
+</script>

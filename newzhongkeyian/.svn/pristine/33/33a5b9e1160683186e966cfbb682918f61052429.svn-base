@@ -1,0 +1,244 @@
+<template>
+  <el-dialog
+    title="团员排房"
+    width="75%"
+    top="10vh"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <div class="administer-title" style="position: relative;" slot="title">
+      <span class="el-dialog__title">团员排房</span>
+      <span class="mal10">{{param.teamsdate +"~"+ param.teamedate}}</span>
+    </div>
+    <el-container class="dialog-table6">
+      <fel-left-tree class="building-copy">
+        <div slot="left" class="left-tree">
+          <fel-tree1
+            slot="top"
+            ref="tree"
+            :showCheckbox="false"
+            class="tree1 co_tree"
+            :idArr="[0]"
+            :refresh="refresh"
+            interface="/team/teamperson/6/getbuildtree"
+            @handleNodeClick="handleNodeClick"
+          ></fel-tree1>
+        </div>
+        <el-container>
+          <paging-table
+            class="tobleList wh100"
+            height="100%"
+            noInit
+            interface="/team/teamperson/7/getteampersonroom"
+            :list="list"
+            @onSelect="currentChange"
+            :refresh="rowRefresh"
+            :param="rowParam"
+            :paramObj="rowRoomObj"
+          >
+            <span class="sli">
+              <el-input
+                clearable
+                class="con-search search"
+                placeholder="根据房间位置/房型搜索"
+                v-model="rowParam.search"
+              ></el-input>
+              <fel-button type="primary" @click="inSearch">查询</fel-button>
+            </span>
+          </paging-table>
+        </el-container>
+      </fel-left-tree>
+    </el-container>
+    <div slot="footer" class="dialog-button">
+      <el-button @click="beforeClose">取消</el-button>
+      <el-button type="primary" @click="dialogSubmitForm">确定</el-button>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    paramObj: {
+      type: Array,
+      default() {
+        return [];
+      }
+    },
+    param: Object
+  },
+  data() {
+    return {
+      changeObj: {},
+      dates: [this.param.teamsdate, this.param.teamedate],
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "房型",
+          prop: "rtname"
+        },
+        {
+          name: "已排房或入住人数",
+          prop: "roomrzperson"
+        },
+        {
+          name: "最大入住人数",
+          prop: "roommaxperson"
+        }
+      ],
+      rowParam: {
+        buildid: 0
+      },
+      refresh: 0,
+      rowRefresh: 0,
+      fatheragid: {},
+      pgidObj: {},
+      button: [
+        {
+          type: "2",
+          name: "确认"
+        },
+        {
+          type: "1",
+          name: "取消"
+        }
+      ]
+    };
+  },
+  computed: {
+    rowRoomObj() {
+      return this.paramObj.map(o => o.tpid);
+    }
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.dates = [this.param.teamsdate, this.param.teamedate];
+        this.onRefresh();
+        this.inSearch();
+      }
+    }
+  },
+  created() {
+    this.dates = [this.param.teamsdate, this.param.teamedate];
+  },
+  methods: {
+    currentChange(obj) {
+      this.changeObj = obj;
+    },
+    onRefresh() {
+      if (this.$refs["tree"]) {
+        this.$refs["tree"].addIdSets();
+        this.rowParam.buildid = 0;
+      }
+      this.refresh = new Date().getTime();
+    },
+    inSearch() {
+      this.rowRefresh = new Date().getTime();
+    },
+    handleNodeClick(data) {
+      this.rowParam.buildid = data.buildid;
+      this.inSearch();
+    },
+    incheckteampersonroom(callback) {
+      if (false) {
+        if (callback) {
+          callback();
+        }
+      } else {
+        this.$ajax(
+          "/team/teamperson/8/checkteampersonroom",
+          {
+            roomid: this.changeObj.roomid
+          },
+          "1",
+          this.rowRoomObj,
+          true
+        )
+          .then(res => {
+            if (res.result.checkstate == 0) {
+              if (callback) {
+                callback();
+              }
+            } else {
+              let map = {
+                "1": "男女混住",
+                "2": "不同团混住",
+                "3": "不同团男女混住"
+              };
+              this.$confirm(
+                "确定是否要" + map[res.result.checkstate] + "吗？",
+                "提示",
+                {
+                  confirmButtonText: "确定",
+                  cancelButtonText: "取消",
+                  type: "warning"
+                }
+              ).then(() => {
+                if (callback) {
+                  callback();
+                }
+              });
+            }
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      }
+    },
+    dialogSubmitForm() {
+      if (this.changeObj.roomid) {
+        this.incheckteampersonroom(() => {
+          this.$ajax(
+            "/team/teamperson/9/saveteampersonroom",
+            {
+              roomid: this.changeObj.roomid
+            },
+            "1",
+            this.rowRoomObj,
+            true
+          )
+            .then(res => {
+              this.$emit("onRefresh");
+              this.beforeClose();
+              this.$message({
+                message: "人员排房成功",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        });
+      } else {
+        this.$message({
+          showClose: true,
+          message: "请选择入住的房间",
+          type: "error"
+        });
+      }
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

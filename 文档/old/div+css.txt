@@ -1,0 +1,142 @@
+块元素(行元素)	特点：自动占满一行   有宽度有高度
+div h1-h6 p ul li form 
+
+value: 给form表单命名
+
+行内元素 特点：没有宽度跟高度，它的宽高就是内容的宽高,能够在一行显示
+a span em i strong
+
+display:block 行内元素转成块元素
+
+
+float	浮动 值：left，right，none
+
+clear  值：left right both（常用 清除的是左右浮动）
+
+*{ margin:0; padding:0} 清除浏览器默认的外边距跟内边距（*表示通配符选择器(指网页中所有的元素)，也就是说写在这个里面的样式全网页通用）
+
+//img{ border:0}	去掉图片的边框（IE浏览器图片加了a链接之后会产生一个边框线）
+
+margin:0 auto	盒子居中
+
+margin	外边距
+
+margin:10px 	指的是盒子上下左右外边距都为10px
+margin:10px 20px;	上下外边距为10px,左右外边距为20px
+margin:10px 20px 30px;  上10px,左右20px,下30px
+margin:10px 20px 30px 40px; 上10px,右20px,下30px,左40px
+
+margin-top 	上外边距
+margin-left 	左外边距
+margin-right 	右外边距
+margin-bottom 	下外边距
+
+padding	内边距
+
+padding-top	上内边距
+padding-left    左内边距
+padding-right   右内边距
+padding-bottom	下内边距
+
+
+HTML标签
+<br />	强制换行标签
+<
+<img src="images/logo.jpg" width="180" height="78" />	图片标签 (src用来存放图片地址)
+
+ul li	列表标签
+结构：
+<ul>
+
+    	<li>首页</li>
+    	<li>企业新闻</li>
+    	<li>行业动态</li>
+	
+   	 ...     
+</ul>
+注意事项：ul里面不能直接嵌套li以外的其他标签
+list-style:none	去掉ul ,li标签产生的圆点
+
+<a href="#">	链接标签 href里面填写链接地址
+text-decoration:none	去掉a标签的下划线
+
+a:hover{color:#F00}	鼠标经过（悬停）a标签的样式
+
+h1-h6	标题标签
+p	段落标签	
+
+项目列表标签
+dl dt dd
+
+<dl>
+<dt>项目标题</dt>
+<dd>项目描述</dd>
+<dt>项目标题</dt>
+<dd>项目描述</dd>
+<dt>项目标题</dt>
+<dd>项目描述</dd>
+</dl>
+
+css属性：
+width	宽度
+height	高度
+background  背景（图片或颜色）默认是平铺（repeat）的  不平铺：no-repeat  水平平铺：repeat-x 垂直平铺:repeat-y
+line-height	行高（当行高的值跟高度的值相等的时候，文字会垂直方向居中）
+text-align	文本水平对齐方式	值：left左, center中 ,right右,justify（两端对齐）
+
+//   text-indent（2em可以理解为缩进两个字符的间距） em是倍数单位
+
+//   font-size  文字大小
+
+//   border:1px solid #CCC	边框(1px粗细的边框 solid实线型的边框 #ccc边框的颜色)
+
+//   font-weight:bold	文字加粗
+
+//   letter-spacing	    文字间距
+										
+//   text-decoration:none  去掉a标签的下划线
+
+border:1px solid #000；1px粗细的黑色实线  实线：solid  虚线：dashed  点型线：dotted
+border-top:1px solid #000    上边框线
+border-bottom 下边框线
+border-left    左边框线
+border-right   右边框线
+
+// 链入css样式表：<link href="css/style.css" type="text/css" rel="stylesheet" />
+css选择器：
+1、*	通配符选择器
+2、标签选择器  在样式表里直接写标签名即可
+3、id选择器 唯一的	在样式表里写法：（#自定义的名字） *自定义的名字不能以数字打头  
+4、class选择器		在样式表里的写法：（.自定义的名字）
+
+类选择器
+
+css自定义选择器命名需注意：不能以数字打头
+
+//  &nbsp;空格代码
+
+
+
+form	表单标签
+<input type="text">	定义文本框
+<input type="radio" name="sex">	定义单选按钮(name里面必须自定义一个名字，且同一个类型的单选按钮name值要保持一致)
+<input type="checkbox" />	定义多选框
+
+<select>
+      <option>广东省</option>
+      <option>湖南省</option>
+</select>			定义下拉选项
+
+<textarea cols="50" rows="5"></textarea>	定义多行文本框（其中cols里面的数值指的是横跨的列数即文本框的宽度，rows里面的数值指的是横跨的行数即文本框高度。这两个值都不需要加单位）
+
+<input type="button" value="提交" />	定义按钮（value里面的值即按钮上面的文字）
+
+
+cursor:pointer	鼠标经过指针变成手型
+
+
+position	定位	值：relative相对定位；absolute绝对定位；fixed固定定位
+
+
+overflow:hidden	超过设定的宽高的部分隐藏掉
+ 

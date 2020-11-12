@@ -1,0 +1,295 @@
+<!-- 无线联网锁 -->
+<template>
+  <el-container>
+    <fel-left-tree>
+      <template slot="left">
+        <el-tabs
+          v-if="getIsClassify()"
+          class="top-switch"
+          stretch
+          v-model="type"
+          type="border-card"
+        >
+          <el-tab-pane label="按位置显示" name="1"></el-tab-pane>
+          <el-tab-pane label="按分组显示" name="2"></el-tab-pane>
+        </el-tabs>
+        <template v-if="type == '1'">
+          <div slot="left" class="left-tree">
+            <fel-tree1
+              :showCheckbox="false"
+              class="tree1"
+              key="position"
+              :idArr="[0]"
+              interface="/system/device/devicelock/1/getbuildtree"
+              @handleNodeClick="handleNodeClick"
+            ></fel-tree1>
+          </div>
+        </template>
+        <template v-else>
+          <div class="left-tree">
+            <fel-tree5
+              key="group"
+              :showCheckbox="false"
+              class="tree1"
+              interface="/arearoom/public/1/listAreaTree"
+              @handleNodeClick="checkchangeGroup"
+              ajaxType="9"
+              nodeKey="areaid"
+              :param="{areafatherid:''}"
+              paramKey="areafatherid"
+              :defaultProps="{
+                    children: 'children',
+                    label: 'areaname',
+                    isLeaf: 'isLeaf'
+                  }"
+              :idArr="[0]"
+            ></fel-tree5>
+          </div>
+        </template>
+      </template>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{toParam.alias}}</com-title>
+          <retrieval class="query_head">
+            <inpbox :inpb="true">
+              <el-select v-model="param.type" class="con-select qh_inp">
+                <el-option v-for="item in types" :key="item.id" :label="item.name" :value="item.id"></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.search"
+                placeholder="输入门锁唯一ID/房间名称/通讯ID进行检索"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            :isAll="range == 2? true:false"
+            :class="{'cover-up':range == 2}"
+            interface="/system/device/devicelock/2/getdevicelock"
+            :list="list"
+            @sort-change="sortChange"
+            @onSelection="onSelection"
+            :refresh="refresh"
+            :param="param"
+            :paramObj="paramObj"
+            @onEjectChange="onEjectChange"
+          >
+            <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+              {{v.alias}}
+            </span>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+            </template>
+          </paging-table>
+        </el-main>
+      </el-container>
+    </fel-left-tree>
+    <configure @beforeClose="configVisible=false" :dialogVisible="configVisible" :param="conParam"></configure>
+  </el-container>
+</template>
+
+<script>
+import configure from "./configure";
+import { mapGetters } from "vuex";
+export default {
+  components: { configure },
+  props: {
+    toParam: Object,
+    toRoute: Object,
+  },
+  data() {
+    let $this = this;
+    return {
+      conParam: {},
+      configVisible: false,
+      range: "1",
+      type: "1",
+      param: { type: "", search: "" },
+      refresh: 0,
+      listArr: [],
+      topButs: [{ id: 1, alias: "aaa" }],
+      types: [],
+      paramObj: {},
+      quantitytypes: [
+        {
+          alias: "aaa",
+          icon: "",
+          id: 299,
+          isnext: "0",
+          value: "",
+        },
+      ],
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable,
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+
+        {
+          name: "锁类型",
+          minWidth: "80px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "门锁位置",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "roomlocation",
+        },
+        {
+          name: "门锁唯一ID",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "配置电量范围",
+          minWidth: "90px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "自定电量",
+          minWidth: "80px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "实际电量",
+          minWidth: "80px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "通讯状态",
+          minWidth: "80px",
+          sortable: "custom",
+          prop: "",
+        },
+        {
+          name: "操作",
+          width: "120px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            methods: {
+              onClick(key) {
+                if (key == 2) {
+                } else if (key == 4) {
+                }
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button  v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+    };
+  },
+  watch: {},
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    ...mapGetters(["getIsClassify"]),
+    handleNodeClick(data) {},
+    checkchangeGroup(data) {},
+    sortChange(obj) {
+      if (obj.order) {
+        if (obj.order == "descending") {
+          this.param.sequence = "2";
+        } else if (obj.order == "ascending") {
+          this.param.sequence = "1";
+        }
+        this.param.sortby = obj.prop;
+      } else {
+        this.param.sequence = "";
+        this.param.sortby = "";
+      }
+      this.onRefresh();
+    },
+    onSelectable() {
+      return this.isSelectable;
+    },
+    //重置事件
+    onReset() {
+      this.onRefresh();
+      this.isSelectable = true;
+      this.range = "1";
+    },
+    onSelection(data) {
+      this.listArr = data;
+    },
+    onClick(key, data) {
+      console.log("key,data", key, data);
+      this.configVisible = true;
+    },
+    onChange() {},
+    inSavegatewayorder(id, obj) {},
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "msgl308");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "msgl308");
+    },
+  },
+};
+</script>

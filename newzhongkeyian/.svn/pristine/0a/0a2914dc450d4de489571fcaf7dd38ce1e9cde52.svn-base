@@ -1,0 +1,203 @@
+<!-- 批量退房信息 -->
+<template>
+  <el-dialog
+    title="批量退房信息"
+    :visible.sync="dialogVisible"
+    width="70%"
+    :before-close="handleClose"
+    append-to-body
+  >
+    <div class="heig400">
+      <fel-table
+        class="tobleList wh100"
+        height="100%"
+        :list="list"
+        :queryData="queryData"
+        @onRefresh="onRefresh"
+      ></fel-table>
+    </div>
+    <div style="height:50px;line-height:50px;padding-right:30px;font-size:1.2em;padding-top:5px;">
+      <div class="flr">
+        主账房:
+        <span style="display:inline-block;min-width:35px;">{{mainaccountroom}}</span>
+        团折扣:
+        <span style="display:inline-block;min-width:35px;">{{teamdiscount}}</span>
+        应收总金额:
+        <span
+          style="display:inline-block;min-width:35px;margin-right:35px;"
+        >{{teamsmoney}}</span>
+        实收总金额:
+        <span style="display:inline-block;min-width:35px;margin-right:35px;">{{all}}</span>
+        <fel-button size="small" type="primary" @click="onCheckout">确定退房</fel-button>
+      </div>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    param: Object,
+    dialogVisible: Boolean
+  },
+  data() {
+    var $this = this;
+    return {
+      trid: {},
+      all: "",
+      mainaccountroom: "",
+      teamdiscount: "",
+      teamsmoney: "",
+      backinfodate: "",
+      // selects: {},
+      queryData: [],
+      list: [
+        {
+          name: "入住开始时间",
+          prop: "trsdate"
+        },
+        {
+          name: "入住结束时间",
+          prop: "tredate"
+        },
+        {
+          name: "房间",
+          prop: "roomlocation"
+        },
+        {
+          name: "房间单价",
+          prop: "rtprice"
+        },
+        {
+          name: "押金",
+          prop: "trcash"
+        },
+        {
+          name: "入住天数",
+          prop: "trdays"
+        },
+        {
+          name: "应收金额",
+          prop: "trsmoney"
+        },
+        {
+          name: "实收金额",
+          prop: "trrmoney",
+          minWidth: "100px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onInput() {
+                $this.calculatedAmount();
+              }
+            },
+            template: `<div class=""> 
+             <el-input type="text" @blur="onInput" v-model="scope.row.trrmoney"
+              placeholder="修改实收金额"></el-input>
+            </div>`
+          }
+        },
+        {
+          name: "备注",
+          minWidth: "120px",
+          prop: "trremark",
+          template: {
+            props: ["scope"],
+            template: `<div class=""> 
+             <el-input type="text" v-model="scope.row.trremark"
+              placeholder="备注信息"></el-input>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.getInfo();
+      }
+    }
+  },
+  created() {},
+  methods: {
+    onCheckout() {
+      let arr = this.queryData.map(obj => {
+        let trrmoney = Number(obj.trrmoney) || 0;
+        return {
+          isnow: obj.isnow,
+          trid: obj.trid,
+          trremark: obj.trremark,
+          trrmoney: trrmoney
+        };
+      });
+      let data = {teamid:this.param.teamid, backinfodate: this.backinfodate };
+      this.$ajax("/team/teamperson/g/savebackinfo", data, "1", arr, true)
+        .then(res => {
+          this.$message({
+            showClose: true,
+            message: "退房成功!",
+            type: "success"
+          });
+          this.next();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    getInfo() {
+      this.$ajax("/team/teamperson/f/getbackinfo", {teamid:this.param.teamid}, "1",this.param.tpid)
+        .then(res => {
+          if(res.result.backinfos){
+            this.queryData = res.result.backinfos;
+          }
+          this.mainaccountroom = res.result.mainaccountroom;
+          this.teamdiscount = res.result.teamdiscount;
+          this.backinfodate = res.result.backinfodate;
+          this.teamsmoney = res.result.teamsmoney || 0;
+          this.calculatedAmount();
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    onClick(obj) {
+      this.trid = obj;
+      // this.updateMoreyVisible = true;
+    },
+    calculatedAmount() {
+      if (this.queryData && this.queryData.length > 0) {
+        let acc = 0;
+        this.queryData.forEach(obj => {
+          let z = Number(obj.trrmoney);
+          if (z) {
+            acc += z;
+          }
+        });
+        this.all = acc;
+      } else {
+        this.all = 0;
+      }
+    },
+    onRefresh() {
+      this.getInfo();
+    },
+    handleClose() {
+      this.$emit("handleClose");
+    },
+    // updateClose() {
+      // this.getInfo();
+      // this.updateMoreyVisible = false;
+    // },
+    next() {
+      this.$emit("next");
+    }
+  }
+};
+</script>
+
+

@@ -1,0 +1,67 @@
+<template>
+  <el-dialog
+    :title="title"
+    :width="width"
+    class="fel-popup"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible="value"
+  >
+    <el-container :direction="direction" class="dialog-table6 query_main" :class="css">
+      <slot></slot>
+    </el-container>
+    <div v-if="footer" slot="footer" class="dialog-form-but">
+      <slot name="footer">
+        <el-button class="com-but-small" @click="closeForm">取消</el-button>
+        <el-button class="com-but-small" type="primary" @click="submitForm">确定</el-button>
+      </slot>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    direction: String,
+    css: Object | String,
+    footer: Boolean,
+    title: {
+      type: String
+    },
+    width: {
+      type: String | Number,
+      default: "70%"
+    },
+    value: {
+      type: Boolean,
+      default: false
+    },
+    minWidth: {
+      type: String | Number
+    }
+  },
+  mounted() {
+    if (this.minWidth) {
+      let dom = this.$el.querySelector("div.el-dialog");
+      if (dom && dom.style) {
+        dom.style.minWidth = this.minWidth;
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("close");
+    },
+    closeForm() {
+      this.$emit("close");
+      this.$emit("closeForm");
+    },
+    submitForm() {
+      this.$emit("submitForm");
+    }
+  }
+};
+</script>
+
+<style>
+</style>

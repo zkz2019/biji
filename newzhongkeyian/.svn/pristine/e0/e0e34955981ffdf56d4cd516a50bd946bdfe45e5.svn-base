@@ -1,0 +1,255 @@
+<!--  -->
+<template>
+  <el-dialog
+    title="人员授权列表"
+    width="50%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        :interface="interface"
+        :isAll="range == 1? true:false"
+        ref="paging-table"
+        :list="ismj?mjlist:list"
+        :param="param"
+        :ajaxType="ismj?'9':'1'"
+        :refresh="refresh"
+        @onSelection="(d)=>{selecArr=d}"
+      >
+        <span v-if="buts&&buts[0]&&buts[0].type=='g4'" class="sli but-blue" @click="onClick">
+          <i class="ficon-image106"></i>批量删除授权
+        </span>
+        <div class="full-list" v-show="!list[0].show">
+          <el-checkbox v-model="range" @change="onChange" true-label="1" false-label="0">跨页全选</el-checkbox>
+        </div>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    buts: Array,
+    param: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    ismj: Boolean,
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      refresh: 0,
+      range: "0",
+      isSelectable: true,
+      selecArr: [],
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "房间位置",
+          prop: "roomlocation"
+        },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              buts() {
+                return $this.buts;
+              }
+            },
+            methods: {
+              onClick(key) {
+                $this.delete(this.scope.row.roomid);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of buts" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      mjlist: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "门位置",
+          prop: "adlocation"
+        },
+        {
+          name: "操作",
+          width: "100px",
+          template: {
+            props: ["scope"],
+            computed: {
+              buts() {
+                return $this.buts;
+              }
+            },
+            methods: {
+              onClick(key) {
+                $this.onDelMj([this.scope.row.adid]);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of buts" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.onRefresh();
+      } else {
+        this.isSelectable = true;
+        this.range = "0";
+      }
+    }
+  },
+  computed: {
+    interface() {
+      return this.ismj
+        ? "/access/v2.0/auth/info/1/listPersonAccessAuth"
+        : "/person/5/getpersonauth";
+    }
+  },
+  methods: {
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onClick() {
+      if (this.ismj) {
+        this.onDelMj();
+      } else {
+        let arr = this.selecArr.map(o => o.roomid);
+        if (arr.length <= 0) {
+          return this.$message({
+            showClose: true,
+            message: "请选择需要删除的授权!",
+            type: "error"
+          });
+        }
+        console.log("kkk", arr, this.range);
+        this.$confirm("确定要删除当前选中授权吗？", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$ajax(
+              "/person/deleteauth/2/deleteauths",
+              { isselectall: this.range, personcode: this.param.personcode },
+              "1",
+              arr
+            )
+              .then(res => {
+                this.$message({
+                  type: "success",
+                  message: "批量删除成功!"
+                });
+                this.onRefresh();
+                console.log("res", res);
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] ` + err.resultMsg,
+                  type: "error"
+                });
+              });
+          })
+          .catch(err => {});
+      }
+    },
+    onDelMj(data) {
+      let adids = data ? data : this.selecArr.map(o => o.adid);
+      let param = {
+        adids,
+        personcode: this.param.personcode,
+        type: this.range
+      };
+      this.$ajax("/access/v2.0/auth/info/2/delPersonAccessAuth", param, "9")
+        .then(res => {
+          console.log("res", res);
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+      console.log("data", data);
+    },
+    delete(roomid) {
+      this.$confirm("确定要删除当前授权吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.$ajax(
+            "/person/deleteauth/1/deleteauth",
+            { personcode: this.param.personcode, roomid: roomid },
+            "1"
+          )
+            .then(res => {
+              this.onRefresh();
+              this.$emit("onRefresh");
+              this.$message({
+                message: "删除成功!",
+                type: "success"
+              });
+            })
+            .catch(err => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error"
+              });
+            });
+        })
+        .catch(() => {});
+    },
+    onChange(val) {
+      if (val == 1) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onSelectable() {
+      return this.isSelectable;
+    }
+  }
+};
+</script>

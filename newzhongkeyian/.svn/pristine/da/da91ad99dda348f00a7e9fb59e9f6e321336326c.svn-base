@@ -1,0 +1,115 @@
+<template>
+  <el-dialog
+    title="人员操作记录详情"
+    width="70%"
+    class="importHistory"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 query_main">
+      <paging-table
+        interface="/person/a/listPersonDelDetails"
+        :list="listInfo"
+        :param="param"
+        ajaxType="9"
+        :refresh="refresh"
+      >
+        <span class="sli">
+          <el-input clearable class="search" v-model="param.search" placeholder="输入账号进行查询"></el-input>
+          <fel-button type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button @click="onReset">重置</fel-button>
+        </span>
+      </paging-table>
+    </el-container>
+  </el-dialog>
+</template>
+
+<script>
+export default {
+  props: {
+    dialogVisible: Boolean,
+    pdid: String | Number
+  },
+  data() {
+    let $this = this;
+    return {
+      param: { pdid: "", search: "" },
+      refresh: 0,
+      listInfo: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "处理时间",
+          prop: "pdddate"
+        },
+        {
+          name: "人员编号",
+          prop: "personcode"
+        },
+        {
+          name: "处理状态",
+          template: {
+            props: ["scope"],
+            computed: {
+              name() {
+                if (this.scope.row.pddstatus == "0") {
+                  return "正在删除";
+                } else if (this.scope.row.pddstatus == "-1") {
+                  return "失败";
+                } else {
+                  return "成功";
+                }
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.pddstatus;
+                if (value == "1") {
+                  return "puc-pg";
+                } else if (value == "-1") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class='getClass()'>{{name}}</span>`
+          }
+        },
+        {
+          name: "失败原因",
+          prop: "pddremark"
+        }
+      ]
+    };
+  },
+  computed: {},
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.pdid = this.pdid;
+        this.onRefresh();
+      } else {
+        this.param.pdid = "";
+      }
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onReset() {
+      this.param.search = "";
+      this.onRefresh();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    }
+  }
+};
+</script>

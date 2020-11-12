@@ -1,0 +1,579 @@
+<template>
+  <el-dialog
+    :title="title"
+    width="60%"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      :selects="selects"
+      @submitForm="submitForm"
+      @closeForm="beforeClose"
+      width="140px"
+      dynamic
+      :defaultData="defaultData"
+      :formData="formData"
+    ></fel-form>
+    <roomtype
+      @onRefresh="onRefresh"
+      :dialogVisible="dialogRoomtype"
+      @beforeClose="dialogRoomtype=false"
+    ></roomtype>
+  </el-dialog>
+</template>
+
+<script>
+import roomtype from "./roomType";
+export default {
+  components: {
+    roomtype
+  },
+  props: {
+    dialogVisible: Boolean,
+    fatheragid: Object,
+    title: String
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogRoomtype: false,
+      defaultData: { lyid: {}, roomtype: {} },
+      typeResult: {},
+      pgidObj: {},
+      selects: {
+        buildtype: [],
+        buildtype2: [],
+        areatype: [],
+        roomtype: [],
+        LayoutType: [],
+        roomnexttype: [],
+        Gatetype: [],
+        sequencebuildid: []
+      },
+      formData: [
+        {
+          noShow: true,
+          width: "50%",
+          value: "Tagcode",
+          name: "上级建筑名称",
+          disabled: true,
+          type: "text"
+        },
+        {
+          noShow: true,
+          value: "addType", //值,
+          name: "添加类型", //名称,
+          type: "select", //input输入框的类型 或者 select,
+          width: "50%",
+          select: [
+            {
+              label: "添加区域",
+              value: "1"
+            },
+            {
+              label: "批量楼栋",
+              value: "2"
+            }
+          ],
+          onChange: this.onChangeAddType,
+          rules: [
+            { required: true, message: "请选择添加类型", trigger: "change" }
+          ]
+        },
+        {
+          noShow: false,
+          width: "50%",
+          value: "agcode",
+          name: "园区编号",
+          type: "text",
+          rules: [
+            { required: true, message: "请输入区域代码", trigger: "blur" }
+          ]
+        },
+        {
+          noShow: false,
+          width: "50%",
+          value: "agname",
+          name: "园区名称",
+          type: "text",
+          rules: [
+            { required: true, message: "请输入区域名称", trigger: "blur" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "areatype",
+          name: "房间属性 ",
+          type: "select",
+          select: "buildtype",
+          onChange: this.onChange,
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            {
+              required: true,
+              message: "请选择建筑属性",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "roomnexttype",
+          name: "类别",
+          type: "select",
+          select: "roomnexttype",
+          slabel: "name",
+          svalue: "id",
+          rules: [
+            {
+              required: true,
+              message: "请选择类别",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          noShow: false,
+          width: "50%",
+          value: "ldcount",
+          name: "楼栋数",
+          type: "number",
+          rules: [{ required: true, message: "请输入楼栋数", trigger: "blur" }]
+        },
+
+        {
+          noShow: false,
+          width: "50%",
+          value: "startldno",
+          name: "起始楼栋号",
+          type: "number",
+          rules: [
+            { required: true, message: "请输入起始楼栋号", trigger: "blur" }
+          ]
+        },
+        {
+          width: "50%",
+          value: "lccount",
+          name: "楼层数",
+          type: "number",
+          rules: [{ required: true, message: "请输入楼层数", trigger: "blur" }]
+        },
+        {
+          width: "50%",
+          value: "startlcno",
+          name: "起始楼层号",
+          type: "number",
+          rules: [
+            { required: true, message: "请输入起始楼层号", trigger: "blur" }
+          ]
+        },
+
+        {
+          width: "50%",
+          value: "roomcount",
+          name: "房间数",
+          type: "number",
+          rules: [{ required: true, message: "请输入房间数", trigger: "blur" }]
+        },
+        {
+          width: "50%",
+          value: "startroomno",
+          name: "起始房间号",
+          type: "number",
+          rules: [
+            { required: true, message: "请输入起始房间号", trigger: "blur" }
+          ]
+        },
+        {
+          noShow: true,
+          value: "roomtype",
+          name: "房型",
+          width: "50%",
+          type: "select",
+          select: "roomtype",
+          onChange: this.onChangetype1,
+          slabel: "housename",
+          vkey: "houseid",
+          svalue: "",
+          rules: [
+            {
+              required: true,
+              message: "请选择房型",
+              trigger: "change"
+            }
+          ],
+          buts: [
+            {
+              class: "but-connect",
+              title: "编辑房型",
+              icon: "el-icon-edit",
+              onClick: this.personClick
+            }
+          ]
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "houseprice",
+          name: "房价",
+          type: "number",
+          disabled: true
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "roommaxperson",
+          name: "最大入住人数",
+          type: "number"
+        },
+        {
+          width: "50%",
+          value: "sequencebuildid",
+          name: "位置",
+          type: "select",
+          select: "sequencebuildid",
+          slabel: "name",
+          placeholder: "默认添加最后位置",
+          svalue: "id",
+          buts: [
+            {
+              class: "but-C",
+              icon: "el-icon-question",
+              isPopover: true,
+              popover: {
+                content: "建筑可调整到所选位置之后"
+              }
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "lyid",
+          name: "房间布局类型",
+          type: "select",
+          select: "LayoutType",
+          vkey: "lyid",
+          slabel: "lyname",
+          onChange: this.onChangeType,
+          svalue: "",
+          rules: [
+            { required: true, message: "请选择房间布局类型", trigger: "change" }
+          ]
+        },
+        {
+          noShow: true,
+          width: "50%",
+          value: "zzroomno",
+          name: "转折房间号",
+          type: "number"
+        },
+        {
+          width: "50%",
+          value: "gatecount",
+          name: "每层网关数",
+          type: "number"
+        },
+        {
+          width: "50%",
+          value: "gateid",
+          name: "网关类型",
+          type: "select",
+          select: "Gatetype",
+          vkey: "gatetype",
+          slabel: "gatename",
+          svalue: "gatetype"
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.handle();
+        // this.gettext();
+        this.inSelectType();
+        this.inGetareacode();
+      }
+    }
+  },
+  created() {
+    // this.inSelectType();
+    this.inSelectType1();
+    // this.inGetareacode();
+  },
+  methods: {
+    onRefresh() {
+      this.inSelectType();
+    },
+    personClick() {
+      this.dialogRoomtype = true;
+    },
+    // gettext() {
+
+    //   if (this.fatheragid.buildtype == 0||this.fatheragid.buildtype == 1) {
+    //     this.title = "批量添加园区建筑";
+    //   } else if (this.fatheragid.buildtype == 2) {
+    //     this.title = "批量添加楼栋建筑";
+    //   } else if (
+    //     this.fatheragid.buildtype == 3 ||
+    //     this.fatheragid.buildtype == 4 ||
+    //     this.fatheragid.buildtype == 5
+    //   ) {
+    //     this.disabledA=true;
+    //     this.title = "批量添加楼层建筑";
+    //   } else if (this.fatheragid.buildtype == 6) {
+    //     this.disabledA=true;
+    //     this.disabledB=true
+    //     this.title = "批量添加房间";
+    //   }
+    // if (this.fatheragid.buildtype2 == 1) {
+    //   this.selects.buildtype2 = [
+    //     { id: this.fatheragid.buildtype2, name: "宿舍区域" }
+    //   ];
+    // } else if (this.fatheragid.buildtype2 == 2) {
+    //   this.selects.buildtype2 = [
+    //     { id: this.fatheragid.buildtype2, name: "公共区域" }
+    //   ];
+    // } else if (this.fatheragid.buildtype2 == 3) {
+    //   this.selects.buildtype2 = [
+    //     { id: this.fatheragid.buildtype2, name: "随房间属性" }
+    //   ];
+    // }
+
+    // this.defaultData.agname=this.fatheragid.buildname;
+    // },
+    onChangeAddType(arr) {
+      if (arr[0] == "1") {
+        this.formData[15].name = "区域位置调整";
+        this.formData[2].noShow = false;
+        this.formData[3].noShow = false;
+      } else {
+        this.formData[15].name = "建筑位置调整";
+        this.formData[2].noShow = true;
+        this.formData[3].noShow = true;
+      }
+    },
+    handle() {
+      this.formData[5].noShow = true;
+      this.formData[12].noShow = true;
+      this.formData[13].noShow = true;
+      this.formData[14].noShow = true;
+      this.defaultData = {
+        lyid: {},
+        Tagcode:
+          this.fatheragid.buildlocation + "--" + this.fatheragid.buildname
+      };
+      if (this.fatheragid.buildtype == 0) {
+        this.formData[0].noShow = true;
+        this.formData[1].noShow = true;
+        this.formData[2].noShow = false;
+        this.formData[3].noShow = false;
+        this.formData[6].noShow = false;
+        this.formData[7].noShow = false;
+        this.formData[15].name = "区域位置调整";
+      } else if (this.fatheragid.buildtype == 1) {
+        this.formData[0].noShow = false;
+        this.formData[1].noShow = false;
+        this.formData[2].noShow = true;
+        this.formData[3].noShow = true;
+        this.formData[6].noShow = false;
+        this.formData[7].noShow = false;
+        this.formData[15].name = "建筑位置调整";
+      } else if (this.fatheragid.buildtype == 2) {
+        this.formData[0].noShow = false;
+        this.formData[1].noShow = true;
+        this.formData[2].noShow = true;
+        this.formData[3].noShow = true;
+        this.formData[6].noShow = true;
+        this.formData[7].noShow = true;
+        this.formData[15].name = "楼层位置调整";
+      } else if (this.fatheragid.buildtype == 3) {
+        this.formData[0].noShow = false;
+        this.formData[1].noShow = true;
+        this.formData[2].noShow = true;
+        this.formData[3].noShow = true;
+        this.formData[6].noShow = true;
+        this.formData[7].noShow = true;
+        this.formData[15].name = "房间位置调整";
+      }
+    },
+
+    inGetareacode() {
+      let num = "1";
+      let url = "/system/build/save/1/getareacode";
+      this.$ajax(
+        url,
+        {
+          buildtype: num
+        },
+        "1",
+        this.fatheragid
+      )
+        .then(res => {
+          let result = res.result;
+          if (this.$refs["felForm"]) {
+            this.$refs["felForm"].ruleForm.agcode = result.agcode;
+            this.$refs["felForm"].ruleForm.agname = result.agname;
+          }
+        })
+        .catch(err => {});
+    },
+    onChangetype1(arr, data) {
+      let obj = arr[0] || {};
+      data.houseid = obj.houseid;
+      data.houseprice = obj.houseprice;
+      data.roommaxperson = obj.maxperson;
+    },
+    inSelectType() {
+      this.$ajax(
+        "/system/build/save/9/getbuildsbyfather",
+        {
+          buildid: this.fatheragid.buildid
+        },
+        "1"
+      )
+        .then(res => {
+          this.selects.sequencebuildid = res.result || [];
+        })
+        .catch(err => {});
+      //获取区域类型
+      let url = "/system/build/save/4/getagtype";
+      this.$ajax(url, {}, "1")
+        .then(res => {
+          this.typeResult = res.result;
+          this.selects.buildtype = this.typeResult.atlist;
+          this.selects.roomtype = this.typeResult.houselist;
+          this.selects.roomnexttype = this.typeResult.publictypelist;
+          if (this.$refs["felForm"]) {
+            let obj = this.$refs["felForm"].ruleForm;
+            if (obj && obj.areatype == 4) {
+              if (obj.roomtype && obj.roomtype.houseid) {
+                let arr = this.selects.roomtype.filter(val => {
+                  return obj.roomtype.houseid == val.houseid;
+                });
+                if (arr && arr.length > 0) {
+                  obj.roomtype = arr[0];
+                  obj.houseid = arr[0].houseid;
+                  obj.houseprice = arr[0].houseprice;
+                  obj.roommaxperson = arr[0].maxperson;
+                } else {
+                  obj.roomtype = "";
+                  obj.houseid = "";
+                  obj.houseprice = "";
+                  obj.roommaxperson = "";
+                }
+              }
+            }
+          }
+        })
+        .catch(err => {});
+    },
+
+    inSelectType1() {
+      //获取房间布局类型
+      let url = "/system/build/save/6/getlayouttype";
+      this.$ajax(url, {}, "1")
+        .then(res => {
+          let t = res.result;
+          if (t.gts) {
+            this.selects.Gatetype = t.gts;
+          } else {
+            this.formData[17].noShow = true;
+            this.formData[18].noShow = true;
+          }
+          this.selects.LayoutType = t.lys;
+        })
+        .catch(err => {});
+    },
+    onChangeType(arr) {
+      if (arr[0].iszz == "1") {
+        this.formData[17].noShow = false;
+      } else {
+        this.formData[17].noShow = true;
+      }
+    },
+    onChange(arr) {
+      this.formData[5].noShow = true;
+      if (arr[0] == 1 || arr[0] == 3) {
+        this.formData[12].noShow = true;
+        this.formData[13].noShow = true;
+        this.formData[14].noShow = false;
+      } else if (arr[0] == 4) {
+        this.formData[12].noShow = false;
+        this.formData[13].noShow = false;
+        this.formData[14].noShow = false;
+      } else if (arr[0] == 2) {
+        this.formData[5].noShow = false;
+        this.formData[12].noShow = true;
+        this.formData[13].noShow = true;
+        this.formData[14].noShow = true;
+      } else {
+        this.formData[12].noShow = true;
+        this.formData[13].noShow = true;
+        this.formData[14].noShow = true;
+      }
+    },
+    submitForm(data) {
+      if (data.areatype == 4) {
+        if (!data.houseid) {
+          this.$message({
+            showClose: true,
+            message: "请选择房型",
+            type: "error"
+          });
+          return false;
+        }
+      }
+      delete data.roomtype;
+      let lyidObj = data.lyid;
+      data.lyid = lyidObj.lyid;
+      data.buildid = this.fatheragid.buildid;
+      delete data.Tagcode;
+      let add = data.addType;
+      delete data.addType;
+      // 判断提交事件
+      if (this.fatheragid.buildtype == "0") {
+        this.inSavearea("/system/build/save/5/savebatchyq", data, {});
+      } else if (this.fatheragid.buildtype == "1") {
+        if (add == 1) {
+          this.inSavearea("/system/build/save/5/savebatchyq", data, {});
+        } else {
+          this.inSavearea("/system/build/save/7/savebatchdong", data);
+        }
+      } else if (this.fatheragid.buildtype == "2") {
+        this.inSavearea("/system/build/save/8/savebatchceng", data);
+      }
+    },
+    inSavearea(url, data, param = {}) {
+      this.$ajax(url, data, "1", param, true, 120000)
+        .then(res => {
+          this.$message({
+            message: "批量添加成功",
+            type: "success"
+          });
+          this.$emit("onRefresh");
+          this.beforeClose();
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      this.defaultData = { lyid: {}, Tagcode: "" };
+      //关闭事件
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

@@ -1,0 +1,194 @@
+<!-- 身份信息 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <com-title>{{toParam.alias}}</com-title>
+    </el-header>
+    <el-main class="query_main">
+      <xttable
+        height="100%"
+        interface="/system/parameter/authtype/1/getauthtype"
+        class="heig100"
+        :list="list"
+        :refresh="refresh"
+      >
+        <!-- <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span> -->
+      </xttable>
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import xttable from "@/components/table/xttable.vue";
+export default {
+  props: ["toParam"],
+  components:{xttable},
+  created() {
+    this.inGetsonmenu();
+    // this.queryAdd();
+  },
+  data() {
+    let $this = this;
+    return {
+      rigButs: [],
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "修改日期",
+          prop: "ateditdate"
+        },
+        // {
+        //   name: "类型id",
+        //   prop: "atid"
+        // },
+        {
+          name: "类型名称",
+          prop: "atname"
+        },
+        {
+          name: "状态",
+          template:{
+          props: ["scope"],
+          created(){
+          },
+            template: `<div>
+             <span :class="this.scope.row.atstate=='关闭'?'puc-px':'puc-pg'">{{this.scope.row.atstate}}</span>
+            </div>`}
+        },
+        {
+          name: "修改账号",
+          prop: "userlogin"
+        },
+        {
+          name: "操作",
+          width: "120px",
+          template: {
+           props: ["scope"],
+            computed: {
+              rigButs() {
+                return $this.rigButs;
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                $this.onClick(key, Object.assign({}, this.scope.row), obj);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of rigButs" :key="i" type="text" size="small" @click.stop="onClick(v.id, v)">{{v.alias}}</el-button>
+            </div>`
+          }
+        }
+      ],
+      sonmenu: 0
+    };
+  },
+  methods: {
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: this.toParam.id }, "1")
+        .then(res => {
+          if (res.result) {
+            res.result.forEach(value => {
+              let id = value.entity.id;
+              let alias = value.entity.alias;
+              if (id == "428") {
+                // this.topButs.push(value.entity);
+              } else if (id == "534") {
+                this.rigButs.push(value.entity);
+              } else if (id == "535") {
+                this.rigButs.push(value.entity);
+              }
+            });
+          }
+          this.sonmenu = 4;
+        })
+        .catch(err => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onClick(key, data) {
+      if (key == 534) {
+        this.$confirm("此操作将打开当前授权类型, 是否继续?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/parameter/updateauthtype/2/openauthtype",
+              {
+                ltid: data.atid
+              },
+              "1",
+              {},
+              true
+            )
+              .then(res => {
+                this.onRefresh();
+                this.$message({
+                  message: "打开成功",
+                  type: "success"
+                });
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] `+err.resultMsg ,
+                  type: "error"
+                });
+              });
+          })
+          .catch(() => {});
+      } else if (key == 535) {
+        this.$confirm("此操作将关闭当前授权类型, 是否继续?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$ajax(
+              "/system/parameter/updateauthtype/1/stopauthtype",
+              {
+                ltid: data.atid
+              },
+              "1",
+              {},
+              true
+            )
+              .then(res => {
+                this.onRefresh();
+                this.$message({
+                  message: "关闭成功",
+                  type: "success"
+                });
+              })
+              .catch(err => {
+                this.$message({
+                  showClose: true,
+                  message: `[${err.resultCode}] `+err.resultMsg ,
+                  type: "error"
+                });
+              });
+          })
+          .catch(() => {});
+      }         
+    }
+  }
+};
+</script>

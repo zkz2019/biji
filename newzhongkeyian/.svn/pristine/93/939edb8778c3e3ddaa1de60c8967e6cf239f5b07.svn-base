@@ -1,0 +1,353 @@
+<template>
+  <el-dialog
+    class="grant"
+    top="5%"
+    title="授权管理"
+    width="1050px"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <!-- <el-header class="query_headbox">
+    </el-header>-->
+    <el-main class="padt0 query_main">
+      <retrieval class="query_head marpadbor0">
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.authtype">
+            <el-option v-for="item in authtypes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.issend">
+            <el-option v-for="item in issends" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.ahid">
+            <el-option v-for="item in ahids" :key="item.id" :label="item.name" :value="item.id"></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'请输入'+getNumber()+'/身份证查询'"
+          ></el-input>
+        </inpbox>
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+      <paging-table
+        class="tobleList wh100"
+        interface="/lock/operate/info/h/getroomauths"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        ref="paging-table"
+        :isAll="range == 2? true:false"
+        :class="{'cover-up':range == 2}"
+        @onRefreshTable="onRefreshTable"
+        @onSelection="(d)=>{selecArr=d}"
+      >
+        <template>
+          <span
+            v-for="(v,k) of topButs"
+            v-show="v.show"
+            :key="k"
+            class="sli but-blue"
+            @click="onClick(v.id, v)"
+          >
+            <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+            {{v.alias}}
+          </span>
+          <template v-if="batchButs.length > 0">
+            <div class="full-list" v-show="!list[0].show">
+              <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+            </div>
+            <batch-but
+              class="sli but-blue"
+              :type="range"
+              :list="selecArr"
+              :param="batchButs"
+              @onClick="onAction"
+            ></batch-but>
+          </template>
+        </template>
+      </paging-table>
+    </el-main>
+    <grantAdd
+      :param="paramObj"
+      @onRefresh="onRefresh"
+      @beforeClose="dialogAdd=false"
+      :dialogVisible="dialogAdd"
+    ></grantAdd>
+    <!-- <kinguserModify
+      :checkedroom="checkedroom"
+      :param="modifyParam"
+      :paramObj="modifyParamObj"
+      @onRefresh="onRefresh"
+      @beforeClose="dialogModify=false"
+      :dialogVisible="dialogModify"
+    ></kinguserModify>-->
+  </el-dialog>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import grantAdd from "./grantAdd";
+// import kinguserModify from "./kinguserModify";
+export default {
+  components: {
+    grantAdd
+    // kinguserModify
+  },
+  props: {
+    paramObj: Object,
+    btnRight: {
+      type: Array,
+      default: () => {
+        return [];
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogAdd: false,
+      refresh: 0,
+      param: {
+        search: "",
+        authtype: "",
+        issend: "",
+        ahid: ""
+      },
+      authtypes: [],
+      ahids: [],
+      issends: [],
+      selecArr: [],
+      topButs: [{ show: true, id: 1, alias: "添加授权" }],
+      batchButs: [
+        {
+          id: "1",
+          alias: "修改授权"
+        },
+        {
+          id: "4",
+          alias: "删除授权"
+        },
+        {
+          id: "9",
+          alias: "重载授权"
+        }
+      ],
+      list: [
+        {
+          type: "selection",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+        {
+          name: "下发日期",
+          prop: "senddate",
+          width: "110px"
+        },
+        {
+          name: "归属人",
+          width: "65px",
+          prop: "personname"
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode",
+          minWidth: "80px"
+        },
+        {
+          name: "归属人组织",
+          prop: "personlocation",
+          minWidth: "96px"
+        },
+        {
+          name: "授权类型",
+          prop: "authtype",
+          width: "110px"
+        },
+        {
+          name: "授权详情",
+          width: "80px",
+          prop: "cardcode"
+        },
+        {
+          name: "卡片类型",
+          width: "80px",
+          prop: "cardtype"
+        },
+        {
+          name: "读头编号",
+          width: "80px",
+          prop: ""
+        },
+        {
+          name: "授权账号",
+          width: "80px",
+          prop: "userlogin"
+        },
+        {
+          name: "下发状态",
+          prop: "issend",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.issend;
+                if (value == "下发成功") {
+                  return "puc-pg";
+                } else if (value == "下发失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              }
+            },
+            template: `<span :class="getClass()">{{scope.row.issend}}</span>`
+          }
+        },
+        {
+          name: "指令备注",
+          prop: "failtype"
+        },
+        {
+          name: "操作",
+          width: "130px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                if (this.scope.row.rcstate == 0) {
+                  return $this.listBut.filter(obj => {
+                    if (obj.type == 1) {
+                      return false;
+                    } else {
+                      return true;
+                    }
+                  });
+                } else {
+                  return $this.listBut;
+                }
+              }
+            },
+            methods: {
+              onClick(key, obj) {
+                if (key == 1) {
+                  $this.modify("0", [Object.assign({}, this.scope.row)]);
+                } else if (key == 9) {
+                  let arr = [Object.assign({}, this.scope.row)];
+                  $this.heavyLoad("0", arr);
+                } else if (key == 4) {
+                  let arr = [Object.assign({}, this.scope.row)];
+                  $this.delete("0", arr);
+                }
+              }
+            },
+            template: `<div class="operat-buts">
+             <fel-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type, v)">{{v.name}}</fel-button>
+            </div>`
+          }
+        }
+      ],
+      range: "1",
+      ranges: [
+        {
+          value: "1",
+          label: "勾选范围"
+        },
+        {
+          value: "2",
+          label: "全部列表"
+        }
+      ]
+    };
+  },
+  computed: {},
+  created() {
+    console.log("this.paramObj", this.paramObj);
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.$ajax(
+          "/access/v2.0/door/h/getSearchType",
+          { adid: this.paramObj.adid },
+          "9"
+        )
+          .then(res => {
+            this.ahids = res.result.ahids;
+            this.authtypes = res.result.authtypes;
+            this.issends = res.result.issends;
+            console.log("res", res);
+          })
+          .catch(err => {
+            console.log("err", err);
+          });
+      }
+    }
+  },
+  mounted() {},
+  methods: {
+    ...mapGetters(["getNumber"]),
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onRefresh() {},
+    onReset() {},
+    onRefreshTable() {},
+    onChange() {},
+    onAction() {},
+    onClick(id, data) {
+      console.log("id,data", id, data);
+      if (id == "1") {
+        this.dialogAdd = true;
+      }
+    },
+    heavyLoad(str, arr) {
+      let data = {
+        adid: arr.adid,
+        ahid: this.param.ahid,
+        amid: this.paramObj.amid,
+        authtype: this.param.authtype,
+        issend: this.param.issend,
+        search: this.param.search
+      };
+      this.$ajax("/access/v2.0/door/i/reloadAccessAuth", data, "9")
+        .then(res => {
+          console.log("res", res);
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    onRefresh() {}
+  }
+};
+</script>
+
+<style lang="scss">
+.grant {
+  .query_main {
+    height: 450px;
+    .con-select {
+      width: 120px;
+    }
+    .con-search {
+      width: 150px;
+    }
+  }
+}
+</style>

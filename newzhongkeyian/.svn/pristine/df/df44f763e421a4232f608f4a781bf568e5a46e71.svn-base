@@ -1,0 +1,746 @@
+<!-- 有线网关升级 -->
+<template>
+  <el-container>
+    <fel-left-tree leftTitle="建筑列表" class="nblots361">
+      <div slot="left" class="left-tree">
+        <fel-tree1
+          :showCheckbox="false"
+          class="tree1"
+          :idArr="[0]"
+          :refresh="refreshTree"
+          interface="/system/onlineup/yxgateversion/1/getbuild"
+          @handleNodeClick="handleNodeClick"
+        ></fel-tree1>
+      </div>
+      <el-container>
+        <el-header class="query_headbox">
+          <com-title>{{ toParam.alias }}</com-title>
+          <retrieval class="query_head">
+            <inpbox inptext="网关版本传输状态">
+              <el-select v-model="param.statustype" class="con-select qh_inp">
+                <el-option
+                  v-for="item in nustates"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <!-- <inpbox inptext="选择上传版本">
+              <el-select v-model="dvid" class="wid150 qh_inp">
+                <el-option
+                  v-for="item in versionTypes"
+                  :key="item.dvid"
+                  :label="item.deviceversion"
+                  :value="item.dvid"
+                ></el-option>
+              </el-select>
+            </inpbox>-->
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.search"
+                placeholder="输入网关唯一ID/通讯ID进行检索"
+              ></el-input>
+            </inpbox>
+            <inpbox inptext="请选择版本">
+              <el-select
+                class="con-select qh_inp"
+                v-model="param.versiontype"
+                filterable
+                placeholder="请选择"
+              >
+                <el-option
+                  v-for="item in options"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                ></el-option>
+              </el-select>
+            </inpbox>
+            <inpbox :inptext="'请输入'">
+              <el-input
+                clearable
+                class="con-search qh_inp"
+                v-model="param.version"
+                placeholder="输入版本号进行检索"
+              ></el-input>
+            </inpbox>
+            <inpbox>
+              <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+              <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+            </inpbox>
+          </retrieval>
+        </el-header>
+        <el-main class="query_main">
+          <paging-table
+            class="tobleList"
+            height="100%"
+            noInit
+            ref="paging-table"
+            :isAll="range == 2 ? true : false"
+            :paging="6"
+            :sizes="[6, 10, 20, 30, 50]"
+            :class="{ 'cover-up': range == 2 }"
+            interface="/system/onlineup/yxgateversion/2/getyxgateway"
+            :list="list"
+            @onSelection="onSelection"
+            :refresh="refresh"
+            :param="param"
+            :paramObj="paramObj"
+            @onEjectChange="onEjectChange"
+          >
+            <!-- @sort-change="sortChange" 排序-->
+            <span v-for="(v, k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+              <i v-if="v.icon" :class="'ficon-' + v.icon"></i>
+              {{ v.alias }}
+            </span>
+            <template v-if="quantitytypes && quantitytypes.length > 0">
+              <div class="full-list" v-show="!list[0].show">
+                <el-checkbox v-model="range" @change="onChange" true-label="2" false-label="1">跨页全选</el-checkbox>
+              </div>
+              <batch-but
+                class="sli but-blue"
+                :type="range"
+                :list="listArr"
+                :param="quantitytypes"
+                @onClick="inSavegatewayorder"
+              ></batch-but>
+            </template>
+            <span v-if="!upDownShow" @click="onUpDown('up')" title="高级操作" class="sli refresh">
+              <i class="ficon-zhedie-up"></i>
+            </span>
+            <span v-else @click="onUpDown('down')" title="高级操作" class="sli refresh">
+              <i class="ficon-zhedie-down"></i>
+            </span>
+          </paging-table>
+        </el-main>
+      </el-container>
+    </fel-left-tree>
+    <el-dialog
+      title="选择上传版本"
+      width="40%"
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+      :visible.sync="versionVisible"
+    >
+      <fel-form
+        ref="felForm"
+        class="single-row"
+        :selects="selects"
+        @submitForm="submitForm"
+        @closeForm="beforeClose"
+        width="140px"
+        dynamic
+        :defaultData="defaultData"
+        :formData="formData"
+      ></fel-form>
+    </el-dialog>
+    <yxVup :dialogVisible="dialogVisible" @beforeClose="dialogVisible = false"></yxVup>
+    <yxAutoup :dialogVisible="autoVisible" @beforeClose="autoVisible = false"></yxAutoup>
+    <history
+      :dialogVisible="histVisible"
+      :gatewaycode="gatewaycode"
+      @beforeClose="histVisible = false"
+    ></history>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../../utils/Storage.js"; //缓存工具
+import yxVup from "./yxVup";
+import yxAutoup from "./yxAutoup";
+import history from "./history";
+export default {
+  components: { yxVup, yxAutoup, history },
+  props: {
+    toParam: Object,
+    toRoute: Object
+  },
+  data() {
+    let $this = this;
+    return {
+      dialogVisible: false,
+      histVisible: false,
+      autoVisible: false,
+      versionVisible: false,
+      upDownShow: true,
+      gatewaycode: "",
+      options: [{ id: "", name: "全部" }],
+      nustates: [{ id: "", name: "全部" }],
+      refreshTree: 0,
+      upType: "0",
+      topButs: [],
+      versionTypes: [],
+      selects: { versionTypes: [] },
+      defaultData: { times: ["00:00", "23:59"] },
+      formData: [
+        {
+          noShow: false,
+          value: "dvid",
+          name: "请选择上传版本",
+          type: "select",
+          select: "versionTypes",
+          // onChange: this.onChange,
+          slabel: "deviceversion",
+          svalue: "dvid",
+          rules: [
+            {
+              required: true,
+              message: "请选择上传版本"
+            }
+          ]
+        },
+        {
+          noShow: true,
+          value: "dates",
+          name: "预订时间段",
+          type: "date",
+          date: "datetimerange",
+          popperClass: "wid480 miniDate",
+          dTime: ["00:00:00", "23:59:59"],
+          options: {
+            disabledDate(time) {
+              return time.getTime() < new Date().getTime() - 86400000;
+            }
+          },
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        {
+          noShow: true,
+          close: "type1",
+          value: "times",
+          name: "开始结束时间",
+          type: "time",
+          format: "HH:mm",
+          date: "ftime"
+        }
+      ],
+      dvid: "",
+      roomObj: {},
+      range: "1",
+      timeArr: [],
+      dateArr: [],
+      quantitytypes: [],
+      refresh: 0,
+      param: {
+        agid: "0",
+        gulockstate: "",
+        statustype: "",
+        search: "",
+        versiontype: "",
+        version: ""
+      },
+      paramObj: {},
+      isSelectable: true,
+      list: [
+        {
+          type: "selection",
+          width: "40px",
+          selectable: this.onSelectable
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "50px"
+        },
+
+        {
+          name: "网关位置",
+          minWidth: "170px",
+          prop: "gatewaylocation"
+        },
+        {
+          name: "网关唯一ID",
+          minWidth: "100px",
+          prop: "gatewaycode2"
+        },
+        {
+          name: "当前/本地储存/后台上传版本号",
+          minWidth: "150px",
+          template: {
+            props: ["scope"],
+            computed: {
+              row() {
+                return this.scope.row;
+              },
+              lists() {
+                let list = [];
+                list.push("当前:" + this.row.gatewayversion);
+                list.push("存储:" + this.row.gatewaycacheversion);
+                list.push("后台:" + this.row.deviceversion);
+                return list;
+              }
+            },
+            template: `<ul><li v-for="item in lists" :key="item">{{item}}</li></ul>`
+          }
+        },
+        {
+          name: "历史记录",
+          minWidth: "100px",
+          prop: "",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(obj) {
+                $this.onClick("T1", obj);
+              }
+            },
+            template: `<ul @click="onClick(scope.row)" style="cursor:poInter;color:#3a8e"><li>{{scope.row.deviceversion}}</li><li>{{scope.row.gusdate?scope.row.gusdate.substr(0,10):""}}</li></ul>`
+          }
+        },
+        {
+          name: "下载进度",
+          minWidth: "80px",
+          prop: "gurate"
+        },
+        {
+          name: "升级状态",
+          width: "80x",
+          prop: "gustatename",
+          template: {
+            props: ["scope"],
+            computed: {
+              state() {
+                let stateList = [];
+                if (
+                  this.scope.row.gustatename &&
+                  this.scope.row.gustatename.length > 3
+                ) {
+                  stateList.push(this.scope.row.gustatename.substring(0, 3));
+                  stateList.push(this.scope.row.gustatename.substring(4));
+                } else {
+                  stateList.push(this.scope.row.gustatename);
+                }
+                return stateList;
+              }
+            },
+            methods: {
+              getClass() {
+                let value = this.scope.row.gustatename;
+                if (value == "已同步") {
+                  return "puc-pg";
+                } else if (value == "下载中") {
+                  return "";
+                } else {
+                  return "puc-px";
+                }
+              }
+            },
+            template: `<ul><li :class='getClass()' v-for="item in state">{{item}}</li></ul>`
+          }
+        },
+        {
+          name: "操作",
+          width: "220px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                let list = $this.listBut;
+                let lists = [[], [], []]; //Array(4).fill([]);
+                let show = this.scope.row.issupportup == "1" ? false : true;
+                list.forEach(item => {
+                  item.show = item.id == "787" ? false : show;
+                  if (
+                    item.id == "781" ||
+                    item.id == "782" ||
+                    item.id == "785"
+                  ) {
+                    lists[0].push(item);
+                  } else if (item.id == "783" || item.id == "784") {
+                    lists[1].push(item);
+                  } else if (item.id == "787" || item.id == "788") {
+                    lists[2].push(item);
+                  }
+                });
+                return lists;
+              }
+            },
+            methods: {
+              onClick(key, row) {
+                if (key == "1" || key == "8") {
+                  $this.onVup(key, row);
+                } else {
+                  $this.onStartnblockup(key, row);
+                }
+              },
+              showBtn(key) {
+                if ((key == 0 || key == 1) && $this.upDownShow) {
+                  return false;
+                } else {
+                  return true;
+                }
+              }
+            },
+            template: `
+            <div class="operat-buts"> 
+            <template v-for="(item,ind) in listBut">
+              <div v-if="showBtn(ind)">
+               <el-button v-for="(v,i) of item" :disabled="v.show" :key="i" type="text" size="small" @click.stop="onClick(v.type,scope.row)">{{v.name}}</el-button>
+              </div>
+            </template>
+            </div>`
+          }
+        }
+      ],
+      listBut: [],
+      listArr: [],
+      sonmenu: 0
+    };
+  },
+  watch: {
+    toRoute(val) {
+      if (val && val.roomcode2) {
+        this.param.search = val.roomcode2;
+      }
+      this.onRefresh();
+    },
+    versionVisible(val) {
+      if (val) {
+        console.log("this.upType", this.upType);
+        if (this.upType == "8") {
+          this.formData[1].noShow = false;
+          this.formData[2].noShow = false;
+        } else {
+          this.formData[1].noShow = true;
+          this.formData[2].noShow = true;
+        }
+      } else {
+        this.upType == "";
+      }
+    }
+  },
+  created() {
+    this.inGetsonmenu(this.toParam.id);
+    this.getType();
+    this.getVersion();
+  },
+  mounted() {
+    if (this.toRoute) {
+      this.param.search = this.toRoute.roomcode2;
+      this.onRefresh();
+    }
+    this.getEject();
+  },
+  methods: {
+    onUpDown(str) {
+      this.upDownShow = !this.upDownShow;
+    },
+    getType() {
+      this.$ajax(
+        "/system/onlineup/yxgateversion/5/getsearchtype",
+        {},
+        "1"
+      ).then(res => {
+        this.nustates = [...this.nustates, ...res.result.statustype];
+        this.options = [...this.options, ...res.result.versiontype];
+      });
+    },
+    async onVup(key, row) {
+      console.log("key", key);
+      this.upType = key;
+      this.dvid = "";
+      if (row) {
+        this.roomObj = row;
+      }
+      if (row) {
+        this.roomObj._types = "1";
+      } else {
+        this.roomObj._types = "2";
+      }
+      this.versionVisible = true;
+    },
+    submitForm(data) {
+      if (this.upType == "8") {
+        this.dateArr = data.dates.map(item => {
+          let str = item.substring(0, 17);
+          return str + "00";
+        });
+        this.timeArr = data.times;
+      }
+      this.dvid = data.dvid;
+      if (this.roomObj._types == "2") {
+        this.onStartnblockup(this.upType);
+      } else {
+        this.onStartnblockup(this.upType, this.roomObj);
+      }
+      this.beforeClose();
+    },
+    onStartnblockup(type, row = null) {
+      if ((type == "1" || type == "2") && this.dvid == "") {
+        this.$message.error("请先选择上传版本!");
+        return;
+      }
+      let url = "";
+      let text = "";
+      switch (type) {
+        case "1":
+          text = "全新下载";
+          url = "/system/onlineup/saveyxgateversion/2/startyxgateup"; //全新下载
+          break;
+        case "2":
+          text = "续传下载";
+          url = "/system/onlineup/saveyxgateversion/4/restartyxgateup"; // 续传下载
+          break;
+        case "3":
+          text = "更新升级";
+          url = "/system/onlineup/saveyxgateversion/3/yxgatetoupversion"; //更新升级
+          break;
+        case "4":
+          text = "强制升级";
+          url = "/system/onlineup/saveyxgateversion/5/wxgateforceversion"; //强制升级
+          break;
+        case "5":
+          text = "停止下载";
+          url = "/system/onlineup/saveyxgateversion/6/deleteyxgateup"; //停止下载
+          break;
+        case "7":
+          text = "状态查询";
+          url = "/system/onlineup/saveyxgateversion/7/getstatus"; //状态查询
+          break;
+        case "8":
+          text = "自动升级";
+          url = "/system/onlineup/saveyxgateversion/8/saveautogateup"; //自动升级
+          break;
+      }
+      let data = {
+        actiontype: this.range == "1" ? "勾选范围" : "跨页全选",
+        agid: this.param.agid,
+        statustype: this.param.statustype,
+        search: this.param.search,
+        version: this.param.version,
+        versiontype: this.param.versiontype
+      };
+
+      let autoData = {
+        autostartdate: this.dateArr[0],
+        autostarttime: this.timeArr[0],
+        autoenddate: this.dateArr[1],
+        autoendtime: this.timeArr[1]
+      };
+      if (type == "8") {
+        data = { ...data, ...autoData };
+      }
+      if (type == "1" || type == "8") {
+        data.dvid = this.dvid;
+      }
+      let obj =
+        this.listArr.length > 0
+          ? this.listArr.map(item => {
+              return item.gatewaycode;
+            })
+          : [];
+      if (row && row.gatewaycode) {
+        obj = [row.gatewaycode];
+      }
+      this.$confirm("确定要进行" + text + "吗?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      }).then(() => {
+        this.$ajax(url, data, "1", obj, true)
+          .then(() => {
+            this.$message({
+              type: "success",
+              message: text + "成功!"
+            });
+            this.onRefresh();
+          })
+          .catch(err => {
+            this.$message({
+              showClose: true,
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      });
+    },
+    handleNodeClick(data) {
+      //  this.paramObj = data;
+      // this.param.buildid = data.buildid;
+      this.param.agid = data.buildid;
+      this.onRefresh();
+    },
+    inSavegatewayorder(id /*obj*/) {
+      if (id == "781") {
+        this.onVup("1");
+      } else if (id == "782") {
+        this.onStartnblockup("2");
+      } else if (id == "783") {
+        this.onStartnblockup("3");
+      } else if (id == "784") {
+        this.onStartnblockup("4");
+      } else if (id == "785") {
+        this.onStartnblockup("5");
+      } else if (id == "787") {
+        this.onStartnblockup("7");
+      } else if (id == "788") {
+        this.onVup("8");
+      }
+    },
+    inGetsonmenu(id) {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: id }, "1")
+        .then(res => {
+          res.result.forEach(item => {
+            let entity = item.entity;
+            console.log("entity", entity);
+            if (entity.id == "781") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "1",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "782") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "2",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "783") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "3",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "784") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "4",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "785") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "5",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "787") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "7",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "786") {
+              this.topButs.push(entity);
+            } else if (entity.id == "788") {
+              this.quantitytypes.push(entity);
+              this.listBut.push({
+                type: "8",
+                id: entity.id,
+                name: entity.alias
+              });
+            } else if (entity.id == "789") {
+              this.topButs.push(entity);
+            }
+          });
+        })
+        .catch(err => {
+          console.log("err", err);
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+    getVersion(islock) {
+      this.$ajax(
+        "/system/onlineup/saveyxgateversion/1/getyxgateversion",
+        { islock },
+        "1"
+      )
+        .then(res => {
+          this.versionTypes = res.result;
+          this.selects.versionTypes = res.result;
+        })
+        .catch(err => {
+          console.log("err", err);
+        });
+    },
+    onClick(key, obj) {
+      if (key == "786") {
+        this.dialogVisible = true;
+      } else if (key == "789") {
+        this.autoVisible = true;
+      } else if (key == "T1") {
+        this.histVisible = true;
+        this.gatewaycode = obj.gatewaycode;
+      }
+    },
+    onChange(val) {
+      if (val == 2) {
+        this.$refs["paging-table"].clearSelection();
+        this.$refs["paging-table"].toggleAllSelection();
+        setTimeout(() => {
+          this.isSelectable = false;
+        }, 100);
+      } else {
+        this.$refs["paging-table"].clearSelection();
+        this.isSelectable = true;
+      }
+    },
+    onRefresh() {
+      this.isSelectable = true;
+      this.range = "1";
+      if (this.$refs["paging-table"]) {
+        this.$refs["paging-table"].clearSelection();
+      }
+      this.refresh = new Date().getTime();
+    },
+    onReset() {
+      Object.keys(this.param).forEach(key => {
+        if (key == "agid") {
+          // this.param[key] = "0";
+        } else {
+          this.param[key] = "";
+        }
+      });
+      this.onRefresh();
+    },
+    // sortChange(){},
+    onSelection(data) {
+      this.listArr = data;
+    },
+    beforeClose() {
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.versionVisible = false;
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "yxwgsj780");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "yxwgsj780");
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.checkUpVersion {
+  padding: 10px 50px;
+  .selBox {
+    width: 100%;
+    // margin: 10px 150px;
+  }
+  .butBox {
+    // border-top: 1px solid #ccc;
+    // margin: 10px 150px;
+    height: 50px;
+    button {
+      float: right;
+      margin-left: 10px;
+    }
+  }
+}
+</style>

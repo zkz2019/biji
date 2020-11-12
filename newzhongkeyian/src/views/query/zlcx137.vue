@@ -1,0 +1,311 @@
+<!-- 指令查询 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <retrieval class="query_head">
+        <inpbox inptext="设备类型">
+          <el-select class="con-select qh_inp" v-model="param.devicetype" @change="devChange">
+            <el-option
+              v-for="item in devicetypes"
+              :key="item.devtype"
+              :label="item.devtypename"
+              :value="item.devtype"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+          <!-- <fel-date class="qh_date" style="width:370px!important;" v-model="dates"></fel-date> -->
+        </inpbox>
+        <inpbox :inpb="true">
+          <queryPosition
+            ref="queryPosition"
+            class="con-popover qh_inp"
+            @onChoice="onChoiceWZ"
+            interface="/analysis/orderrecord/1/getbuildtree"
+          ></queryPosition>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="con-select qh_inp" v-model="param.ordertype">
+            <el-option
+              v-for="item in ordertypes"
+              :key="item.ostype"
+              :label="item.ostypename"
+              :value="item.ostype"
+            ></el-option>
+          </el-select>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <el-select placeholder="全部下发状态" class="con-select qh_inp" v-model="param.orderstatus">
+            <el-option
+              v-for="item in orderstatuss"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            ></el-option>
+          </el-select>
+        </inpbox>
+
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            :placeholder="'输入姓名/'+getNumber()+'查询'"
+          ></el-input>
+        </inpbox>
+
+        <inpbox>
+          <fel-button class="qh_btn" type="primary" @click="search">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh100"
+        height="100%"
+        interface="/analysis/orderrecord/2/getorderrecord"
+        :list="list"
+        :refresh="refresh"
+        :param="param"
+        :paramObj="paramObj"
+        @onEjectChange="onEjectChange"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+// import dateSelect from "./date-select";
+import { getDates, getparam } from "./query.js";
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { mapGetters } from "vuex";
+import { format } from "@/utils/utils.js";
+import queryPosition from "./queryPosition";
+export default {
+  name: "zlcx137",
+  components: {
+    queryPosition,
+    // dateSelect
+  },
+  data() {
+    return {
+      paramObj: {
+        type: "1",
+        arearoom: [],
+        build: [],
+      },
+      dates: [],
+      orderstatuss: [
+        {
+          id: "",
+          name: "全部下发状态",
+        },
+        {
+          id: "1",
+          name: "下发成功",
+        },
+        {
+          id: "0",
+          name: "正在下发",
+        },
+        {
+          id: "-1",
+          name: "下发失败",
+        },
+      ],
+      ordertypes: [
+        {
+          ostype: "",
+          ostypename: "全部指令类型",
+        },
+      ],
+      devicetypes: [
+        { devtype: "1", devtypename: "门锁" },
+        { devtype: "2", devtypename: "网关/指纹机" },
+        { devtype: "3", devtypename: "门禁" },
+      ],
+      param: {
+        sdate: "",
+        edate: "",
+        search: "",
+        orderstatus: "",
+        ordertype: "",
+        devicetype: "1",
+      },
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "下发时间",
+          prop: "osdate",
+        },
+        {
+          name: "返回时间",
+          prop: "osedate",
+        },
+        {
+          name: "指令类型",
+          prop: "ostype",
+        },
+        {
+          name: "网关/指纹机ID",
+          prop: "gatewayname",
+          show: true,
+        },
+        {
+          name: "设备位置",
+          prop: "roomlocation",
+        },
+        {
+          name: this.getCardcodeName(),
+          minWidth: "100px",
+          prop: "cardcode",
+        },
+        {
+          name: this.getNumber(),
+          prop: "personcode",
+        },
+        {
+          name: "姓名",
+          prop: "personname",
+        },
+        {
+          name: "操作账号",
+          prop: "userlogin",
+        },
+        {
+          name: "下发结果",
+          template: {
+            props: ["scope"],
+            methods: {
+              getClass() {
+                let value = this.scope.row.osstatus;
+                if (value == "下发成功") {
+                  return "puc-pg";
+                } else if (value == "下发失败") {
+                  return "puc-px";
+                } else {
+                  return "";
+                }
+              },
+            },
+            template: `<span :class='getClass()'>{{scope.row.osstatus}}</span>`,
+          },
+        },
+        {
+          name: "失败原因",
+          prop: "osreason",
+        },
+      ],
+      refresh: 0,
+    };
+  },
+  watch: {
+    // dates(val) {
+    //   if (val && val.length == 2) {
+    //     this.param.sdate = format(val[0], "yyyy-MM-dd HH:mm:ss");
+    //     this.param.edate = format(val[1], "yyyy-MM-dd HH:mm:ss");
+    //   } else {
+    //     let T = new Date();
+    //     let YM = format(T, "yyyy-MM");
+    //     let time = format(T, "dd HH:mm:ss");
+    //     let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+    //     this.param.sdate = tValue[0];
+    //     this.param.edate = tValue[1];
+    //   }
+    // }
+  },
+  created() {
+    getparam(this);
+    this.inGetType();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    getCardcodeName() {
+      let text = [];
+      if (this.getIsCard()) {
+        text.push("卡号");
+      }
+      if (this.getIsFinger()) {
+        text.push("指纹号");
+      }
+      if (this.getIsFace()) {
+        text.push("人脸号");
+      }
+      if (text.length == 0) {
+        text.push("编号");
+      }
+      return text.join("/");
+    },
+    devChange(arr) {
+      this.param.devicetype = arr;
+      this.list[4].show = arr == "1" ? true : false;
+      this.inGetType();
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      this.$refs.dates.value2 = new Date();
+      Object.keys(this.param).forEach((key) => {
+        if (key == "devicetype") {
+          this.param[key] = "1";
+        } else {
+          this.param[key] = "";
+        }
+      });
+      this.$refs.queryPosition.onClear();
+      this.search();
+    },
+    ...mapGetters(["getNumber", "getIsCard", "getIsFinger", "getIsFace"]),
+    inGetType() {
+      this.$ajax(
+        "/analysis/orderrecord/3/getordertype",
+        { devicetype: this.param.devicetype },
+        "1"
+      )
+        .then((res) => {
+          this.ordertypes = [
+            {
+              ostype: "",
+              ostypename: "全部指令类型",
+            },
+          ];
+          this.ordertypes.push(...res.result);
+        })
+        .catch((err) => {});
+    },
+    onChoiceWZ(data, type) {
+      if (type == "1") {
+        this.paramObj.type = 2;
+        this.paramObj.arearoom = data;
+        this.paramObj.build = [];
+      } else {
+        this.paramObj.type = 1;
+        this.paramObj.arearoom = [];
+        this.paramObj.build = data;
+      }
+      // this.paramObj = data;
+    },
+    search() {
+      let tValue = getDates(this.dates);
+      this.param.sdate = tValue[0];
+      this.param.edate = tValue[1];
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "zlcx137");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "zlcx137");
+    },
+  },
+};
+</script>

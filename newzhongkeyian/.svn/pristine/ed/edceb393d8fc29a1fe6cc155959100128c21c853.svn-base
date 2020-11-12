@@ -1,0 +1,260 @@
+<!-- 角色管理 -->
+<template>
+  <el-container>
+    <el-header class="query_headbox">
+      <com-title>角色管理</com-title>
+      <retrieval class="query_head">
+        <inpbox :inpb="true">
+          <el-input
+            clearable
+            class="con-search qh_inp"
+            v-model="param.search"
+            placeholder="输入角色名称查询"
+          ></el-input>
+        </inpbox>
+        <inpbox :inpb="true">
+          <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main class="padt0 query_main">
+      <paging-table
+        class="tobleList wh300"
+        height="100%"
+        interface="/system/role/1/getrole"
+        :list="list"
+        :refresh="refresh"
+        :refreshTable="refreshTable"
+        @onSelection="(d)=>{selecArr=d}"
+        :param="param"
+        @onEjectChange="onEjectChange"
+      >
+        <span v-for="(v,k) of topButs" :key="k" class="sli but-blue" @click="onClick(v.id, v)">
+          <i v-if="v.icon" :class="'ficon-'+v.icon"></i>
+          {{v.alias}}
+        </span>
+        <batch-but
+          class="sli but-blue"
+          :type="range"
+          :list="selecArr"
+          :param="choiceTypes"
+          @onClick="onAction"
+        ></batch-but>
+      </paging-table>
+    </el-main>
+    <roleAdd
+      :rolename="rolename"
+      @success="success"
+      @beforeClose="dialogVisible=false"
+      :dialogVisible="dialogVisible"
+    ></roleAdd>
+    <admin
+      :buts="adminButs"
+      @onRefresh="onRefreshTable"
+      :paramObj="paramAdmin"
+      @beforeClose="dialogVisibleAdmin=false"
+      :dialogVisible="dialogVisibleAdmin"
+    ></admin>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import roleAdd from "./roleAdd";
+import admin from "./admin";
+export default {
+  name: "jsgl107",
+  components: {
+    admin,
+    roleAdd,
+  },
+  data() {
+    let $this = this;
+    return {
+      adminButs: [],
+      choiceTypes: [],
+      range: "1",
+      dialogVisibleAdmin: false,
+      listBut: [],
+      rolename: "",
+      selecArr: [],
+      paramAdmin: [],
+      dialogVisible: false,
+      param: { search: "" },
+      topButs: [],
+      list: [
+        { type: "selection" },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px",
+        },
+        {
+          name: "角色名称",
+          prop: "rolename",
+        },
+        {
+          name: "角色描述",
+          prop: "roledesc",
+        },
+        {
+          name: "创建时间",
+          prop: "rolecdate",
+        },
+        {
+          name: "创建人账号",
+          prop: "userlogin",
+        },
+        {
+          name: "操作",
+          width: "160px",
+          template: {
+            props: ["scope"],
+            computed: {
+              listBut() {
+                return $this.listBut;
+              },
+            },
+            methods: {
+              onClick(key) {
+                $this.onClick(key, this.scope.row);
+              },
+            },
+            template: `<div class="operat-buts"> 
+             <el-button v-for="(v,i) of listBut" :key="i" type="text" size="small" @click.stop="onClick(v.type)">{{v.name}}</el-button>
+            </div>`,
+          },
+        },
+      ],
+      refresh: 0,
+      refreshTable: 0,
+      sonmenu: 0,
+    };
+  },
+  created() {
+    this.inGetsonmenu();
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    onAction() {
+      this.paramAdmin = this.selecArr.map((o) => o.rolename);
+      this.dialogVisibleAdmin = true;
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach((key) => {
+        this.param[key] = "";
+      });
+      this.onRefresh();
+    },
+    inGetsonmenu() {
+      this.$ajax("/login/home/2/getsonmenu", { fatherid: "107" }, "1")
+        .then((res) => {
+          res.result.forEach((value) => {
+            let id = value.entity.id;
+            let alias = value.entity.alias;
+            if (id == "108") {
+              this.topButs.push(value.entity);
+            } else if (id == "109") {
+              this.listBut.push({
+                type: "2",
+                name: "修改" || alias,
+              });
+            } else if (id == "110") {
+              this.listBut.push({
+                type: "3",
+                name: "删除" || alias,
+              });
+            } else if (id == "804") {
+              this.choiceTypes.push(value.entity);
+              this.listBut.push({
+                type: "5",
+                name: alias,
+              });
+              if (value.childs) {
+                value.childs.forEach((item) => {
+                  this.adminButs.push(item.entity);
+                });
+              }
+            }
+          });
+          this.sonmenu = 4;
+        })
+        .catch((err) => {
+          if (this.sonmenu < 3) {
+            setTimeout(() => {
+              this.sonmenu++;
+              this.inGetsonmenu();
+            }, 1000);
+          }
+        });
+    },
+
+    success() {
+      this.dialogVisible = false;
+      this.rolename = "";
+      this.onRefreshTable();
+    },
+    onRefresh() {
+      this.refresh = new Date().getTime();
+    },
+    onRefreshTable() {
+      this.refreshTable = new Date().getTime();
+    },
+    // seInpust() {
+    //   this.onRefresh();
+    // },
+    delete(rolename) {
+      this.$confirm("确定要删除当前角色吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          this.$ajax("/system/role/delete/1/deleterole", { rolename }, "1")
+            .then((res) => {
+              this.rolename = "";
+              this.xzsj = {};
+              this.onRefreshTable();
+              this.$message({
+                message: "删除成功",
+                type: "success",
+              });
+            })
+            .catch((err) => {
+              this.$message({
+                showClose: true,
+                message: `[${err.resultCode}] ` + err.resultMsg,
+                type: "error",
+              });
+            });
+        })
+        .catch(() => {});
+    },
+    onClick(key, data) {
+      if (key == 108) {
+        this.rolename = "";
+        this.dialogVisible = true;
+      } else if (key == 2) {
+        this.rolename = data.rolename;
+        this.dialogVisible = true;
+      } else if (key == 3) {
+        this.delete(data.rolename);
+      } else if (key == 5) {
+        this.paramAdmin = [data.rolename];
+        this.dialogVisibleAdmin = true;
+      }
+    },
+    onEjectChange() {
+      this.$common.onEjectChange(this.list, "jsgl107");
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "jsgl107");
+    },
+  },
+};
+</script>

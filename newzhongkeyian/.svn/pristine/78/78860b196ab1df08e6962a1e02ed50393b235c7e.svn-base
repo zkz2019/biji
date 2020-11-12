@@ -1,0 +1,439 @@
+<!--  房间调整 -->
+<template>
+  <el-container :key="key1">
+    <fel-left-tree class="checkIn">
+      <div slot="left" class="left-tree">
+        <adminLeft
+          :checkedroom="checkedroom"
+          @checkp="checkp"
+          url="/lock/operate/authchange/1/getroomperson"
+        />
+      </div>
+      <el-container class="checkIn_right" v-loading="loading">
+        <el-header v-if="allBtnShow" class="checkIn_right_top query_head">
+          授权房间:
+          <el-cascader
+            class="wid300"
+            clearable
+            placeholder="请选择待授权位置"
+            @change="changePsition"
+            filterable
+            v-model="outroomid"
+            :options="positions"
+            :props="{value:'agid',label:'agname',disabled:'isroom'}"
+          ></el-cascader>
+          <span v-if="states.length>=1">
+            选择替换人员:
+            <el-select
+              v-model="outpersoncode"
+              clearable
+              @change="onChange"
+              class="con-select qh_inp"
+            >
+              <el-option
+                v-for="item in states"
+                :key="item.personcode"
+                :label="item.personname"
+                :value="item.personcode"
+              ></el-option>
+            </el-select>
+          </span>
+        </el-header>
+        <el-main class="checkIn_right_center">
+          <div class="checkIn_right_table">
+            <form-table width="140px" :column="1" :param="defaultData" :list="tableData"></form-table>
+            <div class="table-img">
+              <img :src="personnel.personimage" />
+            </div>
+          </div>
+        </el-main>
+        <el-footer v-if="allBtnShow" class="checkIn_right_bottom">
+          <fel-button class="qh_btn com-but-small" type="primary" @click="Determine">确定调整</fel-button>
+        </el-footer>
+      </el-container>
+    </fel-left-tree>
+  </el-container>
+</template>
+
+<script>
+import { mapGetters } from "vuex";
+import roomPosition from "./roomPosition";
+import adminLeft from "./admin-left";
+import inpbox from "./../../common/inpbox";
+export default {
+  props: {
+    checkedroom: Object,
+    btnRight: {
+      type: Array,
+      default: () => {
+        return [];
+      }
+    }
+  },
+  components: {
+    inpbox,
+    adminLeft,
+    roomPosition
+  },
+  data() {
+    return {
+      key1: 0,
+      positions: [{ agid: "", agname: "正在加载中...", isroom: true }],
+      personnel: {},
+      outroomid: [],
+      outpersoncode: "",
+      defaultData: { dates: [] },
+
+      tableData: [
+        {
+          name: "人员信息",
+          text: "内容"
+        },
+        // {
+        //   name: "授权类型",
+        //   text: "内容"
+        // },
+        {
+          name: "姓名",
+          value: "personname"
+        },
+        {
+          name: this.getNumber(), //"编号",
+          value: "personcode"
+        },
+        {
+          name: "组织",
+          value: "personlocation"
+        },
+        {
+          name: "电话",
+          value: "personmobile"
+        },
+        {
+          noShow: false,
+          name: "卡号",
+          // value: "cardcode",
+          render(obj, add) {
+            return add("div", {}, [
+              add("span", {}, obj.cardcode),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.cardissend
+              )
+            ]);
+          }
+        },
+
+        {
+          noShow: false,
+          name: "密码",
+          render(obj, add) {
+            return add("div", {}, [
+              add(
+                "span",
+                {},
+                obj.passcount && obj.passcount != "0"
+                  ? obj.passcount == "未授权"
+                    ? obj.passcount
+                    : "已授权"
+                  : ""
+              ),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.passissend
+              )
+            ]);
+          }
+          // funct(obj){
+          //   console.log(obj);
+          //   return obj.passcount&&obj.passcount!="0"? obj.passcount=="未授权"?obj.passcount:"已授权":"";
+          // }
+          // value: "passcount"
+        },
+
+        {
+          noShow: false,
+          name: "指纹",
+          render(obj, add) {
+            return add("div", {}, [
+              add(
+                "span",
+                {},
+                obj.fingercount && obj.fingercount != "0"
+                  ? obj.fingercount == "未授权"
+                    ? obj.fingercount
+                    : `已授权(${obj.fingercount})`
+                  : ""
+              ),
+              add(
+                "span",
+                {
+                  class: {
+                    tabel_span: true
+                  }
+                },
+                obj.fingerissend
+              )
+            ]);
+          }
+          // funct(obj) {
+          //   return obj.fingercount && obj.fingercount != "0"
+          //     ? obj.fingercount == "未授权"
+          //       ? obj.fingercount
+          //       : `已授权(${obj.fingercount})`
+          //     : "";
+          // }
+          // value: "fingercount"
+        },
+
+        {
+          noShow: false,
+          name: "蓝牙钥匙",
+          funct(obj) {
+            return obj.appcount && obj.appcount != "0"
+              ? obj.appcount == "未授权"
+                ? obj.appcount
+                : "已授权"
+              : "";
+          }
+          // value: "appcount"
+        },
+
+        {
+          name: "入住开始结束日期",
+          render(obj, add) {
+            return add("fel-date", {
+              class: "checkIn_right_center_dates",
+              props: {
+                value: obj.dates,
+                disabled: true,
+                pEnd: obj.pEnd,
+                pickerShow: false
+              },
+              on: {
+                input: function(event) {
+                  obj.dates = event;
+                }
+              }
+            });
+          }
+        }
+        // {
+        //   name: "头像",
+        //   render(obj, add) {
+        //     if (obj.personimage && obj.personimage != "") {
+        //       return add(
+        //         "div",
+        //         {
+        //           class: "fjcz_headIcon"
+        //         },
+        //         [
+        //           add("fel-img", {
+        //             class: "fel-img",
+        //             props: {
+        //               urlObtain: "/lock/operate/authchange/7/downpersonimage",
+        //               value: obj.personimage,
+        //               imgValue:
+        //                 obj.personsex == 0
+        //                   ? require("./../../../assets/image/n2.png")
+        //                   : require("./../../../assets/image/n1.png")
+        //             },
+        //             on: {
+        //               input: function(event) {}
+        //             }
+        //           })
+        //         ]
+        //       );
+        //     }
+        //   }
+        // }
+      ],
+      options: [],
+      value: [],
+      list: [],
+      loading: false,
+      param: {},
+      states: []
+    };
+  },
+  computed: {
+    roomid() {
+      return this.$store.state.fj38.checkedroom.roomid + "";
+    },
+    allBtnShow() {
+      // let is = this.btnRight.includes("327");
+      return true;
+    }
+  },
+  mounted() {
+    if (this.checkedroom.iscardlock == 0) {
+      //判断房间是否支持指纹/密码/卡号,若不支持则隐藏
+      this.tableData[5].noShow = true;
+    } else {
+      this.tableData[5].noShow = false;
+    }
+    if (this.checkedroom.ispasslock == 0) {
+      this.tableData[6].noShow = true;
+    } else {
+      this.tableData[6].noShow = false;
+    }
+    if (this.checkedroom.isfingerlock == 0) {
+      this.tableData[7].noShow = true;
+    } else {
+      this.tableData[7].noShow = false;
+    }
+  },
+  created() {
+    this.inPosition();
+  },
+  methods: {
+    ...mapGetters(["getNumber"]),
+    inPosition() {
+      this.$ajax(
+        "/lock/operate/authchange/5/getchangebuildtree",
+        { roomid: this.checkedroom.roomid },
+        "1",
+        {},
+        "",
+        60000
+      )
+        .then(res => {
+          let arrs = res.result;
+          let tih = d => {
+            d.forEach(o => {
+              if (o.children) {
+                tih(o.children);
+              } else {
+                o.isroom = !o.isroom;
+              }
+            });
+          };
+          tih(arrs);
+          this.positions = arrs;
+        })
+        .catch(err => {});
+    },
+    checkp(data) {
+      this.personnel = data;
+      this.loading = true;
+      this.$ajax(
+        "/lock/operate/authchange/2/getroompersoninfo",
+        { personcode: data.personcode, roomid: this.checkedroom.roomid },
+        "1"
+      )
+        .then(res => {
+          let obj = {
+            dates: [res.result.personcomedate, res.result.personedate],
+            pEnd: res.result.personedate || "长期",
+            personlocation: res.result.personlocation,
+            personname: res.result.personname,
+            personcode: res.result.personcode,
+            personmobile: res.result.personmobile,
+            cardcode: res.result.cardcode,
+            fingercount: res.result.fingercount,
+            appcount: res.result.appcount,
+            passcount: res.result.passcount,
+            cardissend: res.result.cardissend,
+            fingerissend: res.result.fingerissend,
+            passissend: res.result.passissend
+          };
+          this.defaultData = obj;
+          // this.defaultData = res.result;
+          this.loading = false;
+        })
+        .catch(err => {
+          this.loading = false;
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onChange(data, obj) {},
+    changePsition(data) {
+      if (this.outroomid && this.outroomid.length > 0) {
+        this.$ajax(
+          "/lock/operate/auth/1/getroomperson",
+          {
+            roomid: this.outroomid[this.outroomid.length - 1]
+          },
+          "1"
+        )
+          .then(res => {
+            this.outpersoncode = "";
+            this.states = res.result;
+          })
+          .catch(err => {
+            console.log(err);
+            this.$message({
+              message: `[${err.resultCode}] ` + err.resultMsg,
+              type: "error"
+            });
+          });
+      }
+    },
+    onChoiceWZ(data) {},
+    Determine() {
+      //提交事件
+      let outpersoncode = this.outpersoncode;
+      let inroomid = this.checkedroom.roomid;
+      if (!this.personnel.personcode) {
+        this.$message({
+          message: "请选择左侧人员",
+          type: "error"
+        });
+        return;
+      } else if (!this.outroomid || this.outroomid.length == 0) {
+        this.$message({
+          message: "请选择要换入的房间",
+          type: "error"
+        });
+        return;
+      }
+      let outroomid = this.outroomid[this.outroomid.length - 1];
+      this.$ajax(
+        "/lock/operate/authchange/4/saveauthchange",
+        {
+          outroomid: inroomid,
+          outpersoncode: outpersoncode,
+          inroomid: outroomid,
+          personcode: this.personnel.personcode
+        },
+        "1",
+        {},
+        true
+      )
+        .then(res => {
+          this.$emit("refresh");
+          this.personnel = {};
+          this.outroomid = [];
+          this.defaultData = { dates: [] };
+          this.outpersoncode = "";
+          this.states = [];
+          this.$message({
+            message: "调整成功!",
+            type: "success"
+          });
+          this.key1++;
+        })
+        .catch(err => {
+          console.log(err);
+          this.$message({
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    }
+  }
+};
+</script>

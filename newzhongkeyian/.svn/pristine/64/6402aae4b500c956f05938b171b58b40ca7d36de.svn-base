@@ -1,0 +1,161 @@
+<!-- 账户日志列表 -->
+<template>
+  <el-dialog
+    title="日志列表"
+    width="70%"
+    class="importHistory"
+    :close-on-click-modal="false"
+    append-to-body
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <el-container class="dialog-table6 wh100">
+      <el-header class="query_headbox">
+        <retrieval class="query_head">
+          <inpbox inptext="类型">
+            <el-select v-model="param.functionid" class="wid200 qh_inp">
+              <el-option
+                v-for="item in options"
+                :key="item.functionid"
+                :label="item.logtype"
+                :value="item.functionid"
+              ></el-option>
+            </el-select>
+          </inpbox>
+          <inpbox :inptext="'请选择时间'">
+            <dateSelect ref="dates" class="qh_date" v-model="dates"></dateSelect>
+          </inpbox>
+          <inpbox>
+            <fel-button class="qh_btn" type="primary" @click="onRefresh">查询</fel-button>
+            <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+          </inpbox>
+        </retrieval>
+      </el-header>
+      <paging-table
+        interface="/system/user/3/getlog"
+        ref="paging-table"
+        :list="list"
+        :param="param"
+        :refresh="refresh"
+      ></paging-table>
+    </el-container>
+    <journalListDeatail
+      :dialogVisible="DetailsVisible"
+      :logid="logid"
+      @beforeClose="DetailsVisible=false"
+    ></journalListDeatail>
+  </el-dialog>
+</template>
+
+<script>
+import journalListDeatail from "./journalListDetails";
+import { format, download } from "@/utils/utils.js";
+export default {
+  props: {
+    dialogVisible: Boolean,
+    userlogin: String
+  },
+  components: {
+    journalListDeatail
+  },
+  data() {
+    let $this = this;
+    return {
+      DetailsVisible: false,
+      logid: "",
+      dates: [],
+      options: [{ logtype: "全部", functionid: "" }],
+      param: { userlogin: "", sdate: "", edate: "", functionid: "" },
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "80px"
+        },
+        {
+          name: "操作日期",
+          prop: "logdate",
+        },
+        {
+          name: "标题",
+          prop: "logtitle",
+        },
+        {
+          name: "内容",
+          prop: "logcontent",
+        },
+        {
+          name: "类型",
+          prop: "logtype"
+        },
+        {
+          name: "操作人",
+          prop: "username",
+          width: "80px"
+        },
+        {
+          name: "操作",
+          width: "80px",
+          template: {
+            props: ["scope"],
+            methods: {
+              onClick(key) {
+                $this.onClick(this.scope.row);
+              }
+            },
+            template: `<div class="operat-buts"> 
+             <el-button type="text" size="small" @click.stop="onClick(scope.row)">详情</el-button>
+            </div>`
+          }
+        }
+      ]
+    };
+  },
+  created() {
+    this.$ajax("/system/user/5/getlogtype", {}, "1").then(res => {
+      this.options = this.options.concat(res.result);
+    });
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.param.userlogin = this.userlogin;
+        this.onRefresh();
+      } else {
+      }
+    }
+  },
+  methods: {
+    onClick(data) {
+      this.logid = data.logid;
+      this.DetailsVisible = true;
+    },
+    onReset() {
+      Object.keys(this.param).forEach(item => {
+        if (item != "userlogin") {
+          this.param[item] = "";
+        }
+      });
+      this.onRefresh();
+    },
+    onRefresh() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd") + " 00:00:00";
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd") + " 23:59:59";
+      } else {
+        let T = new Date();
+        let YM = format(T, "yyyy-MM");
+        let time = format(T, "dd HH:mm:ss");
+        let tValue = [`${YM}-01 00:00:00`, `${YM}-${time}`];
+        this.param.sdate = tValue[0];
+        this.param.edate = tValue[1];
+      }
+      this.refresh = new Date().getTime();
+    },
+    beforeClose() {
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

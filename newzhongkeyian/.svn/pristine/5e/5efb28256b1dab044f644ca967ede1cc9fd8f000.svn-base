@@ -1,0 +1,347 @@
+<template>
+  <el-dialog
+    :title="topTitle"
+    :visible.sync="dialogVisible"
+    width="50%"
+    :before-close="handleClose"
+    :close-on-click-modal="false"
+    append-to-body
+    v-loading="loading"
+    :element-loading-text="`文件导出中,预计还需${num>0?num:0}秒...`"
+    element-loading-spinner="el-icon-loading"
+    element-loading-background="rgba(0, 0, 0, 0.8)"
+    class="el-dialogs"
+  >
+    <div>
+      <div v-if="importButs.length + exportButs.length >= 1">
+        <h3 class="htitle">
+          选择操作类型
+          <el-button class="htitle_history" type="text" @click="onClickHistory()">导出历史记录</el-button>
+        </h3>
+        <div class="content">
+          <span class="htitle_but_top" v-if="importShow">
+            <el-button
+              v-for="(v,k) of importButs"
+              :key="k"
+              class="com-but-small"
+              :type="k == type ? 'primary' :''"
+              @click.stop="onClickImport(v, k)"
+            >{{v.name||v.alias}}</el-button>
+          </span>
+          <br />
+          <el-button
+            v-for="(v,k) of exportButs"
+            :key="'e'+k"
+            type="primary"
+            class="com-but-small"
+            @click.stop="onClickExport(v, k)"
+          >{{v.name}}</el-button>
+          <div class="download-loading" v-if="downloadLoading">
+            <i class="el-icon-loading"></i>导出生成文件中...
+          </div>
+        </div>
+      </div>
+      <div v-if="importButs.length > 0">
+        <div>
+          <h3 class="htitle">导入</h3>
+          <div class="content import">
+            <fel-upload
+              :accept="wjType"
+              class="disIB"
+              @onChange="onChange"
+              @onRemove="onRemove"
+              ref="felUpload"
+              listType="text"
+              showFileList
+              :timeout="120000"
+              :intercept="intercept"
+              :fileList="fileList"
+              @uploadFile="uploadFile"
+              @uploadError="uploadError"
+              noAuto
+            >
+              <div class="text">
+                请选择:
+                <span v-if="!importShow">
+                  <el-button
+                    v-for="(v,k) of importButs"
+                    :key="k"
+                    class="com-but-small"
+                    :type="k == type ? 'primary' :''"
+                  >{{v.name}}</el-button>
+                </span>
+                <el-button v-if="importShow" class="com-but-small" type="primary">导入文件</el-button>或，将文件拖到此处
+                <div slot="tip" class="el-upload__tip gui_text">只支持后缀名为{{wjType}}的文件，且文件大小不超过100MB</div>
+              </div>
+            </fel-upload>
+            <div class="but">
+              <el-button type="primary" class="com-but-small" @click="onUpload">确认导入</el-button>
+            </div>
+            <div class="errorText" v-if="errorText">
+              {{errorText}}
+              <el-button
+                v-if="filepath"
+                class="com-but-small"
+                @click="onUploadError"
+                type="success"
+              >下载</el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <exportHistory
+      :historyUrl="historyUrl"
+      :detailsUrl="detailsUrl"
+      :failUrl="failUrl"
+      :dialogVisible="iHvisible"
+      @beforeClose="()=>{iHvisible=false}"
+    ></exportHistory>
+  </el-dialog>
+</template>
+
+<script>
+import { download } from "@/utils/utils.js";
+import exportHistory from "./export-history";
+import { timerDownload } from "./index.js";
+export default {
+  components: { exportHistory },
+  props: {
+    dialogVisible: Boolean,
+    title: String,
+    detailsUrl: String,
+    historyUrl: String,
+    failUrl: String,
+    importShow: Boolean, //有需要被选中的导入框,例如房间管理
+    importButs: {
+      type: Array,
+      default() {
+        return [];
+      }
+    },
+    exportButs: {
+      type: Array,
+      default() {
+        return [];
+      }
+    }
+  },
+  data() {
+    return {
+      iHvisible: false,
+      wjType: ".xls,.xlsx",
+      isFile: 0,
+      fileList: [],
+      type: 0,
+      errorText: "",
+      filepath: "",
+      loading: false,
+      downloadLoading: false,
+      times: null,
+      num: 60
+    };
+  },
+  watch: {
+    dialogVisible() {
+      this.downloadLoading = false;
+      this.clearFiles();
+      this.onRemove();
+    }
+  },
+  beforeDestroy() {
+    clearInterval(this.times);
+  },
+  deactivated() {
+    clearInterval(this.times);
+  },
+  computed: {
+    topTitle() {
+      if (this.importButs.length + this.exportButs.length > 1) {
+        return "导入与导出";
+      } else if (this.importButs.length != 0) {
+        return this.importButs[0].name;
+      } else if (this.exportButs.length != 0) {
+        return this.exportButs[0].name;
+      } else {
+        return "导入与导出";
+      }
+    }
+  },
+  methods: {
+    onClickHistory() {
+      this.iHvisible = true;
+    },
+    onClickTemp() {
+      let obj = this.importButs[this.type];
+      let t = this.title || "";
+      this.inExport(obj.tempUrl, t + obj.name + "模板");
+    },
+    onClickImport(obj, key) {
+      this.type = key;
+    },
+    onClickExport(obj, key) {
+      console.log("obj", obj);
+      if (obj.id == "464" || obj.id == "393") {
+        let t = this.title || "";
+        this.inExportPackage(
+          obj.url,
+          obj.fileName || t + obj.name,
+          obj.data,
+          obj.obj
+        );
+      } else if (this.exportButs.length > 1) {
+        let down = true;
+        if (obj.name == "导入历史") {
+          this.$emit("showHistory");
+        } else if (obj.url) {
+          let t = this.title || "";
+          this.inExport(
+            obj.url,
+            obj.fileName || t + obj.name,
+            obj.data,
+            obj.obj,
+            down
+          );
+        }
+      } else {
+        let t = this.title || "";
+        this.inExport(obj.url, obj.fileName || t + obj.name, obj.data, obj.obj);
+      }
+    },
+    inExportPackage(url, name, data = {}, obj = {}, down = true) {
+      this.$ajax(url, data, "1", obj, true, 60000)
+        .then(res => {
+          this.$message({
+            message: name + "已下发，文件正在生成中",
+            type: "success"
+          });
+          this.downloadLoading = true;
+          timerDownload(res.result, this.historyUrl, this, name);
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+
+    inExport(url, name, data = {}, obj = {}, down = true) {
+      this.num = 60;
+      clearInterval(this.times);
+      this.times = setInterval(() => {
+        this.num -= 1;
+        if (this.num <= 0) {
+          clearInterval(this.times);
+          this.num = 60;
+        }
+      }, 1000);
+      this.loading = true;
+      this.$ajax(url, data, "3", obj, false, 60000)
+        .then(res => {
+          if (this.times) {
+            clearInterval(this.times);
+          }
+          this.loading = false;
+          if (res.size) {
+            if (down) {
+              download(res, name);
+            }
+            this.$notify({
+              title: "成功",
+              message: name + "文件导出成功！",
+              type: "success"
+            });
+          }
+        })
+        .catch(err => {
+          console.log("error", err);
+          clearInterval(this.times);
+          this.loading = false;
+          if (err && err.resultCode) {
+            this.$message.error(
+              `文件导出失败！失败原因：[${err.resultCode}] ` + err.resultMsg
+            );
+          } else {
+            this.$message.error(`文件导出失败！失败原因：未知错误`);
+          }
+        });
+    },
+    handleClose() {
+      this.$emit("handleClose");
+    },
+    intercept(file) {
+      const isLt2M = file.size < 100 * 1024 * 1024;
+      if (!isLt2M) {
+        this.$message.error("上传文件大小不能超过 100MB!");
+      }
+      let name = file.name;
+      name = name.substr(name.lastIndexOf("."));
+      const isTy = this.wjType.includes(name);
+      if (!isTy) {
+        this.$message.error(`只支持后缀名为${this.wjType}的文件`);
+      }
+      return isLt2M && isTy;
+    },
+    onUpload() {
+      if (this.isFile == 1) {
+        let obj = this.importButs[this.type];
+        this.$refs.felUpload.submitUpload(obj.url, obj.data);
+      } else if (this.isFile == 2) {
+        this.$message({
+          message: "文件已经上传成功状态，请重新选择",
+          type: "warning"
+        });
+      } else {
+        this.$message({
+          message: "请先选择要上传的文件",
+          type: "warning"
+        });
+      }
+    },
+    uploadError(content, err) {
+      this.$message.error(
+        `文件上传失败！失败原因：[${err.resultCode}] ` + err.resultMsg
+      );
+    },
+    uploadFile(file, data) {
+      this.isFile = 2;
+      if (data.resultfail) {
+        this.errorText = data.resultmsg;
+        this.filepath = data.resultfail;
+      }
+      this.$notify({
+        title: "成功",
+        message: data.resultmsg,
+        type: "success"
+      });
+    },
+    onUploadError() {
+      let obj = this.importButs[this.type];
+      this.inExport(obj.errUrl, "导入失败数据", {
+        filepath: this.filepath
+      });
+    },
+    onRemove() {
+      this.isFile = 0;
+      this.errorText = "";
+      this.filepath = "";
+      if (this.$refs.felUpload) {
+        setTimeout(() => {
+          this.$refs.felUpload.showUpload(true);
+        }, 600);
+      }
+    },
+    onChange() {
+      this.isFile = 1;
+      this.$refs.felUpload.showUpload(false);
+    },
+    clearFiles() {
+      if (this.$refs.felUpload) {
+        this.$refs.felUpload.clearFiles();
+      }
+    }
+  }
+};
+</script>

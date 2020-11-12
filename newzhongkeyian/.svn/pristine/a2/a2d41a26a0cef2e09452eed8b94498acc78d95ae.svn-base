@@ -1,0 +1,302 @@
+<!-- 服务器 -->
+<template>
+  <el-container>
+    <el-header class="elheader query_headbox">
+      <com-title>
+        <div @click="topClick('1')" :class="'fuwuqi'+' '+fu">{{toParam.alias}}</div>
+        <div @click="topClick('0')" :class="'cipan'+' '+ci">磁盘</div>
+      </com-title>
+      <retrieval v-show="onShow" class="query_head">
+        <inpbox :inpb="true">
+          <el-select class="qh_inp wid200" v-model="param.serverid" placeholder="请选择">
+            <el-option
+              v-for="item in servers"
+              :key="item.serverid"
+              :label="item.servername"
+              :value="item.serverid"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inpb="true">
+          <el-select class="qh_inp wid200" v-model="param.logtype" placeholder="请选择">
+            <el-option v-for="item in events" :key="item" :label="item" :value="item"></el-option>
+          </el-select>
+        </inpbox>
+
+        <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" start="1" v-model="dates"></fel-date>
+        </inpbox>
+        <!-- <inpbox :inpb="true">
+          <el-select class="qh_inp" v-model="param1.discid" placeholder="请选择">
+            <el-option
+              v-for="item in cipan"
+              :key="item.discid"
+              :label="item.cpname"
+              :value="item.discid"
+            ></el-option>
+          </el-select>
+        </inpbox>-->
+        <inpbox :inpb="true">
+          <fel-button class="buta qh_btn" type="primary" @click="onSearch">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+      <retrieval v-show="onShow1" class="query_head">
+        <inpbox :inpb="true">
+          <el-select class="qh_inp wid200" v-model="param1.discid" placeholder="请选择">
+            <el-option
+              v-for="item in cipan"
+              :key="item.discid"
+              :label="item.cpname"
+              :value="item.discid"
+            ></el-option>
+          </el-select>
+        </inpbox>
+        <inpbox :inptext="'请选择时间'">
+          <fel-date class="qh_date" start="1" v-model="dates"></fel-date>
+        </inpbox>
+        <inpbox :inpb="true">
+          <fel-button class="buta qh_btn" type="primary" @click="onSearch">查询</fel-button>
+          <fel-button class="qh_btn" @click="onReset">重置</fel-button>
+        </inpbox>
+      </retrieval>
+    </el-header>
+    <el-main v-show="onShow" class="pad0-10 query_main">
+      <el-tabs v-model="activeName">
+        <el-tab-pane label="服务器日志统计" name="first"></el-tab-pane>
+        <el-tab-pane label="服务器日志列表" name="second"></el-tab-pane>
+        <!-- <el-tab-pane label="磁盘日志统计" name="third"></el-tab-pane>
+        <el-tab-pane label="磁盘日志列表" name="fourth"></el-tab-pane>-->
+      </el-tabs>
+      <statistics class="solve-height" v-if="activeName=='first'" :refresh="refresh" :param="param"></statistics>
+      <paging-table
+        v-show="activeName=='second'"
+        height="100%"
+        interface="/system/control/serverlog/2/getserverlog"
+        class="heig100"
+        :inQueryFilter="tableFilter"
+        :param="param"
+        :refresh="refresh"
+        :list="list"
+        @onEjectChange="onEjectChange(true)"
+      />
+      <!-- <statistics2 v-if="activeName=='third'" :refresh="refresh" :param="param1"></statistics2>
+      <paging-table
+        v-show="activeName=='fourth'"
+        height="100%"
+        interface="/system/control/serverlog/5/getdisclog"
+        class="heig100"
+        :inQueryFilter="tableFilter"
+        :param="param1"
+        :refresh="refresh"
+        :list="list1"
+      />-->
+    </el-main>
+    <el-main v-show="onShow1" class="pad0-10 query_main">
+      <el-tabs v-model="activeName">
+        <el-tab-pane label="磁盘日志统计" name="third"></el-tab-pane>
+        <el-tab-pane label="磁盘日志列表" name="fourth"></el-tab-pane>
+      </el-tabs>
+      <statistics2
+        class="solve-height"
+        v-if="activeName=='third'"
+        :refresh="refresh"
+        :param="param1"
+      ></statistics2>
+      <paging-table
+        v-show="activeName=='fourth'"
+        height="100%"
+        interface="/system/control/serverlog/5/getdisclog"
+        class="heig100"
+        :inQueryFilter="tableFilter"
+        :param="param1"
+        :refresh="refresh"
+        :list="list1"
+        @onEjectChange="onEjectChange()"
+      />
+    </el-main>
+  </el-container>
+</template>
+
+<script>
+import Storages from "../../utils/Storage.js"; //缓存工具
+import { format } from "@/utils/utils.js";
+import statistics from "./statistics";
+import statistics2 from "./statistics2";
+export default {
+  props: ["toParam"],
+  components: {
+    statistics,
+    statistics2
+  },
+  data() {
+    return {
+      ci: "",
+      fu: "btn",
+      activeName: "first",
+      dialogVisible: false,
+      onShow: true,
+      onShow1: false,
+      servers: [
+        {
+          serverid: "",
+          servername: "全部服务器"
+        }
+      ],
+      events: ["全部事件"],
+      cipan: [
+        {
+          cpname: "全部磁盘",
+          discid: ""
+        }
+      ],
+      dates: [],
+      param: {
+        serverid: "",
+        logtype: "全部事件"
+      },
+      param1: {
+        cpname: "全部磁盘",
+        discid: ""
+      },
+      refresh: 0,
+      list: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "服务器名称",
+          prop: "servername"
+        },
+        {
+          name: "IP地址",
+          prop: "serverip"
+        },
+        {
+          name: "事件",
+          prop: "slcontent"
+        },
+        {
+          name: "时间",
+          prop: "sldate"
+        }
+      ],
+      list1: [
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "磁盘名称",
+          prop: "cpname"
+        },
+        {
+          name: "事件",
+          prop: "dlcontent"
+        },
+        {
+          name: "时间",
+          prop: "dldate"
+        }
+      ]
+    };
+  },
+  created() {
+    this.inSelect();
+  },
+  watch: {
+    activeName() {
+      this.refresh = new Date().getTime();
+    }
+  },
+  mounted() {
+    this.getEject();
+  },
+  methods: {
+    topClick(aa) {
+      if (aa == "1") {
+        this.activeName = "first";
+        this.onShow = true;
+        this.onShow1 = false;
+        this.fu = "btn";
+        this.ci = "";
+      } else {
+        this.activeName = "third";
+        this.onShow = false;
+        this.onShow1 = true;
+        this.fu = "";
+        this.ci = "btn";
+      }
+    },
+    //重置事件
+    onReset() {
+      this.dates = [];
+      Object.keys(this.param).forEach(key => {
+        this.param[key] = "";
+        this.param1[key] = "";
+      });
+      this.param.logtype = "全部事件";
+      this.param1.logtype = "全部事件";
+      this.onSearch();
+    },
+    beforeClose() {
+      this.dialogVisible = false;
+    },
+    onStatistics() {
+      this.dialogVisible = true;
+    },
+    inSelect() {
+      this.$ajax("/system/control/serverlog/1/getserverloginfo", {}, "1")
+        .then(res => {
+          this.servers.push(...res.result.server);
+          this.events.push(...res.result.logtype);
+        })
+        .catch(err => {});
+      this.$ajax("/system/control/serverlog/4/getdisctype", {}, "1")
+        .then(res => {
+          res.result.map(item => {
+            this.cipan.push(item);
+          });
+        })
+        .catch(err => {});
+    },
+    tableFilter(obj) {
+      if (obj.logtype == "全部事件") {
+        obj.logtype = "";
+      } else if (obj.cpname == "全部磁盘") {
+        obj.cpname = "";
+      }
+      return obj;
+    },
+    onSearch() {
+      if (this.dates && this.dates.length == 2) {
+        this.param.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.param.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+        this.param1.sdate = format(this.dates[0], "yyyy-MM-dd HH:mm:ss");
+        this.param1.edate = format(this.dates[1], "yyyy-MM-dd HH:mm:ss");
+      } else {
+        this.param.sdate = "";
+        this.param.edate = "";
+        this.param1.sdate = "";
+        this.param1.edate = "";
+      }
+      this.refresh = new Date().getTime();
+    },
+    onEjectChange(bool = false) {
+      //将用户隐藏表格的信息存到localStorage
+      if (bool) {
+        this.$common.onEjectChange(this.list, "fwq443-A");
+      } else {
+        this.$common.onEjectChange(this.list1, "fwq443-B");
+      }
+    },
+    getEject() {
+      this.$common.getEject(this, "list", "fwq443-A");
+      this.$common.getEject(this, "list1", "fwq443-B");
+    }
+  }
+};
+</script>

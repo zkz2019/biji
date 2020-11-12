@@ -1,0 +1,13 @@
+
+var _zk_comfig_ = {
+    login_name: "智慧物联管理平台", // 登录页面标题
+    html_title: "智慧物联管理平台",// title 文字
+    header_backg: "#1B2437",//头部背景色
+    header_color: "#ffffff",//头部字体颜色
+    baseURL: "/api", // 后台接口地址
+};
+
+
+if (_zk_comfig_.html_title) {
+    document.title = _zk_comfig_.html_title;
+}

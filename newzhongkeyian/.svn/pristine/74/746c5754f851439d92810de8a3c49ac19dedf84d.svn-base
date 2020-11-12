@@ -1,0 +1,75 @@
+<!-- 楼层效果弹出框 -->
+<template>
+  <el-dialog
+    v-bind="$attrs"
+    v-on="$listeners"
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+    :width="width"
+    title="整层效果预览"
+  >
+    <effect-sort
+      ref="sort"
+      @onRefresh="onRefresh"
+      :effectBus="effectBus"
+      :dialogVisible="dialogVisible"
+      :effectdata="effectdata"
+      :fatheragid="fatheragid"
+    ></effect-sort>
+  </el-dialog>
+</template>
+
+<script>
+/**
+ * element-ui中 el-dialog 弹出框
+ * 弹出框是懒渲染 只会渲染一次
+ * closeData 关闭弹出框 数字，改变值就关闭
+ * openData 显示弹出框 数字，改变值就显示
+ * top 里顶部位置
+ * button 是否带确认关闭两个按钮
+ * 支持插槽插入内容
+ * 有确认关闭两个按钮
+ * @closeForm 点击关闭按钮触发事件
+ * @submitForm 点击确认按钮触发事件
+ */
+import effecctSort from "./effect-sort";
+export default {
+  components: {
+    "effect-sort": effecctSort
+  },
+  name: "dialog-effect",
+  props: [
+    "effectBus",
+    "dialogVisible",
+    "top",
+    "effectdata",
+    "width",
+    "fatheragid"
+  ],
+  data() {
+    return {};
+  },
+  mounted() {
+    if (this.top) {
+      const el = this.$el;
+      if (el && el.querySelector("div.el-dialog")) {
+        el.querySelector("div.el-dialog").style.marginTop = this.top;
+      }
+    }
+  },
+  methods: {
+    onRefresh() {
+      this.$emit("onRefresh");
+    },
+    beforeClose() {
+      if (this.$refs["sort"]) {
+        this.$refs["sort"].onAdjustment(0);
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>
+<style lang='scss' scoped>
+</style>

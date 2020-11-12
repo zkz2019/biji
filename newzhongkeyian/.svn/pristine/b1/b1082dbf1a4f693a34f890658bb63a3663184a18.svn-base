@@ -1,0 +1,348 @@
+<!-- 弹出窗口 管理员-->
+<template>
+  <fel-admin
+    ref="admin"
+    :title="title"
+    :dialogVisible="dialogVisible"
+    :botButs="botButs"
+    :paramObj="paramObj"
+    leftInterfaceUrl="/system/build/savemanager/4/getnextuser"
+    interfaceUrl="/system/build/savemanager/2/getnextareamanager"
+    :leftList="fuList"
+    :list="list"
+    @beforeClose="beforeClose"
+    @onSelectLeft="onSelect"
+    @onSelection="onSelection"
+    @onClick="onClick"
+  ></fel-admin>
+</template>
+
+<script>
+export default {
+  props: {
+    title: String,
+    dialogVisible: Boolean,
+    botButs: Array,
+    param: Object | Array
+  },
+  data() {
+    return {
+      aggregation: [],
+      rowpersonnel: {},
+      fuList: [
+        {
+          prop: "userlogin",
+          tooltip: true,
+          name: "账号"
+        },
+        {
+          prop: "username",
+          tooltip: true,
+          name: "姓名"
+        }
+      ],
+      list: [
+        {
+          type: "selection"
+        },
+        {
+          name: "序号",
+          type: "$index",
+          width: "60px"
+        },
+        {
+          name: "位置",
+          prop: "location"
+        },
+        {
+          name: "管理员账号",
+          prop: "userlogin"
+        },
+        {
+          name: "使用者姓名",
+          prop: "username"
+        },
+        {
+          name: "账号角色",
+          prop: "userrole"
+        },
+        {
+          name: "管理权限",
+          prop: "agmmanager",
+          formatter(a, b, c) {
+            return c == 1 ? "是" : "否";
+          }
+        },
+        {
+          name: "授权账号",
+          prop: "userlogin2"
+          // formatter(a, b, c) {
+          //   if (a.userlogin == "admin" && c == "admin") {
+          //     return "--";
+          //   }
+          //   return c;
+          // }
+        },
+        {
+          name: "授权生效日期",
+          prop: "agmdate"
+        }
+      ]
+    };
+  },
+  computed: {
+    paramObj() {
+      return this.param;
+    }
+  },
+  methods: {
+    beforeClose() {
+      this.$emit("beforeClose");
+    },
+    onSelect(data) {
+      this.rowpersonnel = data;
+    },
+    onSelection(data) {
+      this.aggregation = data;
+    },
+    onClick(val) {
+      if (val == "29") {
+        //添加负责人
+        if (!this.rowpersonnel.userlogin) {
+          this.$message({
+            message: "请先选中左侧人员",
+            type: "warning"
+          });
+          return;
+        }
+        this.savefatheruser();
+      } else if (val == "33") {
+        //删除负责人
+        if (this.aggregation.length == 0) {
+          this.$message({
+            message: "请先选中管理员",
+            type: "warning"
+          });
+          return;
+        }
+        this.$confirm("是否删除选中的管理员?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.delareamanager();
+          })
+          .catch(err => {});
+      } else if (val == "748") {
+        //添加
+        if (this.aggregation.length == 0) {
+          this.$message({
+            message: "请先选中管理员",
+            type: "warning"
+          });
+          return;
+        }
+        this.$confirm("是否删除选中的管理授权?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.$confirm("是否删除子建筑管理权限?", "提示", {
+              confirmButtonText: "是",
+              cancelButtonText: "否",
+              showClose: false,
+              type: "warning"
+            })
+              .then(() => {
+                this.delete(1);
+              })
+              .catch(err => {
+                this.delete(0);
+              });
+          })
+          .catch(err => {});
+      } else if (val == "747") {
+        //添加
+        if (this.aggregation.length == 0) {
+          this.$message({
+            message: "请先选中管理员",
+            type: "warning"
+          });
+          return;
+        }
+        this.$confirm("是否给选中添加管理授权?", "提示", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        })
+          .then(() => {
+            this.add();
+            // this.delareamanager();
+          })
+          .catch(err => {});
+      }
+    },
+    //添加授权
+    add() {
+      this.$ajax(
+        "/system/build/savemanager/9/saveareamanages",
+        {},
+        "1",
+        this.aggregation,
+        true
+      )
+        .then(res => {
+          this.$refs.admin.refreshData();
+          this.$message({
+            message: "成功添加授权",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    //添加授权
+    delete(isdelson) {
+      this.$ajax(
+        "/system/build/deletemanager/3/delareamanages",
+        {
+          isdelson: isdelson
+        },
+        "1",
+        this.aggregation,
+        true
+      )
+        .then(res => {
+          this.$refs.admin.refreshData();
+          this.$message({
+            message: "成功删除授权",
+            type: "success"
+          });
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    //添加管理员接口
+    savefatheruser() {
+      if (this.param.length == 1) {
+        this.$ajax(
+          "/system/build/savemanager/5/savenextuser",
+          {
+            userlogin: this.rowpersonnel.userlogin
+          },
+          "1",
+          this.param[0],
+          true
+        )
+          .then(res => {
+            this.$refs.admin.refreshData();
+            this.rowpersonnel = {};
+            this.$message({
+              message: "成功添加管理员",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+          });
+      } else {
+        this.$ajax(
+          "/system/build/savemanager/8/batchsavenextusers",
+          {},
+          "1",
+          {
+            nextbuilds: this.param,
+            userlogins: [this.rowpersonnel.userlogin]
+          },
+          true
+        )
+          .then(res => {
+            this.$refs.admin.refreshData();
+            this.rowpersonnel = {};
+            this.$message({
+              message: "成功添加管理员",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+          });
+      }
+    },
+    //删除管理员接口
+    delareamanager() {
+      if (this.param.length == 1) {
+        this.$ajax(
+          `/system/build/deletemanager/1/delareamanager`,
+          {},
+          "1",
+          this.aggregation,
+          true
+        )
+          .then(res => {
+            this.aggregation = [];
+            this.$refs.admin.refreshData();
+            this.$message({
+              message: "成功删除已选中的管理员",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+          });
+      } else {
+        let data = {
+          nextbuilds: this.param,
+          userlogins: this.aggregation.map(o => o.userlogin)
+        };
+        this.$ajax(
+          "/system/build/deletemanager/2/batchdelareamanager",
+          {},
+          "1",
+          data,
+          true
+        )
+          .then(res => {
+            this.aggregation = [];
+            this.$refs.admin.refreshData();
+            this.$message({
+              message: "成功删除已选中的管理员",
+              type: "success"
+            });
+          })
+          .catch(err => {
+            this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] `+err.resultMsg ,
+            type: "error"
+          });
+          });
+      }
+    }
+  }
+};
+</script>

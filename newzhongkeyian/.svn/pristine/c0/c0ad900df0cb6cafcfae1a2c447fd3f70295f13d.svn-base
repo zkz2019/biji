@@ -1,0 +1,120 @@
+<template>
+  <div class="progressDetails">
+    <div v-if="progressShow" class="progress_box">
+      <span>{{uploadTitle}}&nbsp;&nbsp;&nbsp;{{uploadText}}</span>
+      <el-progress class="progress" :percentage="percentage" :stroke-width="12" :color="prcolor"></el-progress>
+    </div>
+    <div v-if="textShow" class="progress_box">
+      <span>{{uploadTitle}}&nbsp;&nbsp;&nbsp;导入完成!</span>
+      <div>
+        共:
+        <span>{{uploadtotal.uploadallcount}}</span>条&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;成功:
+        <span class="puc-pg">{{uploadtotal.uploadokcount}}</span>条&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;失败:
+        <span class="puc-px">{{uploadtotal.uploadnocount}}</span>条&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <el-button class="progress_box_btn" type="text" size="mini" @click="onDetails">查看详情</el-button>
+        <el-button
+          v-if="uploadtotal.uploadnocount>0"
+          class="progress_box_btn"
+          type="text"
+          size="mini"
+          @click="onErr"
+        >失败导出</el-button>
+      </div>
+    </div>
+    <div class="errorText" v-if="errorText">
+      {{errorText}}
+      <el-button v-if="filepath" class="com-but-small" @click="onUploadError" type="success">下载</el-button>
+    </div>
+  </div>
+</template>
+
+<script>
+import { mapState } from 'vuex';
+import emitter from '@/mixins/emitter.js';
+export default {
+  mixins: [emitter],
+  props: {
+    // progressShow: Boolean,
+    uploadTitle: String,
+    uploadText: String,
+    // percentage: String || Number,
+    prcolor: String,
+    // textShow: Boolean,
+    // uploadtotal: Object,
+    errorText: String,
+    filepath: Boolean || String || Number
+  },
+  data() {
+    return {
+      percentage: 0
+    };
+  },
+  computed: {},
+  methods: {
+    ...mapState({
+      textShow: state => state.guideFile.textShow,
+      progressShow: state => state.guideFile.progressShow,
+      uploadtotal:state=>state.guideFile.uploadtotal,
+    }),
+    onDetails() {
+      this.dispatch('zguideFile', 'onDetails');
+    },
+    onErr() {
+      let name = '';
+      let failUrl = '';
+      if (this.uploadtotal.uploadtype == '5') {
+        failUrl = '/system/user/uploadauth/5/downuploaduserauthfail';
+        name = '失败授权记录';
+      } else if (this.uploadtotal.uploadtype == '6') {
+        failUrl = '/system/user/uploadtype/5/downuploadusertypefail';
+        name = '失败属性记录';
+      }
+      console.log('lls', this.uploadtotal);
+      //   this.inExport(failUrl, name, { uploadid: this.uploadtotal.uploadid });
+      this.dispatch('zguideFile', 'inExport', {
+        url: failUrl,
+        name,
+        data: { uploadid: this.uploadtotal.uploadid }
+      });
+    },
+    onUploadError() {
+      let obj = this.importButs[this.type];
+      this.dispatch('zguideFile', 'inExport', {
+        url: obj.errUrl,
+        name: '导入失败数据',
+        data: {
+          filepath: this.filepath
+        }
+      });
+      //   this.inExport(obj.errUrl, '导入失败数据', {
+      //     filepath: this.filepath
+      //   });
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.errorText {
+  position: absolute;
+  bottom: 50px;
+}
+.progress_box {
+  position: absolute;
+  bottom: 0px;
+  padding-top: 5px;
+  max-width: 375px;
+  .progress_title {
+    float: left;
+  }
+  .progress {
+    // float:left;
+    min-width: 220px;
+    margin-right: 10px;
+  }
+  .progress_box_btn {
+    padding: 2px;
+    font-size: 14px;
+  }
+}
+</style>

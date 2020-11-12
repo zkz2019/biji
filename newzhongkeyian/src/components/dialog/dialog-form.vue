@@ -1,0 +1,142 @@
+<template>
+  <el-dialog
+    v-bind="$attrs"
+    v-on="$listeners"
+    :close-on-click-modal="false"
+    :top="top"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <div v-if="topbutton.length>0" class="dialog-headerbox">
+      <template v-for="(item,idx) of topbutton">
+        <el-button
+          v-if="item.name=='刷新'"
+          :key="idx"
+          type="primary"
+          class="com-but-small"
+          @click="refreshclik"
+        >
+          <i class="el-icon-refresh"></i>刷新
+        </el-button>
+        <el-input
+          v-else-if="item.name=='输入框'"
+          :key="idx"
+          @input="inSearch(item.id)"
+          class="search"
+          :placeholder="item.placeholder||'输入ID/名称查询'"
+        >
+          <i slot="prefix" class="el-input__icon el-icon-search"></i>
+        </el-input>
+        <template v-else-if="item.name=='template'">
+          <component :key="idx" :data="item.data" :is="item.template"></component>
+        </template>
+        <el-button
+          v-else
+          :key="idx"
+          type="primary"
+          class="com-but-small"
+          @click="butsclik(item)"
+        >{{item.name}}</el-button>
+      </template>
+    </div>
+    <fel-form
+      :style="formstyle ||'width:70%;margin:20px auto;'"
+      ref="felForm"
+      :button="button"
+      :defaultData="defaultData"
+      :width="formWidth"
+      :formData="formData"
+      v-on="$listeners"
+      :dynamic="dynamic"
+    ></fel-form>
+  </el-dialog>
+</template>
+
+<script>
+/**
+ * element-ui中 el-dialog 弹出框
+ * 弹出框是懒渲染 只会渲染一次
+ * closeData 关闭弹出框 数字，改变值就关闭
+ * openData 显示弹出框 数字，改变值就显示
+ * top 里顶部位置
+ * button 是否带确认关闭两个按钮
+ * 支持插槽插入内容
+ * 有确认关闭两个按钮
+ * @closeForm 点击关闭按钮触发事件
+ * @submitForm 点击确认按钮触发事件
+ */
+import felForm from "./fel-form";
+export default {
+  name: "ty-el-dialog",
+  props: {
+    formstyle: String,
+    dialogVisible: Boolean,
+    top: String,
+    width: String,
+    button: Array,
+    topbutton: {
+      type: Array,
+      default() {
+        return [];
+      }
+    },
+    defaultData: {
+      type: Object,
+      default: function() {
+        return {};
+      }
+    },
+    formWidth: String,
+    formData: Array,
+    dynamic: Boolean
+  },
+  data() {
+    return {
+      formLabelWidth: "120px"
+    };
+  },
+  beforeDestroy() {
+  },
+  methods: {
+    //按钮点击事件
+    butsclik(buts) {
+      let data = this.defaultData;
+      if (this.$refs["felForm"]) {
+        data = this.$refs["felForm"].ruleForm;
+      }
+      this.$emit("butsclik", buts, data);
+    },
+    beforeClose() {
+      // if (this.$refs["felForm"]) {
+      //   this.$refs["felForm"].resetForm();
+      // }
+      this.$emit("beforeClose");
+    },
+    closeForm: function() {
+      this.$emit("closeForm");
+    },
+    submitForm: function() {
+      this.$emit("submitForm");
+    }
+  },
+  watch: {
+    dialogVisible() {
+      if (this.dialogVisible == false && this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+    }
+  },
+  components: {
+    "fel-form": felForm
+  }
+};
+</script>
+<style lang='scss' scoped>
+.dialog-button {
+  margin: auto;
+  text-align: center;
+}
+.dialog-headerbox {
+  margin-bottom: 15px;
+}
+</style>

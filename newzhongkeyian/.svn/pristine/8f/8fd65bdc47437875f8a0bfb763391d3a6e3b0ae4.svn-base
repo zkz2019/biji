@@ -1,0 +1,616 @@
+<!-- 快速入住 -->
+<template>
+  <el-dialog
+    title="快速入住"
+    width="60%"
+    append-to-body
+    :close-on-click-modal="false"
+    :before-close="beforeClose"
+    :visible.sync="dialogVisible"
+  >
+    <fel-form
+      ref="felForm"
+      width="140px"
+      :button="[]"
+      :selects="selects"
+      dynamic
+      :defaultData="defaultData"
+      @submitForm="submitForm"
+      :formData="formData"
+    >
+      <div slot="bottom" class="footerButton">
+        <fel-button class="com-but-small" @click="searchIDCard">读取身份证</fel-button>
+        <fel-button class="com-but-small" @click="readIDCard">读取房卡</fel-button>
+        <fel-button class="com-but-small" type="primary" @click="onSubmitForm">快速入住</fel-button>
+      </div>
+    </fel-form>
+    <cardReading
+      ref="cardReading"
+      :close="dialogVisible"
+      @onInstall="onInstall"
+      @resultdata="resultdata"
+    />
+  </el-dialog>
+</template>
+
+<script>
+import IDCard from "@/utils/IDCard.js";
+import { format } from "@/utils/utils.js";
+import judge from "@/utils/judge.js";
+import cardReading from "../kwgl/cardReading";
+export default {
+  components: { cardReading },
+  props: {
+    param: {
+      type: Object,
+      default() {
+        return {};
+      }
+    },
+    dialogVisible: Boolean
+  },
+  data() {
+    let $this = this;
+    return {
+      imagebase64: {},
+      selects: {
+        position: [{ agid: "", agname: "正在加载中...", isroom: true }]
+      },
+      roomidObj: {},
+      roomid: [],
+      defaultData: { dates: [], roomid: [], isteamrz: 0, isxbrz: 0 },
+      formData: [
+        {
+          width: "50%",
+          value: "personname",
+          name: "姓名",
+          type: "text",
+          rules: [
+            {
+              required: true,
+              message: "请输入姓名",
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personsex",
+          name: "性别",
+          ref: "personsex",
+          type: "select",
+          select: [
+            {
+              value: "男",
+              label: "男"
+            },
+            {
+              value: "女",
+              label: "女"
+            }
+          ],
+          rules: [
+            {
+              required: true,
+              message: "请选择性别",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personcode",
+          name: "身份证",
+          maxlength: 18,
+          type: "text",
+          rules: [
+            {
+              required: true,
+              message: "请输入身份证",
+              trigger: "blur"
+            },
+            {
+              validator: (rule, value, callback) => {
+                if (!value && value !== 0) {
+                  callback();
+                } else if (!judge.isCardID(value)) {
+                  callback(new Error("身份证格式错误!"));
+                } else {
+                  callback();
+                }
+              },
+              trigger: "blur"
+            }
+          ],
+          buts: [
+            {
+              class: "but-connect",
+              title: "搜索人员信息",
+              icon: "el-icon-search",
+              onClick: this.personClick
+            },
+            {
+              show: true,
+              class: "but-connect",
+              title: "身份证阅读器浏览器驱动下载",
+              icon: "el-icon-download",
+              onClick: this.onClickCardReaderIDCard
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personphone",
+          name: "联系手机",
+          maxlength: 11,
+          type: "text",
+          rules: [
+            {
+              validator: (rule, value, callback) => {
+                if (!value && value !== 0) {
+                  callback();
+                } else if (!judge.isMobile(value)) {
+                  callback(new Error("手机号码格式错误!"));
+                } else {
+                  callback();
+                }
+              },
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "personcompany",
+          name: "单位",
+          type: "text"
+        },
+        {
+          width: "50%",
+          value: "teamname",
+          name: "团信息",
+          type: "text",
+          disabled: true
+        },
+        {
+          value: "mainaccountroom",
+          name: "主账房",
+          type: "text",
+          disabled: true
+        },
+        {
+          value: "dates",
+          name: "预约时间",
+          type: "date",
+          date: "datetimerange",
+          disabled: true,
+          format: "yyyy-MM-dd HH:mm:ss"
+        },
+        // {
+        //   value: "teamsdate",
+        //   width: "50%",
+        //   name: "预约开始时间",
+        //   type: "text",
+        //   disabled: true
+        // },
+        // {
+        //   value: "teamedate",
+        //   width: "50%",
+        //   name: "预约结束时间",
+        //   type: "text",
+        //   disabled: true
+        // },
+        {
+          class: "roomid",
+          value: "roomid",
+          name: "预约房间",
+          type: "cascader",
+          options: "position",
+          onChange: this.onChange,
+          change: false,
+          filterable: true,
+          props: {
+            label: "agname",
+            value: "agid",
+            disabled: "isroom",
+            children: "children"
+          },
+          rules: [
+            {
+              required: true,
+              message: "请选择预约房间",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "rtname",
+          name: "预约房型",
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "rtprice",
+          name: "房费标准",
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "roommaxperson",
+          name: "房间床位",
+          type: "text",
+          disabled: true
+        },
+        {
+          width: "50%",
+          value: "roomrzperson",
+          name: "已住床位",
+          type: "text",
+          disabled: true
+        },
+        {
+          value: "tpedate", //值,
+          name: "入住结束时间", //名称,
+          type: "date",
+          placeholder: "请选择入住结束时间",
+          date: "datetime",
+          format: "yyyy-MM-dd HH:mm:ss",
+          width: "50%",
+          dTime: "[12:00:00]",
+          rules: [
+            {
+              required: true,
+              message: "请选择入住结束时间",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "trcash",
+          name: "预缴押金",
+          type: "text",
+          rules: [
+            {
+              validator: (rule, value, callback) => {
+                if (isNaN(Number(value))) {
+                  callback(new Error("格式错误"));
+                } else {
+                  callback();
+                }
+              },
+              trigger: "blur"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "isxbrz",
+          name: "是否男女混住",
+          type: "select",
+          select: [
+            {
+              value: 1,
+              label: "是"
+            },
+            {
+              value: 0,
+              label: "否"
+            }
+          ],
+          rules: [
+            {
+              required: true,
+              message: "请选择是否忽略性别入住",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "isteamrz",
+          name: "是否不同团混住",
+          type: "select",
+          select: [
+            {
+              value: 1,
+              label: "是"
+            },
+            {
+              value: 0,
+              label: "否"
+            }
+          ],
+          rules: [
+            {
+              required: true,
+              message: "请选择是否忽略团入住",
+              trigger: "change"
+            }
+          ]
+        },
+        {
+          width: "50%",
+          value: "cardcode",
+          name: "房卡",
+          type: "text",
+          rules: [
+            {
+              required: true,
+              message: "请输入房卡",
+              trigger: "bur"
+            }
+          ],
+          buts: [
+            {
+              show: true,
+              class: "but-connect",
+              title: "读卡器软件下载",
+              icon: "el-icon-download",
+              onClick: this.onClickCardReader
+            }
+          ]
+        }
+      ]
+    };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.imagebase64 = {};
+        this.ingetauthinfo();
+        this.inPosition();
+        IDCard.inspect(
+          () => {
+            this.formData[2].buts[1].show = true;
+          },
+          () => {
+            this.formData[2].buts[1].show = false;
+          }
+        );
+      }
+    }
+  },
+  created() {
+    IDCard.inspect(
+      () => {
+        this.formData[2].buts[1].show = true;
+      },
+      () => {
+        this.formData[2].buts[1].show = false;
+      }
+    );
+  },
+  methods: {
+    onClickCardReader() {
+      this.$refs["cardReading"].download();
+    },
+    onSubmitForm() {
+      this.$refs["felForm"].submitForm();
+    },
+    resultdata(data) {
+      if (data.Result > 0 && (data.FunctionID == 0 || data.FunctionID == 3)) {
+        this.$refs["felForm"].setData("cardcode", data.CardNo);
+      }
+    },
+    onInstall(is) {
+      if (is) {
+        this.formData[17].buts[0].show = true;
+      } else {
+        this.formData[17].buts[0].show = false;
+      }
+    },
+    readIDCard() {
+      this.$refs["cardReading"].readIDCard();
+    },
+    onChange(arr, data) {
+      if (arr && arr[0]) {
+        this.roomid = arr[0];
+        let roomid = arr[0][arr[0].length - 1];
+        this.ingetroomtype(roomid);
+      }
+    },
+    ingetroomtype(roomid) {
+      if (roomid) {
+        this.$ajax(
+          "/team/teampersoninto/5/getroomtype",
+          { roomid: roomid },
+          "1"
+        )
+          .then(res => {
+            let result = res.result;
+            this.$refs["felForm"].setData("rtprice", result.rtprice);
+            this.$refs["felForm"].setData("rtname", result.rtname);
+            this.$refs["felForm"].setData(
+              "roommaxperson",
+              result.roommaxperson
+            );
+            this.$refs["felForm"].setData("roomrzperson", result.roomrzperson);
+          })
+          .catch(err => {});
+      }
+    },
+    inPosition(roomid = "") {
+      this.$ajax("/team/teampersoninto/3/getroom", { roomid: roomid }, "1")
+        .then(res => {
+          this.setFJObjData(res.result);
+          this.selects.position = res.result;
+          // if (this.defaultData && this.defaultData.roomid) {
+          //   if (this.$refs["felForm"]) {
+          //     this.$refs["felForm"].setData(
+          //       "roomid",
+          //       this.roomidObj[this.defaultData.roomid[0]]
+          //     );
+          //   }
+          // }
+        })
+        .catch(err => {});
+    },
+    setFJObjData(arr) {
+      arr.forEach(obj => {
+        this.roomidObj[obj.agfatherid] = this.roomidObj[obj.agfatherid] || [];
+        this.roomidObj[obj.agid] = [
+          ...this.roomidObj[obj.agfatherid],
+          obj.agid
+        ];
+        if (obj.children) {
+          this.setFJObjData(obj.children);
+        } else {
+          obj.isroom = !obj.isroom;
+        }
+      });
+    },
+    searchIDCard() {
+      IDCard.readIDCard(
+        data => {
+          // this.personnel = {
+          //   personimage: data.img
+          // };
+          this.empty();
+          this.imagebase64 = {};
+          this.imagebase64[data.IDNumber] = data.img;
+          this.$refs["felForm"].setData("personname", data.Name);
+          this.$refs["felForm"].setData("personcode", data.IDNumber);
+          this.$refs["felForm"].setData("personsex", data.Sex);
+          this.ingetauthinfo(data.IDNumber);
+          console.log("data", data);
+        },
+        err => {
+          this.$message.error(err.retext || "读取身份证信息失败");
+        }
+      );
+    },
+    empty() {
+      if (this.$refs["felForm"]) {
+        // this.$refs["felForm"].setData("personname", "");
+        // this.$refs["felForm"].setData("personcode", "");
+        // this.$refs["felForm"].setData("personsex", "");
+        this.$refs["felForm"].setData("personimage", "");
+        this.$refs["felForm"].setData("personphone", "");
+        // this.$refs["felForm"].resetFormRef("personsex");
+      }
+    },
+    personClick() {
+      if (this.$refs["felForm"]) {
+        let personcode = this.$refs["felForm"].ruleForm.personcode;
+        if (personcode) {
+          this.ingetauthinfo(personcode);
+        } else {
+          this.$message.error("请输入身份证号码");
+        }
+      }
+    },
+    ingetauthinfo(personcode = "") {
+      let obj = { personcode: personcode };
+      if (this.$refs["felForm"]) {
+        obj = Object.assign(this.$refs["felForm"].ruleForm, obj);
+      }
+      this.$ajax(
+        "/team/teampersoninto/4/getauthinfo",
+        { personcode: personcode, teamid: this.param.teamid },
+        "1"
+      )
+        .then(res => {
+          let result = res.result || {};
+          obj.dates = [result.teamsdate || "", result.teamedate || ""];
+          if (result.tpid) {
+            this.empty();
+          }
+          Object.keys(result).forEach(key => {
+            if (result[key]) {
+              if (
+                key == "personname" ||
+                key == "personsex" ||
+                key == "personcode"
+              ) {
+                if (!obj[key]) {
+                  obj[key] = result[key];
+                }
+              } else {
+                obj[key] = result[key];
+              }
+            }
+          });
+
+          if (obj.roomid) {
+            obj.roomid = this.roomidObj[obj.roomid] || this.roomid;
+          } else {
+            obj.roomid = this.roomid;
+          }
+          if (typeof obj.isteamrz == "undefined") {
+            obj.isteamrz = 0;
+          }
+          if (typeof obj.isxbrz == "undefined") {
+            obj.isxbrz = 0;
+          }
+          this.defaultData = obj;
+          this.ingetroomtype(obj.roomid[obj.roomid.length - 1]);
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    onClickCardReaderIDCard() {
+      IDCard.download(() => {
+        this.formData[2].buts[1].show = true;
+      });
+    },
+    submitForm(data) {
+      delete data.dates;
+      data.roomid = data.roomid[data.roomid.length - 1];
+      let url = "/team/teampersoninto/2/saveauthandperson";
+      data.teamid = this.param.teamid;
+      if (data.tpid) {
+        url = "/team/teampersoninto/1/saveauthbyteamperson";
+      }
+      this.$ajax(
+        url,
+        data,
+        "1",
+        {
+          imagebase64: this.imagebase64[data.personcode] || ""
+        },
+        true
+      )
+        .then(res => {
+          this.imagebase64 = {};
+          this.$refs["felForm"].setData("personname", "");
+          this.$refs["felForm"].setData("personcode", "");
+          this.$refs["felForm"].setData("personsex", "");
+          this.$refs["felForm"].setData("cardcode", "");
+          this.empty();
+          this.$refs["felForm"].resetFormRef("personsex");
+          this.$emit("onRefresh");
+          this.$message({
+            message: "入住成功",
+            type: "success"
+          });
+          this.ingetroomtype(this.roomid[this.roomid.length - 1]);
+        })
+        .catch(err => {
+          this.$message({
+            showClose: true,
+            message: `[${err.resultCode}] ` + err.resultMsg,
+            type: "error"
+          });
+        });
+    },
+    beforeClose() {
+      this.imagebase64 = {};
+      this.roomid = [];
+      this.defaultData = { dates: [], roomid: [], isteamrz: 0, isxbrz: 0 };
+      if (this.$refs["felForm"]) {
+        this.$refs["felForm"].resetForm();
+      }
+      this.$emit("beforeClose");
+    }
+  }
+};
+</script>

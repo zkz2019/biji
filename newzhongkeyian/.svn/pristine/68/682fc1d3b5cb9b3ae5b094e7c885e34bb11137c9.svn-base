@@ -1,0 +1,752 @@
+<template>
+  <div class="my-times">
+    <template v-if="!isEl">
+      <el-popover placement="bottom-start" trigger="click" v-model="timeShow">
+        <div slot="reference">
+          <div
+            ref="timeInputBox"
+            class="timeInputBox"
+            :class="{ disabled: disabled }"
+          >
+            <el-input
+              class="timeInput"
+              size="mini"
+              @focus="onFocus"
+              @clear="onClear(1)"
+              @blur="onBlur"
+              v-model="startVal"
+              readonly
+              placeholder="开始时间"
+              :disabled="disabled"
+            />
+            <span>至</span>
+            <el-input
+              class="timeInput"
+              size="mini"
+              @focus="onFocus"
+              v-model="endVal"
+              @clear="onClear(2)"
+              @blur="onBlur"
+              readonly
+              placeholder="结束时间"
+              clearable
+              :disabled="disabled"
+            />
+          </div>
+        </div>
+        <div ref="timeSelector" class="timeSelector">
+          <!-- :style="`z-index:${zIndex}`":class="[bottom?'bottom':'top']"
+          v-show="timeShow"-->
+          <div class="time">
+            <div class="timeBox">
+              <div class="timeTitle">开始时间</div>
+              <div class="iconTop">
+                <div>
+                  <span
+                    class="el-icon-arrow-up"
+                    @click="onReplace('shtop')"
+                  ></span>
+                </div>
+                <div>
+                  <span
+                    class="el-icon-arrow-up"
+                    @click="onReplace('smtop')"
+                  ></span>
+                </div>
+              </div>
+              <div class="timesub">
+                <div class="timeListBox">
+                  <ul ref="s1" class="timeList time_scroll">
+                    <li
+                      v-for="(item, ind) in hour"
+                      :key="ind"
+                      :class="{
+                        checktime: ind == index.s1,
+                        prohibit: ind > prohibit.SH,
+                      }"
+                      @click="onClick(item, '1', ind)"
+                    >
+                      {{
+                        typeof item == "number"
+                          ? (Array(2).join(0) + (item - 1)).slice(-2)
+                          : item
+                      }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="timeListBox">
+                  <ul ref="s2" class="timeList time_scroll">
+                    <li
+                      v-for="(item, ind) in minute"
+                      :key="ind"
+                      :class="{
+                        checktime: ind == index.s2,
+                        prohibit: ind > prohibit.SM,
+                      }"
+                      @click="onClick(item, '2', ind)"
+                    >
+                      {{
+                        typeof item == "number"
+                          ? (Array(2).join(0) + (item - 1)).slice(-2)
+                          : item
+                      }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="iconBottom">
+                <div>
+                  <span
+                    class="el-icon-arrow-down"
+                    @click="onReplace('shbottom')"
+                  ></span>
+                </div>
+                <div>
+                  <span
+                    class="el-icon-arrow-down"
+                    @click="onReplace('smbottom')"
+                  ></span>
+                </div>
+              </div>
+            </div>
+            <div class="timeBox">
+              <div class="timeTitle">结束时间</div>
+              <div class="iconTop">
+                <div>
+                  <span
+                    class="el-icon-arrow-up"
+                    @click="onReplace('ehtop')"
+                  ></span>
+                </div>
+                <div>
+                  <span
+                    class="el-icon-arrow-up"
+                    @click="onReplace('emtop')"
+                  ></span>
+                </div>
+              </div>
+              <div class="timesub">
+                <div class="timeListBox">
+                  <ul ref="e1" class="timeList time_scroll">
+                    <li
+                      v-for="(item, ind) in hour"
+                      :key="ind"
+                      :class="{
+                        checktime: ind == index.e1,
+                        prohibit: ind < prohibit.EH,
+                      }"
+                      @click="onClick(item, '3', ind)"
+                    >
+                      {{
+                        typeof item == "number"
+                          ? (Array(2).join(0) + (item - 1)).slice(-2)
+                          : item
+                      }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="timeListBox">
+                  <ul ref="e2" class="timeList time_scroll">
+                    <li
+                      v-for="(item, ind) in minute"
+                      :key="ind"
+                      :class="{
+                        checktime: ind == index.e2,
+                        prohibit: ind < prohibit.EM,
+                      }"
+                      @click="onClick(item, '4', ind)"
+                    >
+                      {{
+                        typeof item == "number"
+                          ? (Array(2).join(0) + (item - 1)).slice(-2)
+                          : item
+                      }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="iconBottom">
+                <div>
+                  <span
+                    class="el-icon-arrow-down"
+                    @click="onReplace('ehbottom')"
+                  ></span>
+                </div>
+                <div>
+                  <span
+                    class="el-icon-arrow-down"
+                    @click="onReplace('embottom')"
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="timeBtn">
+            <el-button v-if="clearShow" size="mini" type @click="onClear(3)"
+              >清除</el-button
+            >
+            <el-button size="mini" type @click="onCancel">取消</el-button>
+            <el-button size="mini" type="primary" @click="onDetermine"
+              >确定</el-button
+            >
+          </div>
+        </div>
+      </el-popover>
+    </template>
+    <template v-else>
+      <el-time-picker
+        popper-class="timeSelectorPicke"
+        is-range
+        size="mini"
+        v-model="elValue"
+        @change="onElChange"
+        format="HH:mm"
+        range-separator="至"
+        start-placeholder="开始时间"
+        end-placeholder="结束时间"
+        placeholder="选择时间范围"
+      ></el-time-picker>
+    </template>
+  </div>
+</template>
+
+<script>
+import { homeListenClick, format } from "@/utils/utils.js";
+export default {
+  props: {
+    clearShow: { type: Boolean, default: false },
+    isEl: { type: Boolean, default: false },
+    defaultElValue: {
+      type: String,
+      default: "",
+    },
+    disabled: { type: Boolean, default: false },
+    hour: { type: Number, default: 24 },
+    minute: { type: Number, default: 60 },
+    times: {
+      type: Array,
+      default: () => {
+        return ["08:00", "08:00"];
+      },
+    },
+    format: String, //暂时没用到
+    // bottom: { type: Boolean, default: false }
+  },
+  data() {
+    return {
+      elValue: [new Date(0, 0, 0, 8, 30), new Date(0, 0, 0, 16, 30)],
+      startH: "", //开始小时数
+      startM: "", //开始分钟数
+      endH: "", //结束小时数
+      endM: "", //结束分钟数
+      timeShow: false,
+      startVal: "", //开始框value值
+      endVal: "", //结束框value值
+      outTime: "", //默认时间或者确定后的时间,(只能在特定的地方进行修改)
+      index: {}, //被选中的时间
+      T: null, //延时器
+      // zIndex: -10,
+      // next: true,
+      prohibit: { SH: 0, SM: 0, EH: 0, EM: 0 }, //置灰时间起始位置
+    };
+  },
+  name: "time-selector",
+  created() {
+    let val = this.defaultElValue;
+    this.setElValue(val);
+  },
+  computed: {
+    start() {
+      return this.startH || this.startM ? `${this.startH}:${this.startM}` : "";
+    },
+    end() {
+      return this.endH || this.endM ? `${this.endH}:${this.endM}` : "";
+    },
+  },
+  watch: {
+    defaultElValue(val) {
+      this.setElValue(val);
+    },
+    elValue(val) {},
+    //==============================element组件↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+    start(val) {
+      this.startVal = val;
+    },
+    end(val) {
+      this.endVal = val;
+    },
+    times(val) {
+      this.outTime = val[0] && val[1] ? `${val[0]}~${val[1]}` : "";
+    },
+    startH(val) {
+      this.index.s1 = val == "" ? -1 : Number(this.startH);
+      this.judge();
+      this.setScroll(true);
+    },
+    startM(val) {
+      this.index.s2 = val == "" ? -1 : Number(this.startM);
+      this.judge();
+      this.setScroll(true);
+    },
+    endH(val) {
+      this.index.e1 = val == "" ? -1 : Number(this.endH);
+      this.judge();
+      this.setScroll(true);
+    },
+    endM(val) {
+      this.index.e2 = val == "" ? -1 : Number(this.endM);
+      this.judge();
+      this.setScroll(true);
+    },
+    outTime(val) {
+      let str = val.trim();
+      this.startH = str.slice(0, 2);
+      this.startM = str.slice(3, 5);
+      this.endH = str.slice(6, 8);
+      this.endM = str.slice(9, 11);
+      this.index.s1 = Number(this.startH);
+      this.index.s2 = Number(this.startM);
+      this.index.e1 = Number(this.endH);
+      this.index.e2 = Number(this.endM);
+    },
+    timeShow(val) {
+      if (val) {
+        this.outTime = this.outTime ? this.outTime + " " : "08:00~08:00";
+      }
+      setTimeout(() => {
+        this.setScroll(val);
+      }, 100);
+    },
+  },
+  mounted() {
+    this.startH = this.times[0] ? this.times[0].slice(0, 2) : "";
+    this.startM = this.times[0] ? this.times[0].slice(-2) : "";
+    this.endH = this.times[1] ? this.times[1].slice(0, 2) : "";
+    this.endM = this.times[1] ? this.times[1].slice(-2) : "";
+    this.index.s1 = Number(this.startH);
+    this.index.s2 = Number(this.startM);
+    this.index.e1 = Number(this.endH);
+    this.index.e2 = Number(this.endM);
+    this.outTime = this.times.join("~");
+    // let dom = document.querySelector(".home");
+    // let dom1 = document.querySelector(".timeSelector");
+    // this.Listen(dom, dom1);
+  },
+  methods: {
+    setElValue(val) {
+      if (val) {
+        let arr = val.split("~");
+        let arrmap = arr.map((item) => {
+          return item.split(":");
+        });
+        let date = [
+          new Date(
+            0,
+            0,
+            0,
+            arrmap[0][0] ? arrmap[0][0] : "",
+            arrmap[0][1] ? arrmap[0][1] : ""
+          ),
+          new Date(
+            0,
+            0,
+            0,
+            arrmap[1][0] ? arrmap[1][0] : "",
+            arrmap[1][1] ? arrmap[1][1] : ""
+          ),
+        ];
+        this.elValue = date;
+      }
+    },
+    onElChange(val) {
+      this.$emit("change", val);
+    },
+    // Listen(dom, dom1) {
+    //   if (dom && dom1) {
+    //     dom1.onclick = function() {
+    //       window.event
+    //         ? (window.event.cancelBubble = true)
+    //         : e.stopPropagation();
+    //     };
+    //     homeListenClick(dom, this.listenEvent);
+    //   } else {
+    //     setTimeout(() => {
+    //       this.Listen();
+    //     }, 100);
+    //   }
+    // },
+    // listenEvent() {
+    //   if (this.next) {
+    //     this.timeShow = false;
+    //   }
+    // },
+    judge() {
+      setTimeout(() => {
+        if (this.startH < this.endH && this.startM <= this.endM) {
+          this.prohibit.SH = Number(this.endH);
+          this.prohibit.EH = Number(this.startH);
+          this.prohibit.EM = 0;
+          this.prohibit.SM = 59;
+        } else if (this.startH < this.endH && this.startM > this.endM) {
+          this.prohibit.SH = Number(this.endH) - 1;
+          this.prohibit.EH = Number(this.startH) + 1;
+          this.prohibit.EM = 0;
+          this.prohibit.SM = 59;
+        } else if (this.startH == this.endH && this.startM <= this.endM) {
+          this.prohibit.SH = Number(this.endH);
+          this.prohibit.EH = Number(this.startH);
+          this.prohibit.EM = Number(this.startM);
+          this.prohibit.SM = Number(this.endM);
+        }
+      }, 10);
+    },
+    onReplace(str) {
+      let sh = Number(this.startH);
+      let sm = Number(this.startM);
+      let eh = Number(this.endH);
+      let em = Number(this.endM);
+      if (str == "shtop") {
+        let St = Number(this.startH) - 1;
+        this.startH =
+          St < 0
+            ? (Array(2).join(0) + this.prohibit.SH).slice(-2)
+            : (Array(2).join(0) + St).slice(-2);
+      } else if (str == "shbottom") {
+        let St = Number(this.startH) + 1;
+        if (St > eh) {
+          this.startH = "00";
+          return;
+        } else if (St == eh && sm > em) {
+          this.startH = "00";
+          return;
+        } else {
+          this.startH = St > 23 ? "00" : (Array(2).join(0) + St).slice(-2);
+        }
+      } else if (str == "smtop") {
+        let St = Number(this.startM) - 1;
+        this.startM =
+          St < 0
+            ? (Array(2).join(0) + this.prohibit.SM).slice(-2)
+            : (Array(2).join(0) + St).slice(-2);
+      } else if (str == "smbottom") {
+        let St = Number(this.startM) + 1;
+        if (sh == eh && St > em) {
+          this.startM = "00";
+          return;
+        } else {
+          this.startM = St > 59 ? "00" : (Array(2).join(0) + St).slice(-2);
+        }
+      } else if (str == "ehtop") {
+        let St = Number(this.endH) - 1;
+        if (St < sh) {
+          this.endH = "23";
+          return;
+        } else if (St == sh && sm > em) {
+          this.endH = "23";
+          return;
+        } else {
+          this.endH = St < 0 ? "23" : (Array(2).join(0) + St).slice(-2);
+        }
+      } else if (str == "ehbottom") {
+        let St = Number(this.endH) + 1;
+        this.endH =
+          St > 23
+            ? (Array(2).join(0) + this.prohibit.EH).slice(-2)
+            : (Array(2).join(0) + St).slice(-2);
+      } else if (str == "emtop") {
+        let St = Number(this.endM) - 1;
+        if (sh == eh && St < sm) {
+          this.endM = "59";
+          return;
+        } else {
+          this.endM = St < 0 ? "59" : (Array(2).join(0) + St).slice(-2);
+        }
+      } else if (str == "embottom") {
+        let St = Number(this.endM) + 1;
+        this.endM =
+          St > 59
+            ? (Array(2).join(0) + this.prohibit.EM).slice(-2)
+            : (Array(2).join(0) + St).slice(-2);
+      }
+    },
+    setScroll(val) {
+      clearTimeout(this.T);
+      if (Object.keys(this.index).length == 0) {
+        return;
+      }
+      if (
+        this.$refs.s1 &&
+        this.$refs.s1.childNodes[this.index.s1] &&
+        this.$refs.s2 &&
+        this.$refs.s2.childNodes[this.index.s2] &&
+        this.$refs.e1 &&
+        this.$refs.e1.childNodes[this.index.e1] &&
+        this.$refs.e2 &&
+        this.$refs.e2.childNodes[this.index.e2]
+      ) {
+        if (val) {
+          this.$refs.s1.scrollTop =
+            // this.$refs.s1.childNodes[this.index.s1].offsetHeight *
+            // 1.005 *
+            35 * this.index.s1;
+          this.$refs.s2.scrollTop =
+            // this.$refs.s2.childNodes[this.index.s2].offsetHeight *
+            // 1.005 *
+            35 * this.index.s2;
+          this.$refs.e1.scrollTop =
+            // this.$refs.e1.childNodes[this.index.e1].offsetHeight *
+            // 1.005 *
+            35 * this.index.e1;
+          this.$refs.e2.scrollTop =
+            // this.$refs.e2.childNodes[this.index.e2].offsetHeight *
+            // 1.005 *
+            35 * this.index.e2;
+        }
+      } else {
+        this.T = setTimeout(() => {
+          this.setScroll(true);
+        }, 200);
+      }
+    },
+    onClick(data, str, ind) {
+      let obj = "";
+      obj =
+        typeof data == "number"
+          ? (Array(2).join(0) + (data - 1)).slice(-2)
+          : data;
+      let sh = Number(this.startH);
+      let sm = Number(this.startM);
+      let eh = Number(this.endH);
+      let em = Number(this.endM);
+      let our = Number(obj);
+      if (str == "1") {
+        if (our > eh) {
+          return;
+        } else if (our == eh && sm > em) {
+          return;
+        }
+        this.startH = obj;
+        this.index.s1 = ind;
+      } else if (str == "2") {
+        if (sh == eh && our > em) {
+          return;
+        }
+        this.startM = obj;
+        this.index.s2 = ind;
+      } else if (str == "3") {
+        if (our < sh) {
+          return;
+        } else if (our == sh && sm > em) {
+          return;
+        }
+        this.endH = obj;
+        this.index.e1 = ind;
+      } else {
+        if (sh == eh && our < sm) {
+          return;
+        }
+        this.endM = obj;
+        this.index.e2 = ind;
+      }
+    },
+    onClear(val) {
+      if (val == 1) {
+        this.startH = "";
+        this.startM = "";
+        this.index.s1 = null;
+        this.index.s2 = null;
+      } else if (val == 2) {
+        this.startH = "";
+        this.startM = "";
+        this.endH = "";
+        this.endM = "";
+        this.index = {};
+      } else {
+        this.startH = "";
+        this.startM = "";
+        this.endH = "";
+        this.endM = "";
+        this.index = {};
+      }
+    },
+    onFocus() {
+      // this.next = false;
+      // this.timeShow = true;
+    },
+    onBlur() {
+      // this.next = true;
+    },
+    onCancel() {
+      this.outTime = this.outTime + " ";
+      this.timeShow = false;
+    },
+    onDetermine() {
+      if (
+        String(this.startH) &&
+        String(this.startM) &&
+        String(this.endH) &&
+        String(this.endM)
+      ) {
+        this.outTime = this.start.concat("~", this.end);
+        this.$emit("onDetermine", [this.start, this.end]);
+      } else {
+        this.$emit("onDetermine", []);
+      }
+      this.timeShow = false;
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.timeSelectorPicke {
+  .el-time-spinner__list::after,
+  .el-time-spinner__list::before {
+    height: 74px;
+  }
+}
+.my-times {
+  position: relative;
+  width: 300px;
+  .timeInputBox {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    .disabled {
+      background: #ccc;
+    }
+    .timeInput {
+      width: 45%;
+      .el-input__inner {
+        border: none;
+      }
+    }
+    span {
+      display: inline-block;
+      width: 8%;
+    }
+  }
+}
+.timeSelector {
+  // display: flex;
+  // flex-direction: column;
+  // position: absolute;
+  // top: 40px;
+  background: #fff;
+  z-index: 1000;
+  width: 310px;
+  height: 300px;
+  overflow: hidden;
+  // padding: 8px;
+  // border: 1px solid #ccc;
+  .time {
+    height: 250px;
+    // display: flex;
+    .timeBox {
+      height: 100%;
+      float: left;
+      display: flex;
+      flex-direction: column;
+      width: 148px;
+      &:first-child {
+        margin-right: 12px;
+      }
+      .timeTitle {
+        height: 34px;
+        text-align: center;
+      }
+      .iconTop,
+      .iconBottom {
+        height: 22px;
+        line-height: 22px;
+        display: flex;
+        div {
+          width: 50%;
+          text-align: center;
+          span {
+            display: inline-block;
+            width: 20px;
+            height: 15px;
+            &:hover {
+              cursor: pointer;
+              background: #ddd;
+            }
+          }
+        }
+      }
+      .timesub {
+        display: flex;
+        flex: 1;
+        // height:0;
+        padding: 2px;
+        overflow: hidden;
+        border: 1px solid #ccc;
+        .timeListBox {
+          width: 70px;
+          overflow: hidden;
+        }
+        .timeList {
+          // height: 196px;
+          // width:100%;
+          width: 86px;
+          height: 100%;
+          overflow: auto;
+          // padding: 150px 0;
+          &:first-child {
+            padding-right: 4px;
+          }
+          &:last-child {
+            padding-left: 4px;
+            border-left: 1px solid #eee;
+          }
+          .checktime {
+            // background:#ddd;
+            font-size: 1.2em;
+            color: #000;
+          }
+          li {
+            &:first-child {
+              margin-top: 70px;
+              border: none;
+            }
+            &:last-child {
+              margin-bottom: 70px;
+            }
+            height: 35px;
+            line-height: 35px;
+            padding: 2px 18px;
+            color: #333;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            &:hover {
+              background: #ddd;
+              cursor: pointer;
+            }
+          }
+          .prohibit {
+            color: #acacac;
+            &:hover {
+              background: none;
+            }
+          }
+        }
+        // .time_scroll::-webkit-scrollbar {
+        /*滚动条整体样式*/
+        // width: 0;
+        /*高宽分别对应横竖滚动条的尺寸*/
+        // }
+      }
+    }
+  }
+  .timeBtn {
+    // height: 26px;
+    text-align: right;
+    padding: 5px;
+  }
+}
+.top {
+  top: 40px;
+}
+.bottom {
+  bottom: 40px;
+}
+</style>
