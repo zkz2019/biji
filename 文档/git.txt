@@ -1,0 +1,53 @@
+1.(git init)创建.git文档
+
+2.open至编辑器
+
+3.创建.gitignore文本 过滤idea
+
+4.1.git status  查看状态
+4.2.git  add .  添加
+4.3.git commit -m '做了什么事'
+4.4.git status 查看状态
+
+5.编辑器创建,修改文档
+
+6.1.git status  查看状态
+6.2.git  add .  添加
+6.3.git commit -m '做了什么事'
+6.4.git status 查看状态
+
+7.1.码云创建仓库
+7.2.获取,配置秘钥
+7.3git remote add 自命名 仓库下载链接(链接远程仓库)//git config --list(查看是否配置好)
+7.4.上传,更新项目  git push 自命名 master   (第一次 加  "--force")
+                                pull  拉取
+
+注意:先做好  .gitignore 文件,如果没有做好 
+过早使用了 git add . 就需要执行下面的命令
+ git rm -r --cached .idea/
+
+8 分支
+8.0 git checkout -b xxx 创建xxx分支
+8.1 git checkout xxx 切换至xxx分支
+8.2  git branch -vv 查看当前分支跟踪的远程分支
+8.3 git merge xxx 合并分支
+8.4 git branch -d  xxx 删除本地分支
+8.5 git push origin -d xxx 删除远程分支
+
+完善信息
+git config --global user.name 'xxxx'
+git config --global user.email 'xxx@qq.com'
+git config --list 查看配置
+
+clone:
+1.(git clone  仓库链接)获取项目
+2.可能需要配置秘钥
+
+配置秘钥:
+cd 到 c/Users/qiqi/.ssh目录;
+生产秘钥: ssh-keygen -t rsa -b 4096 -C "Git邮箱@qq.com"
+一路回车然后在github新建秘钥;
+然后在 c/Users/qiqi/.ssh目录的.pub文件里复制秘钥到github进行新建;
+
+ cat id_rsa.pub  查看秘钥
+
