@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+	</head>
+	<body>
+		<div id="app">
+			<input type="checkbox" name="" id="" v-model="all" /><br>
+			<input v-for="item in checked" type="checkbox" name="" id="" v-model="item.a" />
+			<lz :a="123"></lz>
+		</div>
+	</body>
+	<script type="text/javascript">
+		let vm = new Vue({
+			el: "#app",
+			data: {
+				checked: [
+					{a: false},
+					{a: false},
+					{a: false},
+				]
+				
+			},
+			computed: {
+				all:{
+					get() {
+						console.log("取值",this.checked,this.checked.every((item) => item.a === true));
+						return this.checked.every((item) => item.a === true)
+					},
+					set(newValue){
+						if(newValue){
+						console.log("设置值",newValue)
+						this.checked.forEach(item=>{console.log("kj",item);item.a=true})
+						}else{
+							this.checked.forEach(item=>{item.a=false})
+						}
+					}
+				}
+			}
+		})
+		
+		Vue.component("lz",{
+			props:["a"],
+			template:`<div>{{a}}ninin</div>`
+		})
+		console.log("vm",vm,Vue);
+	</script>
+</html>

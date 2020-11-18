@@ -1,0 +1,26 @@
+#app {
+			background: #efefef;
+			ul{
+			list-style: none;
+				
+			}
+			.cBox{
+				mark{
+					width:50px;
+				}
+			}
+			.lileft{
+				width:100px;
+				height:35px;
+				float:left;
+			}
+			.liRight{
+				list-style: none;
+				float:left;
+				li{
+					width:50px;
+					height:35px;
+					float:left;
+				}
+			}
+		}

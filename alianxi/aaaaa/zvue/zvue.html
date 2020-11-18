@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <!-- <div><p>aaaaaaaaaa</p></div> -->
+    <div id="app">
+        <p>{{data}}</p>
+        <p>{{arr}}</p>
+        <p z-text="text"></p>
+        <p z-html="html"></p>
+    </div>
+</body>
+<script src="compile.js"></script>
+<script src="zvue.js"></script>
+
+<script>
+    const app =  new Zvue({
+        el:"#app",
+        data:{
+            data:0,
+            text:"aaaaa",
+            html:"<div>hhhhh</div>",
+            arr:[1,2,3,4,5]
+        }
+    })
+    setInterval(()=>{
+        app.data++
+        app.arr.push(1);
+    },1000);
+</script>
+</html>
