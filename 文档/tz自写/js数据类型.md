@@ -280,6 +280,22 @@
 
   - `for..in` 循环会迭代继承的属性。
     - 如果想排除继承的属性，那么这儿有一个内建方法 obj.hasOwnProperty(key)：如果 obj 具有自己的（非继承的）名为 key 的属性，则返回 true。
+  - `Object.keys(obj)` —— 返回一个包含该对象所有的键的数组。
+  - `Object.values(obj)` —— 返回一个包含该对象所有的值的数组。
+  - `Object.entries(obj)` —— 返回一个包含该对象所有 [key, value] 键值对的数组。
+    - 对结果数组使用 `Object.fromEntries(array)` 方法，将结果转回成对象
+      ```
+        let obj = {
+          a: 1,
+          b: 2,
+        };
+        let doublePrices = Object.fromEntries(
+          Object.entries(obj).map(([key, value]) => [key, value * 2])
+        );
+      ```
+  - `for..in/Object.keys/values/entries` 会忽略 `symbol` 属性
+    - `Object.getOwnPropertySymbols`，它会返回一个只包含 `Symbol` 类型的键的数组。
+    - `Reflect.ownKeys(obj)`，它会返回所有键。
 
 #### <a id="symbol">Symbol</a>
 
