@@ -1,4 +1,0 @@
-- 新建分支 `git checkout -b 分支名`
-- 将本地分支推到远程 `git push origin 本地分支名:远程分支名`(远程没有会自动创建)
-- 切换分支 `git checkout 分支名`
-- 
